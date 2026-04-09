@@ -16,15 +16,7 @@ import {
   triggerCelebration,
   setCelebrationCallback,
 } from "./celebration.js";
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-import { insertSaleIfNew, getDashboardData } from "./db.js";
-=======
 import { insertSaleIfNew, getDashboardData, getSalesStats } from "./db.js";
->>>>>>> Stashed changes
-=======
-import { insertSaleIfNew, getDashboardData, getSalesStats } from "./db.js";
->>>>>>> Stashed changes
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
