@@ -152,6 +152,24 @@ export function getTodaySaleCount(): number {
   return result.count;
 }
 
+export function getSalesStats(): {
+  totalSales: number;
+  lastSaleAt: string | null;
+} {
+  const total = db
+    .prepare(`SELECT COUNT(*) as c FROM sales`)
+    .get() as { c: number };
+  const last = db
+    .prepare(
+      `SELECT timestamp FROM sales ORDER BY datetime(timestamp) DESC LIMIT 1`,
+    )
+    .get() as { timestamp: string } | undefined;
+  return {
+    totalSales: total.c,
+    lastSaleAt: last?.timestamp ?? null,
+  };
+}
+
 export function getDashboardData(): DashboardData {
   const today = getPeriodTotal("day");
   const week = getPeriodTotal("week");

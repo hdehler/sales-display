@@ -16,7 +16,15 @@ import {
   triggerCelebration,
   setCelebrationCallback,
 } from "./celebration.js";
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { insertSaleIfNew, getDashboardData } from "./db.js";
+=======
+import { insertSaleIfNew, getDashboardData, getSalesStats } from "./db.js";
+>>>>>>> Stashed changes
+=======
+import { insertSaleIfNew, getDashboardData, getSalesStats } from "./db.js";
+>>>>>>> Stashed changes
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +42,15 @@ const io = new Server(server, {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
+});
+
+app.get("/api/stats", (_req, res) => {
+  const stats = getSalesStats();
+  res.json({
+    ...stats,
+    slackChannelConfigured: Boolean(config.slack.salesChannelId),
+    backfillOnStart: config.slack.backfillOnStart,
+  });
 });
 
 if (process.env.NODE_ENV === "production") {

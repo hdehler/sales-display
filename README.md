@@ -243,3 +243,13 @@ pm2 save
 If you never got a running app, `pm2 delete all` then the same `pm2 start "$PWD/ecosystem.config.cjs"` is fine.
 
 **`File ecosystem.config.cjs not found`** means that file is not on the Pi yet (old copy of the repo). From your Mac, sync the project (e.g. `git pull` on the Pi, or `scp ecosystem.config.cjs hdehler@salesdisplay:~/sales-display/`), then run the commands above again.
+
+### Dashboard empty / no sales data
+
+1. **API running:** on the Pi run `curl -s http://127.0.0.1:3000/api/health` — expect `{"status":"ok",...}`.
+2. **Rows in the database:** `curl -s http://127.0.0.1:3000/api/stats` — check `totalSales`. If `0`, nothing has been parsed into SQLite yet.
+3. **PM2 + logs:** `pm2 status` (process **online**), then `pm2 logs sales-display --lines 50`. You want `[Slack] Connected via Socket Mode`. When a matching message arrives you should see `[Slack] Parsed Slide order:` or `[Slack] Parsed sale:`.
+4. **Channel ID:** `SLACK_SALES_CHANNEL_ID` must be the **exact** ID of the channel where Slide posts (public `C…`, private `G…`). Wrong ID = every message is ignored.
+5. **Your bot in that channel:** run `/invite @YourSalesDisplayApp` in that channel.
+6. **Import history:** if you only turned the app on recently, turn on `SLACK_BACKFILL_ON_START=true` (or run `npm run slack-backfill -- 500`) so past orders are loaded.
+7. **Still nothing:** Slide may be using a Block Kit layout we don’t parse (e.g. `rich_text` only). Check logs for errors; you may need a sample message JSON to extend the parser.
