@@ -1,15 +1,26 @@
 # Sales display — shortcuts for common commands
 # Usage: make help | make start | make dev | …
 
-.PHONY: help run install build setup start dev desktop slack-backfill clean stats pm2-restart pm2-logs
+.PHONY: help run install build setup start dev desktop slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
 
 .DEFAULT_GOAL := help
 
 help:
 	@echo "Sales display"
 	@echo ""
-	@echo "  make run              ONE COMMAND: build if needed, API + Electron window"
-	@echo "        (same as: npm run start:all  after a build)"
+	@echo "  --- Pick ONE way to run the API (never two at once) ---"
+	@echo ""
+	@echo "  A) Pi with PM2 (recommended):"
+	@echo "       pm2 start ecosystem.config.cjs   # once, then pm2 saves on boot"
+	@echo "       make pm2-restart                 # after code/.env changes"
+	@echo "       make desktop                     # open Electron (API already on :3000)"
+	@echo "       # or rely on autostart for Electron"
+	@echo ""
+	@echo "  B) Manual / dev (no PM2 on port 3000):"
+	@echo "       make pm2-stop                    # stop PM2 first if you use it!"
+	@echo "       make run                         # API + Electron together"
+	@echo ""
+	@echo "  make run              build if needed, then API + Electron (needs :3000 free)"
 	@echo ""
 	@echo "  make install          Install npm dependencies"
 	@echo "  make build            Build the production client (Vite → dist/client)"
@@ -21,14 +32,17 @@ help:
 	@echo "  make stats            curl /api/stats (server must be running)"
 	@echo "  make clean            Remove dist/client"
 	@echo ""
-	@echo "Pi / PM2 (if installed):"
+	@echo "Pi / PM2:"
+	@echo "  make pm2-status       pm2 status"
+	@echo "  make pm2-stop         pm2 stop sales-display  (frees port 3000)"
 	@echo "  make pm2-restart      pm2 restart sales-display"
 	@echo "  make pm2-logs         pm2 logs sales-display --lines 80"
-	@echo ""
-	@echo "  On the Pi with desktop: you can also  make run  (or keep PM2 + autostart)."
 
 run:
 	@test -f dist/client/index.html || $(MAKE) build
+	@if command -v fuser >/dev/null 2>&1 && fuser -s 3000/tcp 2>/dev/null; then \
+		echo ""; echo "Port 3000 is busy (usually PM2). Run:  make pm2-stop   then try again."; echo "Or keep PM2 and only run:  make desktop"; echo ""; exit 1; \
+	fi
 	npm run start:all
 
 install:
@@ -60,6 +74,12 @@ stats:
 
 pm2-restart:
 	pm2 restart sales-display
+
+pm2-stop:
+	pm2 stop sales-display
+
+pm2-status:
+	pm2 status
 
 pm2-logs:
 	pm2 logs sales-display --lines 80
