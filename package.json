@@ -1,0 +1,43 @@
+{
+  "name": "sales-display",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,green \"tsx watch src/server/index.ts\" \"vite\"",
+    "build": "vite build",
+    "start": "NODE_ENV=production tsx src/server/index.ts",
+    "setup": "npm install && npm run build"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.7.0",
+    "better-sqlite3": "^12.8.0",
+    "canvas-confetti": "^1.9.4",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "framer-motion": "^12.38.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "recharts": "^3.8.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "tplink-smarthome-api": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^5.0.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.4.27",
+    "concurrently": "^9.2.1",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8"
+  }
+}
