@@ -21,10 +21,16 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
         {items.map((sale, i) => (
           <span key={`${sale.id}-${i}`} className="mx-6 inline-flex items-center gap-2 text-sm">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-emerald-400">{formatCurrency(sale.amount)}</span>
-            <span className="text-slate-300">{sale.customer}</span>
+            {sale.meta?.source === "slide_cloud" ? (
+              <span className="font-semibold text-sky-400 font-mono text-xs">
+                {sale.meta.orderId}
+              </span>
+            ) : (
+              <span className="font-semibold text-emerald-400">{formatCurrency(sale.amount)}</span>
+            )}
+            <span className="text-slate-300 max-w-[28rem] truncate">{sale.customer}</span>
             <span className="text-slate-600">·</span>
-            <span className="text-slate-400">{sale.rep}</span>
+            <span className="text-slate-400 max-w-[20rem] truncate">{sale.product}</span>
           </span>
         ))}
       </div>

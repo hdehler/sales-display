@@ -13,6 +13,18 @@ export const config = {
     botToken: process.env.SLACK_BOT_TOKEN || "",
     appToken: process.env.SLACK_APP_TOKEN || "",
     salesChannelId: process.env.SLACK_SALES_CHANNEL_ID || "",
+    /** After connecting, fetch channel history and import parsed orders (no celebrations) */
+    backfillOnStart:
+      process.env.SLACK_BACKFILL_ON_START === "true" ||
+      process.env.SLACK_BACKFILL_ON_START === "1",
+    backfillMaxMessages: parseInt(
+      process.env.SLACK_BACKFILL_MAX_MESSAGES || "500",
+      10,
+    ),
+    backfillPageDelayMs: parseInt(
+      process.env.SLACK_BACKFILL_PAGE_DELAY_MS || "1200",
+      10,
+    ),
   },
 
   plugs: {

@@ -51,13 +51,26 @@ echo "[6/6] Setting up Chromium kiosk mode..."
 AUTOSTART_DIR="$HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
 
-cat > "$AUTOSTART_DIR/sales-kiosk.desktop" <<DESKTOP
+# Standalone app window (Electron) — dedicated desktop app, not a generic browser session.
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cat > "$AUTOSTART_DIR/sales-display.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Sales Dashboard Kiosk
-Exec=bash -c 'sleep 5 && chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --start-fullscreen http://localhost:3000'
+Name=Sales Display
+Comment=Sales dashboard (Electron)
+Exec=bash -lc 'sleep 10; cd "'"$PROJECT_DIR"'" && npm run desktop'
 X-GNOME-Autostart-enabled=true
 DESKTOP
+
+# Fallback: minimal browser chrome (no tab bar) if you remove Electron
+cat > "$AUTOSTART_DIR/sales-display-chromium.desktop" <<FALLBACK
+[Desktop Entry]
+Type=Application
+Name=Sales Display (Chromium)
+Exec=bash -c 'sleep 8 && chromium-browser --app=http://127.0.0.1:3000 --start-fullscreen --noerrdialogs --disable-infobars --disable-session-crashed-bubble'
+Hidden=true
+X-GNOME-Autostart-enabled=false
+FALLBACK
 
 # Disable screen blanking / screensaver
 LXDE_AUTOSTART="$HOME/.config/lxsession/LXDE-pi/autostart"

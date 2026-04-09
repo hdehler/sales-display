@@ -1,12 +1,27 @@
 import { App, LogLevel } from "@slack/bolt";
+import type { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
+import { parseMessageToSale } from "./parseSlackMessage.js";
+import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
 import type { Sale } from "../shared/types.js";
 
 type SaleCallback = (sale: Sale) => void;
 let onSale: SaleCallback | null = null;
 
+/** Inserts historical rows only (no celebrations); return true if inserted */
+let onHistorySale: ((sale: Sale) => boolean) | null = null;
+let onBackfillComplete: (() => void) | null = null;
+
 export function setSaleCallback(cb: SaleCallback): void {
   onSale = cb;
+}
+
+export function setHistorySaleHandler(cb: (sale: Sale) => boolean): void {
+  onHistorySale = cb;
+}
+
+export function setBackfillCompleteHandler(cb: () => void): void {
+  onBackfillComplete = cb;
 }
 
 export async function initSlack(): Promise<void> {
@@ -31,7 +46,7 @@ export async function initSlack(): Promise<void> {
   });
 
   slackApp.message(async ({ message }) => {
-    if (!("channel" in message) || !("text" in message)) return;
+    if (!("channel" in message)) return;
 
     if (
       config.slack.salesChannelId &&
@@ -40,42 +55,54 @@ export async function initSlack(): Promise<void> {
       return;
     }
 
-    const text = (message as Record<string, unknown>).text as string;
-    if (!text) return;
+    const msg = message as unknown as Record<string, unknown>;
+    const sale = parseMessageToSale(msg);
+    if (!sale) return;
 
-    const sale = parseSaleMessage(
-      text,
-      (message as Record<string, unknown>).ts as string | undefined,
-    );
-
-    if (sale) {
+    if (sale.meta?.source === "slide_cloud") {
+      console.log(
+        `[Slack] Parsed Slide order: ${sale.meta.orderId} — ${sale.customer}`,
+      );
+    } else {
       console.log(
         `[Slack] Parsed sale: ${sale.rep} — $${sale.amount} — ${sale.customer}`,
       );
-      onSale?.(sale);
     }
+    onSale?.(sale);
   });
 
   await slackApp.start();
   console.log("[Slack] Connected via Socket Mode");
+
+  if (
+    config.slack.backfillOnStart &&
+    config.slack.salesChannelId &&
+    onHistorySale
+  ) {
+    const client = slackApp.client as WebClient;
+    void runBackfillJob(client);
+  }
 }
 
-function parseSaleMessage(text: string, ts?: string): Sale | null {
-  for (const pattern of config.messagePatterns) {
-    const match = text.match(pattern.regex);
-    if (match) {
-      const g = pattern.groups;
-      return {
-        rep: match[g.rep]?.trim() || "Unknown",
-        customer: match[g.customer]?.trim() || "Unknown",
-        product: match[g.product]?.trim() || "",
-        amount: parseFloat(match[g.amount]?.replace(/[,$]/g, "") || "0"),
-        timestamp: new Date().toISOString(),
-        slackTs: ts,
-        rawMessage: text,
-      };
-    }
+async function runBackfillJob(client: WebClient): Promise<void> {
+  try {
+    console.log(
+      `[Backfill] Starting (max ${config.slack.backfillMaxMessages} messages, no celebrations)…`,
+    );
+    const result = await runSlackHistoryBackfill(
+      client,
+      config.slack.salesChannelId,
+      {
+        maxMessages: config.slack.backfillMaxMessages,
+        pageDelayMs: config.slack.backfillPageDelayMs,
+      },
+      (sale) => onHistorySale?.(sale) ?? false,
+    );
+    console.log(
+      `[Backfill] Done: scanned=${result.scanned} inserted=${result.inserted} pages=${result.pages}`,
+    );
+    onBackfillComplete?.();
+  } catch (err) {
+    console.error("[Backfill] Failed:", err);
   }
-
-  return null;
 }

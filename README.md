@@ -88,10 +88,20 @@ bash scripts/setup-pi.sh
    pm2 restart sales-display
    ```
 
-4. Reboot to test kiosk mode:
+4. Reboot to test autostart (Electron desktop window):
    ```bash
    sudo reboot
    ```
+
+## Slide Cloud order messages (Block Kit)
+
+Sale posts from **Slide Cloud** use Slack **Block Kit** (structured fields like Account, Order, Hardware, Service), not plain text. The server parses those blocks automatically when it sees **New Order Created** (or Account + Order + Hardware/Service).
+
+- **Ticker / dashboard:** shows **order id** (e.g. `o_52x4laoem1w4`), **account**, and **hardware · service**.
+- **Celebration overlay:** **NEW ORDER!** with order id and account (no dollar amount — Slide messages do not include price in the notification).
+- **Triggers:** use `CELEBRATION_TRIGGER_PRODUCTS` keywords that appear in the combined hardware/service line (e.g. `F1-16`, `Subscription`).
+
+After changing parser code on the Pi: `npm run build && pm2 restart sales-display`.
 
 ## Slack App Setup
 
@@ -117,6 +127,45 @@ bash scripts/setup-pi.sh
    - Right-click the channel name → "View channel details"
    - The Channel ID is at the bottom (starts with `C`)
    - This is your `SLACK_SALES_CHANNEL_ID`
+
+The **`channels:history`** scope is required so the app can read **past** messages (backfill), not only new ones.
+
+## Slack history (orders that already happened)
+
+The live Socket listener only sees **new** messages. To import **existing** Slide / plain-text orders from the channel:
+
+**Option A — on each server start** (good for a fresh Pi):
+
+```env
+SLACK_BACKFILL_ON_START=true
+SLACK_BACKFILL_MAX_MESSAGES=500
+```
+
+Restart: `pm2 restart sales-display`. Watch logs for `[Backfill] Done: scanned=… inserted=…`. Duplicates are skipped using Slack message timestamps.
+
+**Option B — one-shot CLI** (does not require restarting the server first; only needs `SLACK_BOT_TOKEN` + `SLACK_SALES_CHANNEL_ID`):
+
+```bash
+cd ~/sales-display
+npx tsx src/server/slack-backfill-cli.ts 800
+```
+
+(800 = max messages to scan; optional, default 500 in code path.)
+
+Backfill **does not** fire celebrations or disco — it only fills SQLite. New live messages still behave as before.
+
+## Desktop app on the Pi (not a generic browser)
+
+The UI is still built with web tech, but it runs in a **dedicated Electron window** (fullscreen / kiosk, no tabs, no address bar) so it feels like a normal desktop app. The Node server stays on **127.0.0.1:3000** on the same machine; Electron is just the shell (same pattern as Slack, VS Code, etc.).
+
+- **Autostart:** `scripts/setup-pi.sh` installs `~/.config/autostart/sales-display.desktop`, which runs `npm run desktop` after login.
+- **Manual:** with PM2 already running the API, open a terminal on the Pi and run:
+  ```bash
+  cd ~/sales-display && npm run desktop
+  ```
+- **Without Electron:** enable the fallback autostart file `sales-display-chromium.desktop` (set `Hidden=false` and `X-GNOME-Autostart-enabled=true`) and disable the Electron one — it uses `chromium-browser --app=http://127.0.0.1:3000` (minimal chrome, still not “localhost in a tabbed browser”).
+
+**Dev on Mac:** `npm start` in one terminal, `npm run desktop` in another.
 
 ## Kasa Smart Plug Setup
 
@@ -147,7 +196,9 @@ src/
     index.ts          — entry point: Express + Socket.IO + Slack
     config.ts         — env-based configuration
     db.ts             — SQLite storage for sales
-    slack.ts          — Slack Bot listener and message parser
+    slack.ts          — Slack Bot listener
+    parseSlackMessage.ts — parse live + history messages
+    slackHistoryBackfill.ts — conversations.history importer
     plugs.ts          — Kasa smart plug control
     celebration.ts    — celebration orchestration and queue
   client/
@@ -174,6 +225,8 @@ src/
 | `npm run build` | Build the React client for production |
 | `npm start` | Start the production server |
 | `npm run setup` | Install deps + build (used by setup script) |
+| `npm run desktop` | Open dashboard in Electron (server must be running) |
+| `npm run slack-backfill` | One-shot Slack history import (optional max messages as arg) |
 
 ## Troubleshooting (Pi / PM2)
 

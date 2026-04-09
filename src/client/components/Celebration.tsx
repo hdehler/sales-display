@@ -37,7 +37,9 @@ function playGeneratedChime() {
 }
 
 export function Celebration({ event }: { event: CelebrationEvent }) {
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     playSound();
@@ -69,7 +71,11 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
       fire();
     }, 800);
 
-    return () => clearInterval(intervalRef.current);
+    return () => {
+      if (intervalRef.current !== undefined) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [event]);
 
   return (
@@ -99,21 +105,30 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          NEW SALE!
+          {event.sale.meta?.source === "slide_cloud" ? "NEW ORDER!" : "NEW SALE!"}
         </motion.div>
 
-        <div className="text-8xl font-black mb-8 text-white drop-shadow-2xl">
-          {formatCurrency(event.sale.amount)}
-        </div>
+        {event.sale.meta?.source === "slide_cloud" ? (
+          <div className="text-5xl md:text-7xl font-black mb-6 text-white drop-shadow-2xl font-mono tracking-tight break-all max-w-[90vw]">
+            {event.sale.meta.orderId}
+          </div>
+        ) : (
+          <div className="text-8xl font-black mb-8 text-white drop-shadow-2xl">
+            {formatCurrency(event.sale.amount)}
+          </div>
+        )}
 
         <div className="text-3xl font-bold text-emerald-400 mb-3">
-          {event.sale.rep}
+          {event.sale.customer}
         </div>
-        <div className="text-2xl text-slate-300">{event.sale.customer}</div>
+        <div className="text-xl text-slate-400 mb-2">{event.sale.rep}</div>
         {event.sale.product && (
-          <div className="text-lg text-slate-400 mt-2">
+          <div className="text-lg text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
             {event.sale.product}
           </div>
+        )}
+        {event.sale.meta?.source === "slide_cloud" && event.sale.meta.region && (
+          <div className="text-sm text-slate-500 mt-3">{event.sale.meta.region}</div>
         )}
         {event.message && (
           <motion.div

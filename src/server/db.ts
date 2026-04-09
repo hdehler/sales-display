@@ -26,14 +26,23 @@ db.exec(`
     amount REAL NOT NULL,
     timestamp TEXT NOT NULL DEFAULT (datetime('now')),
     slack_ts TEXT,
-    raw_message TEXT
+    raw_message TEXT,
+    meta_json TEXT
   )
 `);
 
+const columns = db
+  .prepare(`PRAGMA table_info(sales)`)
+  .all() as { name: string }[];
+if (!columns.some((c) => c.name === "meta_json")) {
+  db.exec(`ALTER TABLE sales ADD COLUMN meta_json TEXT`);
+}
+
 export function insertSale(sale: Sale): Sale {
+  const metaJson = sale.meta ? JSON.stringify(sale.meta) : null;
   const stmt = db.prepare(`
-    INSERT INTO sales (rep, customer, product, amount, timestamp, slack_ts, raw_message)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sales (rep, customer, product, amount, timestamp, slack_ts, raw_message, meta_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     sale.rep,
@@ -43,18 +52,60 @@ export function insertSale(sale: Sale): Sale {
     sale.timestamp || new Date().toISOString(),
     sale.slackTs || null,
     sale.rawMessage || null,
+    metaJson,
   );
   return { ...sale, id: result.lastInsertRowid as number };
 }
 
+/** Skip insert if this Slack message was already stored (live + backfill dedupe). */
+export function insertSaleIfNew(sale: Sale): Sale | null {
+  if (sale.slackTs) {
+    const exists = db
+      .prepare(`SELECT 1 FROM sales WHERE slack_ts = ?`)
+      .get(sale.slackTs);
+    if (exists) return null;
+  }
+  try {
+    return insertSale(sale);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE") || msg.includes("unique")) return null;
+    throw e;
+  }
+}
+
+function rowToSale(row: Record<string, unknown>): Sale {
+  let meta: Sale["meta"];
+  const mj = row.meta_json;
+  if (typeof mj === "string" && mj.length > 0) {
+    try {
+      meta = JSON.parse(mj) as Sale["meta"];
+    } catch {
+      meta = undefined;
+    }
+  }
+  return {
+    id: row.id as number,
+    rep: row.rep as string,
+    customer: row.customer as string,
+    product: row.product as string,
+    amount: row.amount as number,
+    timestamp: row.timestamp as string,
+    slackTs: (row.slackTs as string) || undefined,
+    rawMessage: (row.rawMessage as string) || undefined,
+    meta,
+  };
+}
+
 export function getRecentSales(limit = 20): Sale[] {
-  return db
+  const rows = db
     .prepare(
       `SELECT id, rep, customer, product, amount, timestamp,
-              slack_ts as slackTs
+              slack_ts as slackTs, raw_message as rawMessage, meta_json
        FROM sales ORDER BY timestamp DESC LIMIT ?`,
     )
-    .all(limit) as Sale[];
+    .all(limit) as Record<string, unknown>[];
+  return rows.map(rowToSale);
 }
 
 export function getLeaderboard(): LeaderboardEntry[] {

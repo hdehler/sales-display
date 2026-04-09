@@ -1,3 +1,15 @@
+/** Extra fields parsed from Slide Cloud Block Kit order messages */
+export interface SlideOrderMeta {
+  source: "slide_cloud";
+  orderId: string;
+  region?: string;
+  hardware?: string;
+  service?: string;
+  orderHistory?: string;
+  purchasedAt?: string;
+  earliestShipDate?: string;
+}
+
 export interface Sale {
   id?: number;
   rep: string;
@@ -7,6 +19,7 @@ export interface Sale {
   timestamp: string;
   slackTs?: string;
   rawMessage?: string;
+  meta?: SlideOrderMeta;
 }
 
 export interface LeaderboardEntry {

@@ -4,15 +4,20 @@ import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
 import { config } from "./config.js";
-import { initSlack, setSaleCallback } from "./slack.js";
+import {
+  initSlack,
+  setSaleCallback,
+  setHistorySaleHandler,
+  setBackfillCompleteHandler,
+} from "./slack.js";
 import { initPlugs } from "./plugs.js";
 import {
   shouldCelebrate,
   triggerCelebration,
   setCelebrationCallback,
 } from "./celebration.js";
-import { insertSale, getDashboardData } from "./db.js";
-import type { CelebrationEvent } from "../shared/types.js";
+import { insertSaleIfNew, getDashboardData } from "./db.js";
+import type { CelebrationEvent, Sale } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,15 +59,33 @@ setCelebrationCallback((event: CelebrationEvent) => {
   setTimeout(() => io.emit("celebration:end"), event.duration * 1000);
 });
 
-setSaleCallback((sale) => {
-  const saved = insertSale(sale);
-  io.emit("sale:new", saved);
-  broadcastDashboard();
-
-  const celebration = shouldCelebrate(saved);
-  if (celebration) {
-    triggerCelebration(celebration);
+function ingestSlackSale(
+  sale: Sale,
+  opts: { celebrate: boolean; notifySocket: boolean },
+): boolean {
+  const saved = insertSaleIfNew(sale);
+  if (!saved) return false;
+  if (opts.notifySocket) {
+    io.emit("sale:new", saved);
+    broadcastDashboard();
+    if (opts.celebrate) {
+      const celebration = shouldCelebrate(saved);
+      if (celebration) triggerCelebration(celebration);
+    }
   }
+  return true;
+}
+
+setSaleCallback((sale) => {
+  ingestSlackSale(sale, { celebrate: true, notifySocket: true });
+});
+
+setHistorySaleHandler((sale) =>
+  ingestSlackSale(sale, { celebrate: false, notifySocket: false }),
+);
+
+setBackfillCompleteHandler(() => {
+  broadcastDashboard();
 });
 
 async function start(): Promise<void> {
