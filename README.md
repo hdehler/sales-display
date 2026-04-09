@@ -73,6 +73,8 @@ bash scripts/setup-pi.sh
 
 ### Step 4: Configure Slack
 
+**The Pi needs its own `.env` file.** `.env` is not in git (it’s in `.gitignore`). If you only edited `.env` on your Mac, copy it to the Pi, e.g. `scp .env hdehler@salesdisplay:~/sales-display/`
+
 1. Copy the environment template:
    ```bash
    cp .env.example .env
@@ -172,3 +174,19 @@ src/
 | `npm run build` | Build the React client for production |
 | `npm start` | Start the production server |
 | `npm run setup` | Install deps + build (used by setup script) |
+
+## Troubleshooting (Pi / PM2)
+
+**PM2: `Error: No script path - aborting`** — This was caused by `ecosystem.config.js` using ES module syntax while the project has `"type": "module"`. PM2 did not load the config correctly. The fix is [`ecosystem.config.cjs`](ecosystem.config.cjs) (CommonJS). Pull the latest repo, then on the Pi:
+
+```bash
+cd ~/sales-display
+ls -la ecosystem.config.cjs   # must exist; if "No such file", run: git pull
+pm2 delete sales-display 2>/dev/null || true
+pm2 start "$PWD/ecosystem.config.cjs"
+pm2 save
+```
+
+If you never got a running app, `pm2 delete all` then the same `pm2 start "$PWD/ecosystem.config.cjs"` is fine.
+
+**`File ecosystem.config.cjs not found`** means that file is not on the Pi yet (old copy of the repo). From your Mac, sync the project (e.g. `git pull` on the Pi, or `scp ecosystem.config.cjs hdehler@salesdisplay:~/sales-display/`), then run the commands above again.

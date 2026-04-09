@@ -40,7 +40,7 @@ npm run build
 
 # ── 5. Configure PM2 to start on boot ────────────────────────────
 echo "[5/6] Configuring PM2 startup..."
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 pm2 save
 sudo env PATH="$PATH:/usr/bin" "$(which pm2)" startup systemd -u "$USER" --hp "$HOME"
 pm2 save
