@@ -20,12 +20,18 @@ npm install
 # Copy env template and fill in your Slack tokens
 cp .env.example .env
 
-# Run in development mode (Vite + Express)
+# One command: production API + Electron window (builds client if needed)
+make run
+# same as: npm run build && npm run start:all
+```
+
+**Development** (hot reload, open http://localhost:5173 in a browser):
+
+```bash
 npm run dev
 ```
 
-The dashboard opens at http://localhost:5173 (hot-reloading).
-The API server runs at http://localhost:3000.
+The API server always serves production builds at http://localhost:3000 when you use `make run` / `npm run start`.
 
 ## Raspberry Pi Setup
 
