@@ -177,8 +177,54 @@ const SLIDE_CONCAT_LABELS = [
 function normalizeSlidePlaintext(raw: string): string {
   return raw
     .replace(/[\u200b\ufeff\u00a0]/g, "")
+    .replace(/\*+/g, "")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+/**
+ * Slack often sends Slide as Block Kit only; `message.text` is empty or a short preview.
+ * Concatenate visible text in block order (no separator) so we get strings like
+ * `New Order CreatedAccountProject OrcaOrdero_xxx...` matching the app’s layout.
+ */
+function flattenBlocksForSlideSequential(blocks: unknown[]): string {
+  const chunks: string[] = [];
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") continue;
+    const b = block as Record<string, unknown>;
+
+    if (b.type === "header" && b.text && typeof b.text === "object") {
+      const t = (b.text as { text?: string }).text;
+      if (typeof t === "string" && t.trim()) chunks.push(t);
+    }
+
+    if (b.type === "section" && Array.isArray(b.fields)) {
+      for (const f of b.fields) {
+        if (!f || typeof f !== "object") continue;
+        const ft = (f as { text?: string }).text;
+        if (typeof ft === "string" && ft.length) chunks.push(ft);
+      }
+    }
+
+    if (b.type === "section" && b.text && typeof b.text === "object") {
+      const ft = (b.text as { text?: string }).text;
+      if (typeof ft === "string" && ft.length) chunks.push(ft);
+    }
+
+    if (b.type === "context" && Array.isArray(b.elements)) {
+      for (const el of b.elements) {
+        if (!el || typeof el !== "object") continue;
+        const ce = el as { type?: string; text?: string };
+        if (typeof ce.text === "string" && ce.text.length) chunks.push(ce.text);
+      }
+    }
+
+    if (b.type === "rich_text" && Array.isArray(b.elements)) {
+      const strings = collectRichTextStrings(b.elements);
+      if (strings.length) chunks.push(strings.join(""));
+    }
+  }
+  return chunks.join("");
 }
 
 function parseSequentialSlidePlaintext(raw: string): Record<string, string> | null {
@@ -263,15 +309,29 @@ export function parseSlideOrderFromSlackMessage(
   slackTs?: string,
 ): Sale | null {
   const blocks = getBlocksFromMessage(msg);
+  const flattened = blocks ? flattenBlocksForSlideSequential(blocks) : "";
+  const topText = getCandidateSlidePlaintext(msg);
+
   if (blocks) {
     const fromBlocks = extractKeyValuesFromBlocks(blocks);
     const sale = buildSaleFromSlideFields(fromBlocks, slackTs);
     if (sale) return sale;
   }
 
-  const text = getCandidateSlidePlaintext(msg);
-  if (text) {
-    const plainFields = parseSequentialSlidePlaintext(text);
+  const candidates = [
+    flattened,
+    topText,
+    `${topText}${flattened}`,
+    `${flattened}${topText}`,
+  ]
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    if (seen.has(c)) continue;
+    seen.add(c);
+    const plainFields = parseSequentialSlidePlaintext(c);
     if (plainFields) {
       const sale = buildSaleFromSlideFields(plainFields, slackTs);
       if (sale) return sale;
