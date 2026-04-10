@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Sales Display
+Comment=Sales order dashboard
+Exec=/home/hdehler/sales-display/scripts/launch.sh
+Path=/home/hdehler/sales-display
+Icon=/home/hdehler/sales-display/public/images/logo-rounded.png
+Terminal=false
+Type=Application
+Categories=Utility;
