@@ -3,9 +3,43 @@ import { playJingle, stopJingle, JINGLES } from "./jingles";
 let activeAudio: HTMLAudioElement | null = null;
 let fadeTimer: ReturnType<typeof setTimeout> | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
+let audioUnlocked = false;
 
 const MAX_PLAY_MS = 20_000;
 const FADE_MS = 1_500;
+
+/**
+ * Call on the first user gesture to permanently unlock audio autoplay.
+ * Creates a silent AudioContext + plays a silent HTML5 Audio element.
+ */
+export function unlockAudio(): void {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (AC) {
+      const ctx = new AC();
+      if (ctx.state === "suspended") ctx.resume();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    }
+  } catch {
+    // best-effort
+  }
+
+  try {
+    const a = new Audio();
+    a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    a.volume = 0;
+    a.play().then(() => a.remove()).catch(() => {});
+  } catch {
+    // best-effort
+  }
+}
 
 function parseStartOffset(url: string): { cleanUrl: string; offset: number } {
   const match = url.match(/#t=(\d+(?:\.\d+)?)$/);
@@ -20,6 +54,7 @@ function parseStartOffset(url: string): { cleanUrl: string; offset: number } {
 
 export function playUrl(url: string): HTMLAudioElement {
   stopAll();
+  if (!audioUnlocked) unlockAudio();
   const { cleanUrl, offset } = parseStartOffset(url);
   const a = new Audio(cleanUrl);
   a.volume = 1;
