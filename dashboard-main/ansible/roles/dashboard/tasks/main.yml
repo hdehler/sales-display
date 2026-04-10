@@ -1,0 +1,38 @@
+---
+- name: Create /etc/dashboard directory
+  file:
+    path: /etc/dashboard
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+
+- name: Copy dashboard .deb package to target
+  copy:
+    src: dashboard_1.0.0.deb
+    dest: /tmp/dashboard_1.0.0.deb
+    mode: '0644'
+  become: true
+
+- name: Install dashboard .deb package
+  apt:
+    deb: /tmp/dashboard_1.0.0.deb
+    state: present
+  become: true
+
+- name: Copy .env.prod to /etc/dashboard
+  copy:
+    src: ../../../../backend/.env.prod
+    dest: /etc/dashboard/.env.prod
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Ensure dashboard service is enabled and running
+  systemd:
+    name: dashboard.service
+    state: started
+    enabled: true
+  become: true

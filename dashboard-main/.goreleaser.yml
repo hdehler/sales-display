@@ -1,0 +1,61 @@
+version: 2
+before:
+  hooks:
+    - bash -c 'cd server && go mod download'
+    - bash -c 'cd server && go mod tidy'
+builds:
+  - id: dashboard
+    main: ./server.go  
+    dir: ./server        
+    binary: dashboard-server
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+archives:
+  -
+    id: dashboard_linux
+    builds:
+      - dashboard
+    wrap_in_directory: true
+    files:
+      - README.md
+      - dashboard.yml.dist
+
+nfpms:
+  - package_name: dashboard
+    maintainer: Harry Dehler <harry@slide.tech>
+    description: Dashboard backend server
+    homepage: https://slide.tech
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: dashboard.yml.dist
+        dst: /etc/dashboard/dashboard.yml.dist
+      - src: server/.env.prod
+        dst: /etc/dashboard/.env.prod
+      - src: pkg/usr
+        dst: /usr
+      - dst: /var/log/dashboard
+        type: dir
+    scripts:
+      postinstall: pkg/scripts/postinst.sh
+      preremove: pkg/scripts/prerm.sh
+      postremove: pkg/scripts/postrm.sh
+uploads:
+  - name: Package server (stage)
+    target: https://internal.update.stageslide.tech/api/upload/hw/pkg/jammy/{{ .ArtifactName }}
+    custom_artifact_name: true
+    exts:
+      - deb
+    custom_headers:
+      Authorization: Bearer {{ .Env.PKGMAN_INTERNAL_UPLOAD_KEY_STAGE }}
+  - name: Package server (prod)
+    target: https://internal.update.slide.tech/api/upload/hw/pkg/jammy/{{ .ArtifactName }}
+    custom_artifact_name: true
+    exts:
+      - deb
+    custom_headers:
+      Authorization: Bearer {{ .Env.PKGMAN_INTERNAL_UPLOAD_KEY_PROD }}

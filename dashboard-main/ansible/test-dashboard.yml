@@ -1,0 +1,7 @@
+---
+- name: Test dashboard deb install
+  hosts: localhost
+  become: true
+  roles:
+    - dashboard
+

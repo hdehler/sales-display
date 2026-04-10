@@ -1,57 +1,70 @@
 import type { LeaderboardEntry } from "../../shared/types";
 
-const RANK_STYLES = [
-  "from-yellow-400 to-amber-500",
+const RANK_ACCENTS = [
+  "from-amber-400 to-yellow-500",
   "from-slate-300 to-slate-400",
-  "from-amber-600 to-amber-700",
+  "from-amber-700 to-amber-600",
 ];
+
+const RANK_DOT = ["bg-amber-400", "bg-slate-300", "bg-amber-700"];
 
 export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
   const maxCount = entries[0]?.count || 1;
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 p-6 flex flex-col h-full">
-      <h2 className="text-lg font-bold mb-1 text-slate-200 flex items-center gap-2">
-        <span className="text-yellow-400">&#9733;</span>
-        Top accounts
-        <span className="text-xs font-normal text-slate-500 ml-auto">This Month</span>
-      </h2>
-      <p className="text-xs text-slate-500 mb-4">
-        Ranked by order count (Slide notifications don’t include a rep).
-      </p>
+    <div className="rounded-2xl border border-border bg-surface-raised/60 p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-lg text-text-primary">Top Accounts</h2>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
+          This month
+        </span>
+      </div>
 
       {entries.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-slate-600 text-sm">
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">
           No sales data yet
         </div>
       ) : (
-        <div className="space-y-3 flex-1">
+        <div className="space-y-3 flex-1 overflow-y-auto">
           {entries.map((entry, i) => {
             const pct = (entry.count / maxCount) * 100;
             return (
-              <div key={entry.name} className="flex items-center gap-3">
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                    i < 3
-                      ? `bg-gradient-to-br ${RANK_STYLES[i]} text-slate-900`
-                      : "bg-slate-800 text-slate-400"
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium truncate">{entry.name}</span>
-                    <span className="text-sm font-semibold text-emerald-400 ml-2 tabular-nums">
-                      {entry.count} order{entry.count !== 1 ? "s" : ""}
+              <div
+                key={entry.name}
+                className="animate-fade-up"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className="flex items-center gap-3 mb-1.5">
+                  {i < 3 ? (
+                    <span
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold bg-gradient-to-br ${RANK_ACCENTS[i]} text-surface`}
+                    >
+                      {i + 1}
                     </span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-700"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  ) : (
+                    <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-medium text-text-muted bg-surface-hover">
+                      {i + 1}
+                    </span>
+                  )}
+                  <span className="text-sm font-medium text-text-primary truncate flex-1">
+                    {entry.name}
+                  </span>
+                  <span className="text-sm tabular-nums font-semibold text-accent ml-2">
+                    {entry.count}
+                  </span>
+                </div>
+                <div className="ml-8 h-1 rounded-full bg-border overflow-hidden">
+                  <div
+                    className={`h-full rounded-full animate-bar-fill ${
+                      i < 3
+                        ? `bg-gradient-to-r ${RANK_ACCENTS[i]}`
+                        : "bg-text-muted"
+                    }`}
+                    style={{
+                      width: `${pct}%`,
+                      animationDelay: `${i * 60 + 200}ms`,
+                    }}
+                  />
                 </div>
               </div>
             );

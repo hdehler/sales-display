@@ -4,25 +4,35 @@ interface StatsCardsProps {
   monthCount: number;
 }
 
-const cards: { key: keyof StatsCardsProps; label: string; accent: string }[] = [
-  { key: "todayCount", label: "Orders today", accent: "from-emerald-500 to-emerald-600" },
-  { key: "weekCount", label: "This week", accent: "from-blue-500 to-blue-600" },
-  { key: "monthCount", label: "This month", accent: "from-violet-500 to-violet-600" },
+const cards: {
+  key: keyof StatsCardsProps;
+  label: string;
+  color: string;
+}[] = [
+  { key: "todayCount", label: "Today", color: "bg-accent" },
+  { key: "weekCount", label: "This week", color: "bg-emerald" },
+  { key: "monthCount", label: "This month", color: "bg-blue-400" },
 ];
 
 export function StatsCards(props: StatsCardsProps) {
   return (
-    <div className="grid grid-cols-3 gap-4">
-      {cards.map(({ key, label, accent }) => (
+    <div className="grid grid-cols-3 gap-3">
+      {cards.map(({ key, label, color }, i) => (
         <div
           key={key}
-          className="bg-slate-900/50 rounded-2xl border border-slate-800/50 p-5 relative overflow-hidden"
+          className="rounded-xl border border-border bg-surface-raised/60 p-4 animate-fade-up"
+          style={{ animationDelay: `${i * 80}ms` }}
         >
-          <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${accent}`} />
-          <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-            {label}
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
+              {label}
+            </span>
           </div>
-          <div className="text-2xl font-bold tabular-nums">{props[key]}</div>
+          <div className="text-3xl font-bold tabular-nums text-text-primary">
+            {props[key]}
+          </div>
+          <div className="text-xs text-text-muted mt-1">orders</div>
         </div>
       ))}
     </div>

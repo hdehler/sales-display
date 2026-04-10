@@ -20,17 +20,16 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
   }));
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 p-6 flex flex-col h-full">
-      <h2 className="text-lg font-bold mb-4 text-slate-200 flex items-center gap-2">
-        <span className="text-blue-400">&#9679;</span>
-        Volume
-        <span className="text-xs font-normal text-slate-500 ml-auto">
+    <div className="rounded-2xl border border-border bg-surface-raised/60 p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-lg text-text-primary">Volume</h2>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
           Last 14 days
         </span>
-      </h2>
+      </div>
 
       {chartData.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-slate-600 text-sm">
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">
           No order data yet
         </div>
       ) : (
@@ -38,43 +37,61 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>
-                <linearGradient id="ordersGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity={0.25}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="date"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                tick={{ fill: "#504e4a", fontSize: 10 }}
+                interval="preserveStartEnd"
               />
               <YAxis
                 allowDecimals={false}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 11 }}
-                width={36}
+                tick={{ fill: "#504e4a", fontSize: 10 }}
+                width={28}
               />
               <Tooltip
                 contentStyle={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#14161d",
+                  border: "1px solid rgba(255,255,255,0.08)",
                   borderRadius: "0.75rem",
-                  fontSize: "0.875rem",
+                  fontSize: "0.8rem",
+                  color: "#f0ede8",
                 }}
-                labelStyle={{ color: "#94a3b8" }}
-                formatter={(value: number | undefined) => [
-                  `${value ?? 0} orders`,
-                  "Count",
+                labelStyle={{ color: "#8a8680" }}
+                formatter={(value: unknown) => [
+                  `${value ?? 0}`,
+                  "Orders",
                 ]}
+                cursor={{ stroke: "rgba(226,163,54,0.2)" }}
               />
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="#10b981"
+                stroke="var(--color-accent)"
                 strokeWidth={2}
-                fill="url(#ordersGrad)"
+                fill="url(#chartGrad)"
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: "var(--color-accent)",
+                  stroke: "#14161d",
+                  strokeWidth: 2,
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>

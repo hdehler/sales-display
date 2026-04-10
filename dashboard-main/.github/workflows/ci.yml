@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  pull_request:
+
+env:
+  GOVER: stable
+  GOPRIVATE: github.com/slidehq/*
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ linux-self-hosted ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVER }}
+          cache: false # this is supposed to speed up the post setup go action.
+
+      - name: Configure GitHub Secrets
+        run: git config --global url.https://${{ secrets.GH_ACCESS_TOKEN }}@github.com/.insteadOf https://github.com/
+
+      - name: Run linting
+        run: make lint
+
+      - name: Run vulnerability check
+        run: make vulncheck
+
+      - name: Run tests
+        run: make test

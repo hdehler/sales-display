@@ -3,14 +3,6 @@ import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
 
-function formatCurrency(n: number): string {
-  return n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  });
-}
-
 function playSound() {
   const audio = new Audio("/sounds/celebration.mp3");
   audio.play().catch(() => playGeneratedChime());
@@ -27,7 +19,7 @@ function playGeneratedChime() {
       gain.connect(ctx.destination);
       osc.frequency.value = freq;
       osc.type = "sine";
-      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.15);
       gain.gain.exponentialRampToValueAtTime(
         0.01,
         ctx.currentTime + i * 0.15 + 0.5,
@@ -36,8 +28,28 @@ function playGeneratedChime() {
       osc.stop(ctx.currentTime + i * 0.15 + 0.5);
     });
   } catch {
-    // AudioContext not available
+    /* no audio context */
   }
+}
+
+function fireConfetti() {
+  const gold = ["#e2a336", "#f5c842", "#d4890f"];
+  const mixed = [...gold, "#34d399", "#60a5fa"];
+
+  confetti({
+    particleCount: 60,
+    angle: 60,
+    spread: 55,
+    origin: { x: 0, y: 0.7 },
+    colors: mixed,
+  });
+  confetti({
+    particleCount: 60,
+    angle: 120,
+    spread: 55,
+    origin: { x: 1, y: 0.7 },
+    colors: mixed,
+  });
 }
 
 export function Celebration({ event }: { event: CelebrationEvent }) {
@@ -49,112 +61,39 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
 
   useEffect(() => {
     playSound();
+    fireConfetti();
 
     const end = Date.now() + Math.min(event.duration * 1000, 15000);
-    const fire = () => {
-      confetti({
-        particleCount: 80,
-        angle: 60,
-        spread: 70,
-        origin: { x: 0, y: 0.7 },
-        colors: ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7"],
-      });
-      confetti({
-        particleCount: 80,
-        angle: 120,
-        spread: 70,
-        origin: { x: 1, y: 0.7 },
-        colors: ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7"],
-      });
-    };
-
-    fire();
     intervalRef.current = setInterval(() => {
       if (Date.now() > end) {
         clearInterval(intervalRef.current);
         return;
       }
-      fire();
-    }, 800);
+      fireConfetti();
+    }, 900);
 
     return () => {
-      if (intervalRef.current !== undefined) {
+      if (intervalRef.current !== undefined)
         clearInterval(intervalRef.current);
-      }
     };
   }, [event]);
 
-  if (pack) {
-    const single = pack.count === 1;
-    return (
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(88, 28, 135, 0.85) 0%, rgba(15, 23, 42, 0.97) 60%, rgba(2, 6, 23, 1) 100%)",
-          }}
-        />
+  const account = pack ? pack.account : event.sale.customer;
+  const isSlide = pack
+    ? true
+    : event.sale.meta?.source === "slide_cloud";
+  const count = pack ? pack.count : 1;
+  const single = count === 1;
 
-        <motion.div
-          className="relative text-center z-10 px-12 max-w-[95vw]"
-          initial={{ scale: 0.5, y: 60 }}
-          animate={{ scale: 1, y: 0 }}
-          transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
-        >
-          <motion.div
-            className="text-3xl md:text-4xl font-black mb-4 bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500 bg-clip-text text-transparent"
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            {single ? "New order created" : "New orders created"}
-          </motion.div>
-
-          <div className="text-4xl md:text-6xl font-black text-white drop-shadow-2xl mb-4 leading-tight">
-            {pack.account}
-          </div>
-
-          {!single && (
-            <div className="text-2xl md:text-3xl font-bold text-sky-300 mb-6">
-              {pack.count} orders
-            </div>
-          )}
-
-          {(() => {
-            const products = pack.sales
-              .map((s) => s.product)
-              .filter(Boolean)
-              .filter((p, idx, a) => a.indexOf(p) === idx)
-              .slice(0, 4);
-            return products.length > 0 ? (
-              <div className="text-xl md:text-2xl text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
-                {products.join(" · ")}
-              </div>
-            ) : null;
-          })()}
-
-          {event.message && (
-            <motion.div
-              className="mt-6 text-lg font-semibold text-yellow-300"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              {event.message}
-            </motion.div>
-          )}
-        </motion.div>
-      </motion.div>
-    );
-  }
-
-  const isSlide = event.sale.meta?.source === "slide_cloud";
+  const products = pack
+    ? pack.sales
+        .map((s) => s.product)
+        .filter(Boolean)
+        .filter((p, idx, a) => a.indexOf(p) === idx)
+        .slice(0, 4)
+    : event.sale.product
+      ? [event.sale.product]
+      : [];
 
   return (
     <motion.div
@@ -162,59 +101,82 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.4 }}
     >
-      <div
+      {/* Backdrop */}
+      <motion.div
         className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(88, 28, 135, 0.85) 0%, rgba(15, 23, 42, 0.97) 60%, rgba(2, 6, 23, 1) 100%)",
+            "radial-gradient(ellipse at 50% 40%, rgba(226,163,54,0.12) 0%, rgba(12,14,19,0.98) 55%, rgba(12,14,19,1) 100%)",
         }}
       />
 
+      {/* Central card */}
       <motion.div
-        className="relative text-center z-10 px-12"
-        initial={{ scale: 0.5, y: 60 }}
-        animate={{ scale: 1, y: 0 }}
-        transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
+        className="relative z-10 text-center px-16 py-12 max-w-[90vw]"
+        initial={{ scale: 0.85, y: 40, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        transition={{ type: "spring", bounce: 0.35, duration: 0.7 }}
       >
+        {/* Overline label */}
         <motion.div
-          className="text-5xl font-black mb-6 bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500 bg-clip-text text-transparent"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          className="mb-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
         >
-          {isSlide ? "NEW ORDER!" : "NEW SALE!"}
+          <span className="inline-block px-4 py-1.5 rounded-full border border-accent/30 bg-accent-soft text-accent text-xs font-semibold uppercase tracking-[0.2em]">
+            {isSlide
+              ? single
+                ? "New order"
+                : `${count} new orders`
+              : "New sale"}
+          </span>
         </motion.div>
 
-        {isSlide ? (
-          event.sale.product ? (
-            <div className="text-3xl md:text-4xl font-bold mb-6 text-white drop-shadow-2xl max-w-[90vw]">
-              {event.sale.product}
-            </div>
-          ) : null
-        ) : event.sale.amount > 0 ? (
-          <div className="text-8xl font-black mb-8 text-white drop-shadow-2xl">
-            {formatCurrency(event.sale.amount)}
-          </div>
-        ) : (
-          <div className="text-3xl font-bold text-white mb-8">New activity</div>
+        {/* Account name — hero */}
+        <motion.h1
+          className="font-display text-5xl md:text-7xl text-text-primary leading-[1.1] mb-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+        >
+          {account}
+        </motion.h1>
+
+        {/* Product / device */}
+        {products.length > 0 && (
+          <motion.div
+            className="text-lg md:text-xl text-text-secondary mb-6 max-w-3xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35 }}
+          >
+            {products.join(" · ")}
+          </motion.div>
         )}
 
-        <div className="text-3xl font-bold text-emerald-400 mb-3">
-          {event.sale.customer}
-        </div>
-        {!isSlide && event.sale.rep.trim() ? (
-          <div className="text-xl text-slate-400 mb-2">{event.sale.rep}</div>
-        ) : null}
-        {!isSlide && event.sale.product && (
-          <div className="text-lg text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
-            {event.sale.product}
-          </div>
+        {/* Rep (non-Slide only) */}
+        {!isSlide && event.sale.rep.trim() && (
+          <motion.div
+            className="text-base text-text-secondary mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            {event.sale.rep}
+          </motion.div>
         )}
+
+        {/* Milestone / message */}
         {event.message && (
           <motion.div
-            className="mt-6 text-xl font-bold text-yellow-300"
-            initial={{ opacity: 0, y: 20 }}
+            className="mt-4 inline-block px-5 py-2 rounded-lg bg-accent/10 border border-accent/20 text-accent font-semibold text-base"
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >

@@ -9,24 +9,32 @@ export function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-8 py-4 bg-slate-900/60 border-b border-slate-800/60 backdrop-blur-sm">
+    <header className="flex items-center justify-between px-8 py-4 border-b border-border">
       <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-emerald-500/20">
-          S
+        <div className="relative flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald" />
+          <span className="absolute inline-block w-2 h-2 rounded-full bg-emerald animate-live-ring" />
+          <span className="text-xs font-medium uppercase tracking-[0.15em] text-text-secondary">
+            Live
+          </span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">Sales Dashboard</h1>
+        <div className="w-px h-5 bg-border-bright" />
+        <h1 className="font-display text-xl text-text-primary tracking-wide">
+          Order Feed
+        </h1>
       </div>
-      <div className="text-right">
-        <div className="text-xl font-semibold tabular-nums">
-          {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </div>
-        <div className="text-sm text-slate-400">
+
+      <div className="flex items-center gap-6">
+        <span className="text-sm text-text-secondary">
           {time.toLocaleDateString(undefined, {
             weekday: "long",
-            month: "long",
+            month: "short",
             day: "numeric",
           })}
-        </div>
+        </span>
+        <span className="text-xl font-medium tabular-nums text-text-primary tracking-tight">
+          {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
       </div>
     </header>
   );

@@ -1,9 +1,10 @@
 import type { DashboardData } from "../../shared/types";
 import { Header } from "./Header";
 import { SalesTicker } from "./SalesTicker";
+import { FeaturedOrder } from "./FeaturedOrder";
+import { StatsCards } from "./StatsCards";
 import { Leaderboard } from "./Leaderboard";
 import { SalesChart } from "./SalesChart";
-import { StatsCards } from "./StatsCards";
 
 export function Dashboard({ data }: { data: DashboardData }) {
   return (
@@ -11,21 +12,28 @@ export function Dashboard({ data }: { data: DashboardData }) {
       <Header />
       <SalesTicker sales={data.recentSales} />
 
-      <div className="flex-1 grid grid-cols-5 gap-4 p-6 min-h-0">
-        <div className="col-span-2">
+      <div className="flex-1 grid grid-cols-12 gap-4 p-5 min-h-0">
+        {/* Left: Featured order hero + stats below */}
+        <div className="col-span-4 flex flex-col gap-4 min-h-0">
+          <div className="flex-1 min-h-0">
+            <FeaturedOrder sales={data.recentSales} />
+          </div>
+          <StatsCards
+            todayCount={data.todayCount}
+            weekCount={data.weekCount}
+            monthCount={data.monthCount}
+          />
+        </div>
+
+        {/* Center: Leaderboard */}
+        <div className="col-span-4 min-h-0">
           <Leaderboard entries={data.leaderboard} />
         </div>
-        <div className="col-span-3">
+
+        {/* Right: Volume chart */}
+        <div className="col-span-4 min-h-0">
           <SalesChart data={data.dailyTotals} />
         </div>
-      </div>
-
-      <div className="px-6 pb-6">
-        <StatsCards
-          todayCount={data.todayCount}
-          weekCount={data.weekCount}
-          monthCount={data.monthCount}
-        />
       </div>
     </div>
   );

@@ -2,22 +2,96 @@
 
 @source "../..";
 
+@theme {
+  --font-display: "DM Serif Display", Georgia, serif;
+  --font-body: "Instrument Sans", system-ui, sans-serif;
+  --color-surface: #0c0e13;
+  --color-surface-raised: #14161d;
+  --color-surface-hover: #1a1d27;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-bright: rgba(255, 255, 255, 0.1);
+  --color-accent: #e2a336;
+  --color-accent-soft: rgba(226, 163, 54, 0.15);
+  --color-text-primary: #f0ede8;
+  --color-text-secondary: #8a8680;
+  --color-text-muted: #504e4a;
+  --color-emerald: #34d399;
+  --color-red-soft: #ef4444;
+}
+
 @layer base {
   body {
+    font-family: var(--font-body);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 }
 
+/* ── Marquee ticker ─────────────────────────────── */
 @keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@utility animate-marquee {
+  animation: marquee 40s linear infinite;
 }
 
-@utility animate-marquee {
-  animation: marquee 30s linear infinite;
+/* ── Soft pulse for live indicators ─────────────── */
+@keyframes live-ring {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(1.6); }
+}
+@utility animate-live-ring {
+  animation: live-ring 2s ease-in-out infinite;
+}
+
+/* ── Grain overlay ──────────────────────────────── */
+@keyframes grain-drift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-2%, -3%); }
+  30% { transform: translate(3%, 2%); }
+  50% { transform: translate(-1%, 4%); }
+  70% { transform: translate(2%, -2%); }
+  90% { transform: translate(-3%, 1%); }
+}
+@utility animate-grain {
+  animation: grain-drift 8s steps(6) infinite;
+}
+
+/* ── Ambient glow sway ──────────────────────────── */
+@keyframes glow-sway {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: .35; }
+  33% { transform: translate(-45%, -55%) scale(1.1); opacity: .45; }
+  66% { transform: translate(-55%, -48%) scale(.95); opacity: .3; }
+}
+@utility animate-glow-sway {
+  animation: glow-sway 20s ease-in-out infinite;
+}
+
+/* ── Stat counter fade-up ───────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-fade-up {
+  animation: fade-up .5s ease-out both;
+}
+
+/* ── Celebration shimmer ────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@utility animate-shimmer {
+  animation: shimmer 3s linear infinite;
+}
+
+/* ── Progress bar fill ──────────────────────────── */
+@keyframes bar-fill {
+  from { width: 0%; }
+}
+@utility animate-bar-fill {
+  animation: bar-fill .8s cubic-bezier(.4, 0, .2, 1) both;
 }

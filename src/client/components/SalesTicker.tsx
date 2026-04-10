@@ -1,6 +1,5 @@
 import type { Sale } from "../../shared/types";
 
-/** Merge adjacent Slide rows (same account, close in time) for ticker copy */
 const PACK_WINDOW_MS = 120_000;
 
 type TickerRow =
@@ -23,8 +22,7 @@ function buildTickerRows(sales: Sale[]): TickerRow[] {
     while (j < sales.length) {
       const n = sales[j];
       if (n.meta?.source !== "slide_cloud" || n.customer !== s.customer) break;
-      const t = new Date(n.timestamp).getTime();
-      if (t0 - t > PACK_WINDOW_MS) break;
+      if (t0 - new Date(n.timestamp).getTime() > PACK_WINDOW_MS) break;
       j++;
     }
     const count = j - i;
@@ -38,7 +36,7 @@ function buildTickerRows(sales: Sale[]): TickerRow[] {
 export function SalesTicker({ sales }: { sales: Sale[] }) {
   if (sales.length === 0) {
     return (
-      <div className="px-8 py-3 bg-slate-900/40 border-b border-slate-800/40 text-slate-500 text-sm">
+      <div className="px-8 py-3 border-b border-border text-text-muted text-sm">
         No recent orders yet
       </div>
     );
@@ -48,31 +46,29 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
   const items = [...rows, ...rows];
 
   return (
-    <div className="overflow-hidden bg-slate-900/40 border-b border-slate-800/40">
+    <div className="overflow-hidden border-b border-border bg-surface-raised/30">
       <div className="flex animate-marquee whitespace-nowrap py-3">
         {items.map((row, i) => (
           <span
-            key={`marquee-${i}-${row.kind === "slide_pack" ? `${row.account}-${row.count}` : row.kind === "slide_single" ? row.sale.id : row.sale.id}`}
-            className="mx-6 inline-flex items-center gap-2 text-sm"
+            key={`t-${i}`}
+            className="mx-8 inline-flex items-center gap-2.5 text-sm"
           >
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
             {row.kind === "slide_pack" ? (
-              <>
-                <span className="font-semibold text-sky-300">
-                  {row.count} orders from {row.account}
-                </span>
-              </>
+              <span className="font-semibold text-accent">
+                {row.count} orders — {row.account}
+              </span>
             ) : row.kind === "slide_single" ? (
               <>
-                <span className="font-semibold text-slate-100">
+                <span className="font-medium text-text-primary">
                   {row.sale.customer}
                 </span>
-                <span className="text-slate-500">—</span>
-                <span className="text-emerald-400/90">new order created</span>
+                <span className="text-text-muted">—</span>
+                <span className="text-text-secondary">new order</span>
                 {row.sale.product && (
                   <>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-slate-400 max-w-[16rem] truncate">
+                    <span className="text-text-muted">·</span>
+                    <span className="text-text-secondary max-w-[16rem] truncate">
                       {row.sale.product}
                     </span>
                   </>
@@ -80,23 +76,23 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
               </>
             ) : (
               <>
-                <span className="font-medium text-slate-200">
+                <span className="font-medium text-text-primary">
                   {row.sale.customer}
                 </span>
-                {row.sale.rep.trim() ? (
+                {row.sale.rep.trim() && (
                   <>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-slate-400">{row.sale.rep}</span>
+                    <span className="text-text-muted">·</span>
+                    <span className="text-text-secondary">{row.sale.rep}</span>
                   </>
-                ) : null}
-                {row.sale.product ? (
+                )}
+                {row.sale.product && (
                   <>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-slate-500 max-w-[18rem] truncate">
+                    <span className="text-text-muted">·</span>
+                    <span className="text-text-secondary max-w-[16rem] truncate">
                       {row.sale.product}
                     </span>
                   </>
-                ) : null}
+                )}
               </>
             )}
           </span>

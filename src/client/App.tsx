@@ -7,19 +7,49 @@ export default function App() {
   const { dashboard, celebration, connected } = useSocket();
 
   return (
-    <div className="h-screen w-screen bg-slate-950 text-white overflow-hidden relative">
-      {dashboard ? (
-        <Dashboard data={dashboard} />
-      ) : (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="text-4xl font-bold mb-3">Sales Dashboard</div>
-            <div className="text-slate-400 text-lg">
-              {connected ? "Loading data..." : "Connecting to server..."}
+    <div className="h-screen w-screen bg-surface text-text-primary overflow-hidden relative">
+      {/* Ambient glow */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden="true"
+      >
+        <div
+          className="absolute top-1/3 left-1/2 w-[60vw] h-[60vw] rounded-full animate-glow-sway"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(226,163,54,0.08) 0%, transparent 70%)",
+          }}
+        />
+      </div>
+
+      {/* Grain texture */}
+      <div
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.03] animate-grain"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+          backgroundSize: "128px 128px",
+        }}
+      />
+
+      {/* Content */}
+      <div className="relative z-[2] h-full">
+        {dashboard ? (
+          <Dashboard data={dashboard} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="font-display text-4xl mb-3 text-text-primary">
+                Sales Dashboard
+              </div>
+              <div className="text-text-secondary text-lg">
+                {connected ? "Loading data…" : "Connecting to server…"}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <AnimatePresence>
         {celebration && <Celebration event={celebration} />}

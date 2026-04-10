@@ -1,0 +1,26 @@
+# dashboard config file
+
+# Listen address for the web server
+#
+# listen-http: ":8080"
+
+# External URL for the web app
+#
+# external-url: "http://localhost:8080"
+
+# Database configuration
+#
+# database:
+#   host: "localhost"
+#   port: 3306
+#   username: "dashboard"
+#   password: ""
+#   name: "dashboard"
+
+# Environment
+#
+# environment: "prod"
+
+# Log level
+#
+# log-level: "info"
