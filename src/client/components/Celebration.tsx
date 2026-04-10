@@ -81,12 +81,12 @@ export function Celebration({ event, onStop }: CelebrationProps) {
       : [];
 
   const backdropGradient = isWalkup
-    ? "radial-gradient(ellipse at 50% 40%, rgba(168,85,247,0.15) 0%, rgba(12,14,19,0.98) 55%, rgba(12,14,19,1) 100%)"
-    : "radial-gradient(ellipse at 50% 40%, rgba(226,163,54,0.12) 0%, rgba(12,14,19,0.98) 55%, rgba(12,14,19,1) 100%)";
+    ? "radial-gradient(ellipse at 50% 40%, rgba(168,85,247,0.18) 0%, #08090d 55%)"
+    : "radial-gradient(ellipse at 50% 40%, rgba(226,163,54,0.15) 0%, #08090d 55%)";
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#08090d]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
