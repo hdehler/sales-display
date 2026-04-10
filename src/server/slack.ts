@@ -157,13 +157,19 @@ export async function initSlack(): Promise<void> {
     if (configuredCh && incomingCh !== configuredCh) return;
 
     const msg = message;
+    const nBlocks = Array.isArray(msg.blocks) ? msg.blocks.length : 0;
+    const tLen = typeof msg.text === "string" ? msg.text.length : 0;
+    const hasBot = Boolean(msg.bot_id);
+    const subtype = typeof msg.subtype === "string" ? msg.subtype : "";
+
+    console.log(
+      `[Slack] Incoming message ts=${msg.ts} subtype=${subtype || "(none)"} bot_id=${msg.bot_id ?? "none"} blocks=${nBlocks} textLen=${tLen}`,
+    );
+
     let sale = parseMessageToSale(msg);
 
-    if (
-      !sale &&
-      shouldRefetchMessageForParse(msg) &&
-      typeof message.ts === "string"
-    ) {
+    if (!sale && (hasBot || subtype === "bot_message" || nBlocks === 0) && typeof message.ts === "string") {
+      console.log(`[Slack] First parse failed, attempting re-fetch for ts=${message.ts}…`);
       sale = await refetchAndParse(
         client,
         message.channel,
@@ -172,12 +178,9 @@ export async function initSlack(): Promise<void> {
     }
 
     if (!sale) {
-      const fromBot = Boolean(msg.bot_id || msg.subtype === "bot_message");
-      if (fromBot && configuredCh && !opts?.fromPoll) {
-        const nBlocks = Array.isArray(msg.blocks) ? msg.blocks.length : 0;
-        const tLen = typeof msg.text === "string" ? msg.text.length : 0;
+      if ((hasBot || subtype === "bot_message") && configuredCh && !opts?.fromPoll) {
         console.warn(
-          `[Slack] Unparsed app/bot message in sales channel (ts=${msg.ts}) blocks=${nBlocks} textLen=${tLen}. If Slide posts look correct, set SLACK_DEBUG_PARSE=1 and restart.`,
+          `[Slack] Unparsed app/bot message in sales channel (ts=${msg.ts}) blocks=${nBlocks} textLen=${tLen}.`,
         );
       }
       if (
