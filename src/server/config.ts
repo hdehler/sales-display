@@ -41,11 +41,18 @@ export const config = {
      * `message` events for other apps’ bots unless `message.channels` is subscribed — polling
      * still picks up Slide. Set to 0 to disable.
      */
-    pollHistoryMs: parseInt(process.env.SLACK_POLL_HISTORY_MS || "30000", 10),
+    pollHistoryMs: (() => {
+      const n = parseInt(process.env.SLACK_POLL_HISTORY_MS || "30000", 10);
+      return Number.isFinite(n) && n >= 0 ? n : 30000;
+    })(),
     /** Log every incoming message event (channel, subtype) — proves whether Socket delivers events */
     logMessageEvents:
       process.env.SLACK_LOG_MESSAGE_EVENTS === "1" ||
       process.env.SLACK_LOG_MESSAGE_EVENTS === "true",
+    /** Log each history poll (message count) */
+    logPoll:
+      process.env.SLACK_LOG_POLL === "1" ||
+      process.env.SLACK_LOG_POLL === "true",
   },
 
   plugs: {

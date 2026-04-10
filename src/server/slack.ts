@@ -15,12 +15,26 @@ function shouldRefetchMessageForParse(msg: Record<string, unknown>): boolean {
 }
 
 /**
- * Ignore edits, deletes, joins, etc. User posts have no subtype; Slide uses `bot_message`.
+ * Skip only noisy / non-content subtypes. (Allowlist failed us: some app posts use uncommon subtypes.)
  */
-function isProcessableMessageSubtype(msg: Record<string, unknown>): boolean {
+const SKIP_MESSAGE_SUBTYPES = new Set([
+  "message_changed",
+  "message_deleted",
+  "channel_join",
+  "channel_leave",
+  "channel_topic",
+  "channel_purpose",
+  "channel_name",
+  "channel_archive",
+  "channel_unarchive",
+  "pinned_message",
+  "unpinned_message",
+]);
+
+function shouldSkipSlackMessageSubtype(msg: Record<string, unknown>): boolean {
   const sub = typeof msg.subtype === "string" ? msg.subtype : "";
-  if (!sub) return true;
-  return sub === "bot_message";
+  if (!sub) return false;
+  return SKIP_MESSAGE_SUBTYPES.has(sub);
 }
 
 type SaleCallback = (sale: Sale) => void;
@@ -161,14 +175,21 @@ export async function initSlack(): Promise<void> {
         `[Slack] socket message event ch=${ev.channel} subtype=${ev.subtype === undefined ? "(none)" : String(ev.subtype)} bot=${ev.bot_id ? "yes" : "no"} blocks=${Array.isArray(ev.blocks) ? ev.blocks.length : 0}`,
       );
     }
-    if (!isProcessableMessageSubtype(ev)) return;
+    if (shouldSkipSlackMessageSubtype(ev)) return;
     await handleSalesChannelMessage(ev, client as WebClient);
   });
+
+  console.log(
+    `[Slack] Effective config: SLACK_SALES_CHANNEL_ID=${config.slack.salesChannelId || "(empty = all channels)"} SLACK_POLL_HISTORY_MS=${config.slack.pollHistoryMs}`,
+  );
 
   await slackApp.start();
   console.log("[Slack] Connected via Socket Mode");
   console.log(
-    "[Slack] If other bots’ posts never log anything, add Event Subscriptions → Subscribe to bot events → message.channels at api.slack.com/apps (then reinstall to workspace).",
+    "[Slack] Use the SAME channel ID where Slide posts AND where you test. If manual works only in another channel, .env still points at that other channel.",
+  );
+  console.log(
+    "[Slack] If other bots’ posts never log anything, add Event Subscriptions → message.channels and reinstall the app.",
   );
 
   const slackClient = slackApp.client as WebClient;
@@ -204,6 +225,11 @@ function startSalesChannelHistoryPoll(
         "[Slack] SLACK_POLL_HISTORY_MS is set but SLACK_SALES_CHANNEL_ID is empty — poll disabled.",
       );
     }
+    if (intervalMs <= 0) {
+      console.warn(
+        "[Slack] History poll DISABLED (SLACK_POLL_HISTORY_MS=0). Slide may be missed if Socket events don’t fire — unset or set e.g. 30000.",
+      );
+    }
     return;
   }
 
@@ -216,14 +242,24 @@ function startSalesChannelHistoryPoll(
         channel,
         limit: 50,
       });
-      if (!r.ok || !r.messages?.length) return;
-      const ordered = [...r.messages].reverse();
+      if (!r.ok) {
+        if (config.slack.logPoll) {
+          console.warn("[Slack] Poll conversations.history not ok:", r.error);
+        }
+        return;
+      }
+      const list = r.messages ?? [];
+      if (config.slack.logPoll) {
+        console.log(`[Slack] Poll tick: ${list.length} message(s) from history`);
+      }
+      if (!list.length) return;
+      const ordered = [...list].reverse();
       for (const raw of ordered) {
         const rec = {
           ...(raw as object),
           channel,
         } as Record<string, unknown>;
-        if (!isProcessableMessageSubtype(rec)) continue;
+        if (shouldSkipSlackMessageSubtype(rec)) continue;
         await handleMessage(rec, client, { fromPoll: true });
       }
     } catch (e) {
