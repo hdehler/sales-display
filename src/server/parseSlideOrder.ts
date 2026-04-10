@@ -76,6 +76,7 @@ function extractKeyValuesFromBlocks(blocks: unknown[]): Record<string, string> {
         if (typeof ft !== "string") continue;
         const parsed = parseSectionFieldText(ft);
         if (parsed) out[parsed.label] = parsed.value;
+        extractFromMrkdwnBlob(ft, out);
       }
     }
 

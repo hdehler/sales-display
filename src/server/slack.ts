@@ -6,6 +6,14 @@ import { slackMessageHasStructuredContent } from "./parseSlideOrder.js";
 import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
 import type { Sale } from "../shared/types.js";
 
+/** Socket events for other apps’ messages often omit `blocks`; history has the full layout. */
+function shouldRefetchMessageForParse(msg: Record<string, unknown>): boolean {
+  if (msg.bot_id || msg.subtype === "bot_message") return true;
+  const t = typeof msg.text === "string" ? msg.text : "";
+  if (/o_[a-z0-9]+/i.test(t)) return true;
+  return false;
+}
+
 type SaleCallback = (sale: Sale) => void;
 let onSale: SaleCallback | null = null;
 
@@ -46,7 +54,7 @@ export async function initSlack(): Promise<void> {
     logLevel: LogLevel.WARN,
   });
 
-  slackApp.message(async ({ message }) => {
+  slackApp.message(async ({ message, client }) => {
     if (!("channel" in message)) return;
 
     if (
@@ -57,7 +65,41 @@ export async function initSlack(): Promise<void> {
     }
 
     const msg = message as unknown as Record<string, unknown>;
-    const sale = parseMessageToSale(msg);
+    let sale = parseMessageToSale(msg);
+
+    if (
+      !sale &&
+      shouldRefetchMessageForParse(msg) &&
+      typeof message.channel === "string" &&
+      typeof message.ts === "string"
+    ) {
+      try {
+        const hist = await client.conversations.history({
+          channel: message.channel,
+          oldest: message.ts,
+          latest: message.ts,
+          inclusive: true,
+          limit: 1,
+        });
+        const full = hist.messages?.[0] as unknown as
+          | Record<string, unknown>
+          | undefined;
+        if (full) {
+          sale = parseMessageToSale(full);
+          if (sale) {
+            console.log(
+              "[Slack] Parsed after conversations.history re-fetch (Socket payload was incomplete).",
+            );
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[Slack] conversations.history re-fetch failed (need channels:history + bot in channel):",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+
     if (!sale) {
       if (
         config.slack.debugParse &&
