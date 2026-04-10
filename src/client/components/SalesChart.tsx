@@ -23,7 +23,7 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
     <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 p-6 flex flex-col h-full">
       <h2 className="text-lg font-bold mb-4 text-slate-200 flex items-center gap-2">
         <span className="text-blue-400">&#9679;</span>
-        Order volume
+        Volume
         <span className="text-xs font-normal text-slate-500 ml-auto">
           Last 14 days
         </span>
