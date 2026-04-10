@@ -38,7 +38,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
           })}
         </span>
         <span className="text-2xl font-semibold tabular-nums text-white tracking-tight">
-          {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
         </span>
 
         <div className="w-px h-6 bg-border-bright ml-1" />
