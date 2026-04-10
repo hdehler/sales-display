@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
+import { JINGLES } from "../lib/jingles";
+import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "none";
@@ -30,9 +31,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
-  const [playingJingle, setPlayingJingle] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayLabel = getDisplayLabel(value);
@@ -65,36 +64,24 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     };
   }, [query, search]);
 
-  function stopAll() {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+  function stopPreview() {
+    stopAudio();
+    setPlayingId(null);
+  }
+
+  function preview(id: string, song: string) {
+    if (playingId === id) {
+      stopPreview();
+      return;
     }
-    stopJingle();
-    setPlayingUrl(null);
-    setPlayingJingle(null);
-  }
-
-  function previewDeezer(url: string) {
-    stopAll();
-    if (playingUrl === url) return;
-    const a = new Audio(url);
-    audioRef.current = a;
-    a.play().catch(() => {});
-    a.onended = () => setPlayingUrl(null);
-    setPlayingUrl(url);
-  }
-
-  function previewJingle(id: string) {
-    stopAll();
-    if (playingJingle === id) return;
-    playJingle(id);
-    setPlayingJingle(id);
-    setTimeout(() => setPlayingJingle(null), 3000);
+    stopPreview();
+    playSong(song);
+    setPlayingId(id);
+    setTimeout(() => setPlayingId(null), 20_000);
   }
 
   function selectDeezer(result: SearchResult) {
-    stopAll();
+    stopPreview();
     onChange({
       type: "deezer",
       value: result.previewUrl,
@@ -103,7 +90,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   }
 
   function selectJingle(id: string) {
-    stopAll();
+    stopPreview();
     const j = JINGLES.find((j) => j.id === id);
     onChange({
       type: "jingle",
@@ -113,7 +100,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   }
 
   function selectNone() {
-    stopAll();
+    stopPreview();
     onChange({ type: "none", value: "", label: "None" });
   }
 
@@ -197,15 +184,15 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    previewDeezer(r.previewUrl);
+                    preview(`deezer-${r.id}`, r.previewUrl);
                   }}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-                    playingUrl === r.previewUrl
+                    playingId === `deezer-${r.id}`
                       ? "bg-accent text-surface"
                       : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                   }`}
                 >
-                  {playingUrl === r.previewUrl ? "■" : "▶"}
+                  {playingId === `deezer-${r.id}` ? "■" : "▶"}
                 </button>
               </div>
             ))}
@@ -226,15 +213,15 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  previewJingle(j.id);
+                  preview(j.id, j.id);
                 }}
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-                  playingJingle === j.id
+                  playingId === j.id
                     ? "bg-accent text-surface"
                     : "bg-text-muted/20 text-text-muted hover:bg-accent/30 hover:text-accent"
                 }`}
               >
-                {playingJingle === j.id ? "■" : "▶"}
+                {playingId === j.id ? "■" : "▶"}
               </button>
               <div className="min-w-0">
                 <div className="font-medium truncate">{j.name}</div>

@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep } from "../../shared/types";
-import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
+import { JINGLES } from "../lib/jingles";
+import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice } from "./SongSearch";
 
 const AVATAR_COLORS = [
@@ -87,14 +88,7 @@ export function RepManager({ open, onClose }: RepManagerProps) {
 
   function previewCurrent(song: string) {
     if (!song) return;
-    if (JINGLES.some((j) => j.id === song)) {
-      playJingle(song);
-      return;
-    }
-    if (song.startsWith("http")) {
-      const a = new Audio(song);
-      a.play().catch(() => {});
-    }
+    playSong(song);
   }
 
   return (

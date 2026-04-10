@@ -59,5 +59,9 @@ export function useSocket() {
     };
   }, []);
 
-  return { socket, dashboard, celebration, connected };
+  function dismissCelebration() {
+    setCelebration(null);
+  }
+
+  return { socket, dashboard, celebration, connected, dismissCelebration };
 }

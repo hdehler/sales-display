@@ -1,25 +1,8 @@
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
-import { playJingle, JINGLES } from "../lib/jingles";
-
-function playAudio(event: CelebrationEvent) {
-  if (event.jingleId && JINGLES.some((j) => j.id === event.jingleId)) {
-    playJingle(event.jingleId);
-    return;
-  }
-  if (event.songUrl) {
-    const audio = new Audio(event.songUrl);
-    audio.play().catch(() => playDefaultJingle());
-    return;
-  }
-  playDefaultJingle();
-}
-
-function playDefaultJingle() {
-  playJingle("champion");
-}
+import { playSong, stopAll } from "../lib/audio";
 
 function fireConfetti(isWalkup: boolean) {
   const gold = ["#e2a336", "#f5c842", "#d4890f"];
@@ -43,7 +26,12 @@ function fireConfetti(isWalkup: boolean) {
   });
 }
 
-export function Celebration({ event }: { event: CelebrationEvent }) {
+interface CelebrationProps {
+  event: CelebrationEvent;
+  onStop?: () => void;
+}
+
+export function Celebration({ event, onStop }: CelebrationProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined,
   );
@@ -52,7 +40,8 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
   const pack = event.slidePack;
 
   useEffect(() => {
-    playAudio(event);
+    const song = event.jingleId || event.songUrl || "";
+    playSong(song);
     fireConfetti(isWalkup);
 
     const end = Date.now() + Math.min(event.duration * 1000, 15000);
@@ -69,6 +58,11 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
         clearInterval(intervalRef.current);
     };
   }, [event]);
+
+  const handleStop = useCallback(() => {
+    stopAll();
+    onStop?.();
+  }, [onStop]);
 
   const account = pack ? pack.account : event.sale.customer;
   const isSlide = pack ? true : event.sale.meta?.source === "slide_cloud";
@@ -104,6 +98,20 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
         transition={{ duration: 0.6 }}
         style={{ background: backdropGradient }}
       />
+
+      {/* Stop button — always visible, top-right */}
+      <motion.button
+        onClick={handleStop}
+        className="fixed top-6 right-6 z-[60] flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/70 hover:text-white hover:bg-white/20 transition-all active:scale-95"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+        </svg>
+        <span className="text-sm font-medium">Stop</span>
+      </motion.button>
 
       <motion.div
         className="relative z-10 text-center px-16 py-12 max-w-[90vw]"

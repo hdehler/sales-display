@@ -1,20 +1,27 @@
 import { AnimatePresence } from "framer-motion";
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useSocket } from "./hooks/useSocket";
 import { Dashboard } from "./components/Dashboard";
 import { Celebration } from "./components/Celebration";
 import { ClaimOverlay } from "./components/ClaimOverlay";
 import { RepManager } from "./components/RepManager";
+import { WalkUpBar } from "./components/WalkUpBar";
 import type { CelebrationEvent } from "../shared/types";
+import { stopAll } from "./lib/audio";
 
 export default function App() {
-  const { dashboard, celebration, connected } = useSocket();
+  const { dashboard, celebration, connected, dismissCelebration } = useSocket();
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
   const [teamOpen, setTeamOpen] = useState(false);
 
   if (celebration && celebration.type !== "walkup") {
     lastCelebrationRef.current = celebration;
   }
+
+  const handleStopCelebration = useCallback(() => {
+    stopAll();
+    dismissCelebration();
+  }, [dismissCelebration]);
 
   return (
     <div className="h-screen w-screen bg-surface text-text-primary overflow-hidden relative">
@@ -61,8 +68,13 @@ export default function App() {
         )}
       </div>
 
+      {/* Walk-up bar — reps tap their face to play their song */}
+      {!celebration && <WalkUpBar />}
+
       <AnimatePresence>
-        {celebration && <Celebration event={celebration} />}
+        {celebration && (
+          <Celebration event={celebration} onStop={handleStopCelebration} />
+        )}
       </AnimatePresence>
 
       <ClaimOverlay lastCelebration={lastCelebrationRef.current} />
