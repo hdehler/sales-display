@@ -65,6 +65,7 @@ async function refetchAndParse(
   }
 
   try {
+    console.log(`[Slack] Re-fetch: calling conversations.history for ts=${ts}…`);
     const hist = await client.conversations.history({
       channel,
       oldest: ts,
@@ -72,15 +73,26 @@ async function refetchAndParse(
       inclusive: true,
       limit: 1,
     });
+    console.log(`[Slack] Re-fetch: API returned ok=${hist.ok} messages=${hist.messages?.length ?? 0}`);
     const full = hist.messages?.[0] as unknown as
       | Record<string, unknown>
       | undefined;
-    if (!full) return null;
+    if (!full) {
+      console.warn("[Slack] Re-fetch: no message returned for that ts.");
+      return null;
+    }
+    const fullBlocks = Array.isArray(full.blocks) ? full.blocks.length : 0;
+    const fullTextLen = typeof full.text === "string" ? full.text.length : 0;
+    console.log(
+      `[Slack] Re-fetched message: blocks=${fullBlocks} textLen=${fullTextLen} text=${typeof full.text === "string" ? JSON.stringify(full.text.slice(0, 200)) : "null"}`,
+    );
     const sale = parseMessageToSale(full);
     if (sale) {
       console.log(
-        "[Slack] Parsed after conversations.history re-fetch (Socket payload was incomplete).",
+        `[Slack] Parsed after re-fetch: ${sale.meta?.source === "slide_cloud" ? `Slide order ${sale.meta.orderId} — ${sale.customer}` : `${sale.rep} $${sale.amount} ${sale.customer}`}`,
       );
+    } else {
+      console.warn("[Slack] Re-fetch returned a message but parser still couldn't match it.");
     }
     return sale;
   } catch (err) {
