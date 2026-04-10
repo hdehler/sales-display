@@ -83,9 +83,21 @@ async function refetchAndParse(
     }
     const fullBlocks = Array.isArray(full.blocks) ? full.blocks.length : 0;
     const fullTextLen = typeof full.text === "string" ? full.text.length : 0;
+    const fullAtts = Array.isArray(full.attachments) ? full.attachments.length : 0;
+    const fullFiles = Array.isArray(full.files) ? full.files.length : 0;
+    const topKeys = Object.keys(full).join(",");
     console.log(
-      `[Slack] Re-fetched message: blocks=${fullBlocks} textLen=${fullTextLen} text=${typeof full.text === "string" ? JSON.stringify(full.text.slice(0, 200)) : "null"}`,
+      `[Slack] Re-fetched message: blocks=${fullBlocks} textLen=${fullTextLen} attachments=${fullAtts} files=${fullFiles} keys=[${topKeys}]`,
     );
+    if (fullTextLen > 0) {
+      console.log(`[Slack] Re-fetched text: ${JSON.stringify((full.text as string).slice(0, 300))}`);
+    }
+    if (fullAtts > 0) {
+      console.log(`[Slack] Re-fetched attachments: ${JSON.stringify(full.attachments).slice(0, 500)}`);
+    }
+    if (fullBlocks === 0 && fullTextLen === 0 && fullAtts === 0) {
+      console.log(`[Slack] Re-fetched message raw dump: ${JSON.stringify(full).slice(0, 800)}`);
+    }
     const sale = parseMessageToSale(full);
     if (sale) {
       console.log(
