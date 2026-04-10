@@ -140,6 +140,21 @@ function getBlocksFromMessage(msg: Record<string, unknown>): unknown[] | null {
   return null;
 }
 
+/** Plain body for sequential Slide parse — some apps only populate `text`, others `attachments[].fallback`. */
+function getCandidateSlidePlaintext(msg: Record<string, unknown>): string {
+  const t = typeof msg.text === "string" ? msg.text : "";
+  if (t.trim()) return t;
+  const atts = msg.attachments;
+  if (!Array.isArray(atts)) return "";
+  for (const a of atts) {
+    if (!a || typeof a !== "object") continue;
+    const att = a as { fallback?: string; text?: string };
+    if (typeof att.fallback === "string" && att.fallback.trim()) return att.fallback;
+    if (typeof att.text === "string" && att.text.trim()) return att.text;
+  }
+  return "";
+}
+
 function isSlideNewOrder(fields: Record<string, string>): boolean {
   const h = (fields._header || "").toLowerCase();
   if (h.includes("new order created")) return true;
@@ -147,18 +162,65 @@ function isSlideNewOrder(fields: Record<string, string>): boolean {
   return false;
 }
 
-export function parseSlideOrderFromSlackMessage(
-  msg: Record<string, unknown>,
+/** Slide Cloud sometimes flattens the card into one string: AccountProject OrcaOrdero_xxx... */
+const SLIDE_CONCAT_LABELS = [
+  "Account",
+  "Order",
+  "Datacenter Region",
+  "Hardware",
+  "Service",
+  "Order History",
+  "Purchased At",
+  "Earliest Ship Date",
+] as const;
+
+function normalizeSlidePlaintext(raw: string): string {
+  return raw
+    .replace(/[\u200b\ufeff\u00a0]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function parseSequentialSlidePlaintext(raw: string): Record<string, string> | null {
+  let s = normalizeSlidePlaintext(raw);
+  if (!s.length) return null;
+
+  const first = SLIDE_CONCAT_LABELS[0];
+  if (!s.startsWith(first)) {
+    const i = s.indexOf(first);
+    if (i === -1) return null;
+    s = s.slice(i);
+  }
+
+  const out: Record<string, string> = {};
+  for (let i = 0; i < SLIDE_CONCAT_LABELS.length; i++) {
+    const label = SLIDE_CONCAT_LABELS[i];
+    if (!s.startsWith(label)) return null;
+    s = s.slice(label.length).replace(/^\s+/, "");
+    const next = SLIDE_CONCAT_LABELS[i + 1];
+    if (!next) {
+      out[label] = s.trim();
+      break;
+    }
+    const nextIdx = s.indexOf(next);
+    if (nextIdx === -1) return null;
+    out[label] = s.slice(0, nextIdx).trim();
+    s = s.slice(nextIdx);
+  }
+
+  const orderId = out.Order?.trim() || "";
+  if (!/^o_[a-z0-9]+$/i.test(orderId)) return null;
+  return out;
+}
+
+function buildSaleFromSlideFields(
+  fields: Record<string, string>,
   slackTs?: string,
 ): Sale | null {
-  const blocks = getBlocksFromMessage(msg);
-  if (!blocks) return null;
-
-  const fields = extractKeyValuesFromBlocks(blocks);
   if (!isSlideNewOrder(fields)) return null;
 
   const orderId = fields.Order?.trim() || "";
-  if (!orderId) return null;
+  if (!/^o_[a-z0-9]+$/i.test(orderId)) return null;
 
   const hardware = fields.Hardware?.trim() || "";
   const service = fields.Service?.trim() || "";
@@ -194,4 +256,27 @@ export function parseSlideOrderFromSlackMessage(
     rawMessage: rawLines || JSON.stringify(fields),
     meta,
   };
+}
+
+export function parseSlideOrderFromSlackMessage(
+  msg: Record<string, unknown>,
+  slackTs?: string,
+): Sale | null {
+  const blocks = getBlocksFromMessage(msg);
+  if (blocks) {
+    const fromBlocks = extractKeyValuesFromBlocks(blocks);
+    const sale = buildSaleFromSlideFields(fromBlocks, slackTs);
+    if (sale) return sale;
+  }
+
+  const text = getCandidateSlidePlaintext(msg);
+  if (text) {
+    const plainFields = parseSequentialSlidePlaintext(text);
+    if (plainFields) {
+      const sale = buildSaleFromSlideFields(plainFields, slackTs);
+      if (sale) return sale;
+    }
+  }
+
+  return null;
 }
