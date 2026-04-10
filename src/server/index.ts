@@ -414,6 +414,7 @@ app.post("/api/sales/:id/claim", (req, res) => {
 if (process.env.NODE_ENV === "production") {
   const clientDir = path.join(__dirname, "../../dist/client");
   app.use("/sounds", express.static(soundsRoot));
+  app.use("/images", express.static(path.join(__dirname, "../../public/images")));
   app.use(express.static(clientDir));
   app.get("/{*splat}", (req, res) => {
     if (req.path.startsWith("/api")) {

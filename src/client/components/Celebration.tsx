@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
 import { playSong, stopAll } from "../lib/audio";
+import { LogoConfetti } from "./LogoConfetti";
 
 function fireConfetti(isWalkup: boolean) {
   const gold = ["#e2a336", "#f5c842", "#d4890f"];
@@ -98,6 +99,9 @@ export function Celebration({ event, onStop }: CelebrationProps) {
         transition={{ duration: 0.6 }}
         style={{ background: backdropGradient }}
       />
+
+      {/* Logo confetti */}
+      <LogoConfetti count={isWalkup ? 24 : 16} />
 
       {/* Stop button — always visible, top-right */}
       <motion.button
