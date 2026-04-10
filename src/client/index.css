@@ -5,16 +5,16 @@
 @theme {
   --font-display: "DM Serif Display", Georgia, serif;
   --font-body: "Instrument Sans", system-ui, sans-serif;
-  --color-surface: #0c0e13;
-  --color-surface-raised: #14161d;
-  --color-surface-hover: #1a1d27;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-bright: rgba(255, 255, 255, 0.1);
+  --color-surface: #08090d;
+  --color-surface-raised: #111318;
+  --color-surface-hover: #191c24;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-bright: rgba(255, 255, 255, 0.14);
   --color-accent: #e2a336;
   --color-accent-soft: rgba(226, 163, 54, 0.15);
-  --color-text-primary: #f0ede8;
-  --color-text-secondary: #8a8680;
-  --color-text-muted: #504e4a;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a8a4a0;
+  --color-text-muted: #5c5956;
   --color-emerald: #34d399;
   --color-red-soft: #ef4444;
 }
