@@ -6,13 +6,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const envPath = path.join(__dirname, "../../.env");
 dotenv.config({ path: envPath });
 
+/** Slack channel IDs are C… (public) or G… (private). Strip accidental `#`, normalize case. */
+export function normalizeSlackChannelId(raw: string): string {
+  return raw.trim().replace(/^#/, "").toUpperCase();
+}
+
 export const config = {
   port: parseInt(process.env.PORT || "3000", 10),
 
   slack: {
     botToken: process.env.SLACK_BOT_TOKEN || "",
     appToken: process.env.SLACK_APP_TOKEN || "",
-    salesChannelId: (process.env.SLACK_SALES_CHANNEL_ID || "").trim(),
+    salesChannelId: normalizeSlackChannelId(
+      process.env.SLACK_SALES_CHANNEL_ID || "",
+    ),
     /** Log messages in the sales channel that have blocks/attachments but don’t parse as a sale */
     debugParse:
       process.env.SLACK_DEBUG_PARSE === "1" ||

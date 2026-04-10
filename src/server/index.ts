@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
+import { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
 import { enqueueSlideOrder } from "./slideOrderBatcher.js";
 import {
@@ -45,6 +46,63 @@ app.get("/api/stats", (_req, res) => {
     slackChannelConfigured: Boolean(config.slack.salesChannelId),
     backfillOnStart: config.slack.backfillOnStart,
   });
+});
+
+/**
+ * Verify `.env` channel id + bot membership (curl from the Pi).
+ * Expect: ok:true, name:"dev-orders", isMember:true
+ */
+app.get("/api/slack/channel", async (_req, res) => {
+  const id = config.slack.salesChannelId;
+  if (!id) {
+    res.status(400).json({
+      ok: false,
+      error: "SLACK_SALES_CHANNEL_ID is empty",
+      hint: "In Slack: open #dev-orders → channel name → View channel details → copy Channel ID at the bottom (C… or G…).",
+    });
+    return;
+  }
+  if (!config.slack.botToken) {
+    res.status(400).json({ ok: false, error: "SLACK_BOT_TOKEN missing" });
+    return;
+  }
+  if (!/^[CG][A-Z0-9]{8,}$/i.test(id)) {
+    res.status(400).json({
+      ok: false,
+      error: "invalid_channel_id_format",
+      configured: id,
+      hint: "Must look like C01234ABCDE or G01234ABCDE — not the channel display name.",
+    });
+    return;
+  }
+  try {
+    const client = new WebClient(config.slack.botToken);
+    const r = await client.conversations.info({ channel: id });
+    if (!r.ok) {
+      res.json({
+        ok: false,
+        slackError: r.error,
+        hint:
+          r.error === "channel_not_found"
+            ? "Wrong ID, or bot lacks access — invite @SalesDisplay to #dev-orders and add channels:read / groups:read (private)."
+            : undefined,
+      });
+      return;
+    }
+    const ch = r.channel;
+    res.json({
+      ok: true,
+      id: ch?.id,
+      name: ch?.name,
+      isPrivate: ch?.is_private,
+      isMember: ch?.is_member,
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 });
 
 /** Same payload as `dashboard:update` — lets the Pi UI load even if Socket.IO is flaky. */

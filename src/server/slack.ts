@@ -57,10 +57,12 @@ export async function initSlack(): Promise<void> {
   slackApp.message(async ({ message, client }) => {
     if (!("channel" in message)) return;
 
-    if (
-      config.slack.salesChannelId &&
-      message.channel !== config.slack.salesChannelId
-    ) {
+    const configuredCh = config.slack.salesChannelId;
+    const incomingCh =
+      typeof message.channel === "string"
+        ? message.channel.toUpperCase()
+        : "";
+    if (configuredCh && incomingCh !== configuredCh) {
       return;
     }
 
@@ -139,6 +141,8 @@ export async function initSlack(): Promise<void> {
   await slackApp.start();
   console.log("[Slack] Connected via Socket Mode");
 
+  void verifySalesChannel(slackApp.client as WebClient);
+
   if (
     config.slack.backfillOnStart &&
     config.slack.salesChannelId &&
@@ -146,6 +150,45 @@ export async function initSlack(): Promise<void> {
   ) {
     const client = slackApp.client as WebClient;
     void runBackfillJob(client);
+  }
+}
+
+async function verifySalesChannel(client: WebClient): Promise<void> {
+  const id = config.slack.salesChannelId;
+  if (!id) {
+    console.warn(
+      "[Slack] SLACK_SALES_CHANNEL_ID is empty — processing messages from every channel the bot is in.",
+    );
+    return;
+  }
+  if (!/^[CG][A-Z0-9]{8,}$/i.test(id)) {
+    console.warn(
+      `[Slack] SLACK_SALES_CHANNEL_ID looks wrong (${JSON.stringify(id.slice(0, 16))}…). It must be the ID from Slack (Copy link → …/archives/C01…), not #dev-orders.`,
+    );
+    return;
+  }
+  try {
+    const r = await client.conversations.info({ channel: id });
+    if (!r.ok) {
+      console.warn(
+        `[Slack] Cannot read sales channel (${r.error}). Fix SLACK_SALES_CHANNEL_ID, invite the bot, add channels:read + groups:read (private), reinstall app.`,
+      );
+      return;
+    }
+    const ch = r.channel;
+    const name = ch?.name ?? "?";
+    if (ch?.is_member === false) {
+      console.warn(
+        `[Slack] Bot is not a member of #${name} (${id}). Run /invite @SalesDisplay in that channel.`,
+      );
+      return;
+    }
+    console.log(`[Slack] Listening for #${name} (${id})`);
+  } catch (e) {
+    console.warn(
+      "[Slack] conversations.info failed:",
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 
