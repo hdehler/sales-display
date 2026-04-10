@@ -28,6 +28,7 @@ interface ResolvedSong {
 
 function classifySongValue(val: string): ResolvedSong {
   if (val.startsWith("http")) return { songUrl: val };
+  if (val.startsWith("/sounds/")) return { songUrl: val };
   if (val.includes(".")) return { songUrl: `/sounds/models/${val}` };
   return { jingleId: val };
 }
@@ -218,13 +219,16 @@ export function buildWalkupCelebration(
 
   const walkup = rep.walkup_song || "";
   const isUrl = walkup.startsWith("http");
-  const isFile = walkup.includes(".") && !isUrl;
-  const isJingle = walkup && !isUrl && !isFile;
+  const isSoundsPath = walkup.startsWith("/sounds/");
+  const isFile = walkup.includes(".") && !isUrl && !isSoundsPath;
+  const isJingle = walkup && !isUrl && !isSoundsPath && !isFile;
 
   let songUrl: string | undefined;
   let jingleId: string | undefined;
 
   if (isUrl) {
+    songUrl = walkup;
+  } else if (isSoundsPath) {
     songUrl = walkup;
   } else if (isFile) {
     songUrl = `/sounds/walkups/${walkup}`;

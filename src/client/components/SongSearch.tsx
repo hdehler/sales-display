@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { JINGLES } from "../lib/jingles";
-import { playSong, stopAll as stopAudio } from "../lib/audio";
+import { playSong, stopAll as stopAudio, playUrl } from "../lib/audio";
 
 export interface SongChoice {
-  type: "deezer" | "jingle" | "none";
-  /** Deezer preview URL (may include #t=N offset) or jingle ID */
+  type: "deezer" | "jingle" | "upload" | "none";
+  /** Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
   value: string;
   label: string;
 }
@@ -33,20 +33,60 @@ function stripOffset(url: string): string {
   return url.replace(/#t=[\d.]+$/, "");
 }
 
+type Tab = "search" | "jingles" | "uploads";
+
+function detectTab(value: string): Tab {
+  if (!value) return "search";
+  if (value.startsWith("/sounds/")) return "uploads";
+  if (JINGLES.some((j) => j.id === value)) return "jingles";
+  return "search";
+}
+
 export function SongSearch({ value, onChange, label }: SongSearchProps) {
-  const [tab, setTab] = useState<"search" | "jingles">(
-    value && !JINGLES.some((j) => j.id === value) && value !== "" ? "search" : "jingles",
-  );
+  const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [uploads, setUploads] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const fileRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isDeezerValue = value.startsWith("http");
-  const currentOffset = isDeezerValue ? parseOffset(value) : 0;
+  const isUrlValue = value.startsWith("http") || value.startsWith("/sounds/");
+  const currentOffset = isUrlValue ? parseOffset(value) : 0;
+  const maxOffset = isUrlValue ? Math.max(0, audioDuration - 20) : 10;
 
   const displayLabel = getDisplayLabel(value);
+
+  useEffect(() => {
+    fetchUploads();
+  }, []);
+
+  useEffect(() => {
+    if (!isUrlValue) {
+      setAudioDuration(0);
+      return;
+    }
+    const a = new Audio(stripOffset(value));
+    a.addEventListener("loadedmetadata", () => {
+      setAudioDuration(Math.floor(a.duration));
+    });
+    a.addEventListener("error", () => setAudioDuration(30));
+    return () => { a.src = ""; };
+  }, [stripOffset(value)]);
+
+  async function fetchUploads() {
+    try {
+      const r = await fetch("/api/songs");
+      const json = (await r.json()) as { walkups: string[]; models: string[] };
+      setUploads([
+        ...json.walkups.map((f) => `/sounds/walkups/${f}`),
+        ...json.models.map((f) => `/sounds/models/${f}`),
+      ]);
+    } catch { /* offline */ }
+  }
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -111,28 +151,53 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     });
   }
 
+  function selectUpload(path: string) {
+    stopPreview();
+    const filename = path.split("/").pop() || path;
+    onChange({
+      type: "upload",
+      value: path,
+      label: filename,
+    });
+  }
+
   function selectNone() {
     stopPreview();
     onChange({ type: "none", value: "", label: "None" });
   }
 
   function setOffset(seconds: number) {
-    if (!isDeezerValue) return;
+    if (!isUrlValue) return;
     const base = stripOffset(value);
     const newVal = seconds > 0 ? `${base}#t=${seconds}` : base;
     onChange({
-      type: "deezer",
+      type: value.startsWith("/sounds/") ? "upload" : "deezer",
       value: newVal,
       label: displayLabel.replace(/^🎶 /, ""),
     });
   }
 
   function previewFromOffset() {
-    if (!isDeezerValue) return;
+    if (!isUrlValue) return;
     stopPreview();
     playSong(value);
     setPlayingId("offset-preview");
     setTimeout(() => setPlayingId(null), 20_000);
+  }
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("folder", "walkups");
+    try {
+      const r = await fetch("/api/songs/upload", { method: "POST", body: form });
+      const json = (await r.json()) as { filename: string; folder: string };
+      await fetchUploads();
+      const path = `/sounds/${json.folder}/${json.filename}`;
+      selectUpload(path);
+    } catch { /* */ }
+    setUploading(false);
   }
 
   return (
@@ -156,8 +221,8 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
             </button>
           </div>
 
-          {/* Start offset scrubber — only for Deezer songs */}
-          {isDeezerValue && (
+          {/* Start offset scrubber — for Deezer and uploaded audio */}
+          {isUrlValue && (
             <div className="mt-2 px-3 py-2.5 rounded-lg bg-surface border border-border">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
@@ -166,6 +231,9 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
                 <div className="flex items-center gap-2">
                   <span className="text-xs tabular-nums text-text-secondary font-medium">
                     {currentOffset.toFixed(0)}s
+                    {audioDuration > 0 && (
+                      <span className="text-text-muted"> / {audioDuration}s</span>
+                    )}
                   </span>
                   <button
                     onClick={previewFromOffset}
@@ -182,7 +250,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
               <input
                 type="range"
                 min={0}
-                max={10}
+                max={maxOffset || 10}
                 step={0.5}
                 value={currentOffset}
                 onChange={(e) => setOffset(parseFloat(e.target.value))}
@@ -190,8 +258,11 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
               />
               <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
                 <span>0s</span>
-                <span>5s</span>
-                <span>10s</span>
+                <span>{Math.round((maxOffset || 10) / 2)}s</span>
+                <span>{maxOffset || 10}s</span>
+              </div>
+              <div className="text-[10px] text-text-muted mt-1">
+                Plays 20s starting from this point
               </div>
             </div>
           )}
@@ -211,6 +282,16 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
           Search songs
         </button>
         <button
+          onClick={() => setTab("uploads")}
+          className={`flex-1 px-2 py-1 rounded transition-all font-medium ${
+            tab === "uploads"
+              ? "bg-accent text-surface"
+              : "text-text-muted hover:text-text-secondary"
+          }`}
+        >
+          Uploads
+        </button>
+        <button
           onClick={() => setTab("jingles")}
           className={`flex-1 px-2 py-1 rounded transition-all font-medium ${
             tab === "jingles"
@@ -218,7 +299,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
               : "text-text-muted hover:text-text-secondary"
           }`}
         >
-          Built-in jingles
+          Jingles
         </button>
       </div>
 
@@ -271,6 +352,68 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
             ))}
           </div>
         </div>
+      ) : tab === "uploads" ? (
+        <div>
+          <div className="mb-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+              }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full px-3 py-2 rounded-lg border border-dashed border-border text-text-muted hover:text-text-secondary hover:border-border-bright transition-all text-xs"
+            >
+              {uploading ? "Uploading…" : "+ Upload MP3 / WAV"}
+            </button>
+          </div>
+          <div className="max-h-52 overflow-y-auto space-y-1">
+            {uploads.map((u) => {
+              const filename = u.split("/").pop() || u;
+              return (
+                <div
+                  key={u}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer group ${
+                    stripOffset(value) === u
+                      ? "bg-accent/15 border border-accent/30"
+                      : "hover:bg-surface-hover"
+                  }`}
+                  onClick={() => selectUpload(u)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-text-primary truncate">
+                      {filename}
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      preview(`upload-${u}`, u);
+                    }}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
+                      playingId === `upload-${u}`
+                        ? "bg-accent text-surface"
+                        : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
+                    }`}
+                  >
+                    {playingId === `upload-${u}` ? "■" : "▶"}
+                  </button>
+                </div>
+              );
+            })}
+            {uploads.length === 0 && !uploading && (
+              <div className="text-text-muted text-xs text-center py-4">
+                No uploads yet
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
           {JINGLES.map((j) => (
@@ -314,6 +457,10 @@ function getDisplayLabel(value: string): string {
   if (!value) return "None";
   const jingle = JINGLES.find((j) => j.id === value);
   if (jingle) return `🎵 ${jingle.name}`;
-  if (value.startsWith("http")) return "🎶 Custom song";
+  if (value.startsWith("/sounds/")) {
+    const name = stripOffset(value).split("/").pop() || value;
+    return `🎶 ${name}`;
+  }
+  if (value.startsWith("http")) return "🎶 Deezer song";
   return value;
 }

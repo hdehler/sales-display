@@ -334,6 +334,22 @@ app.post("/api/songs/upload", upload.single("file"), (req, res) => {
   res.json({ ok: true, filename, folder });
 });
 
+app.delete("/api/songs/:folder/:filename", (req, res) => {
+  const { folder, filename } = req.params;
+  if (!["walkups", "models"].includes(folder)) {
+    res.status(400).json({ error: "invalid_folder" });
+    return;
+  }
+  const filePath = path.join(soundsRoot, folder, filename);
+  try {
+    const { unlinkSync } = require("fs");
+    unlinkSync(filePath);
+    res.json({ ok: true });
+  } catch {
+    res.status(404).json({ error: "not_found" });
+  }
+});
+
 app.get("/api/song-mappings", (_req, res) => {
   const rows = getAllSongMappings();
   res.json(
