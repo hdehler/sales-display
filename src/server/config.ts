@@ -12,7 +12,11 @@ export const config = {
   slack: {
     botToken: process.env.SLACK_BOT_TOKEN || "",
     appToken: process.env.SLACK_APP_TOKEN || "",
-    salesChannelId: process.env.SLACK_SALES_CHANNEL_ID || "",
+    salesChannelId: (process.env.SLACK_SALES_CHANNEL_ID || "").trim(),
+    /** Log messages in the sales channel that have blocks/attachments but don’t parse as a sale */
+    debugParse:
+      process.env.SLACK_DEBUG_PARSE === "1" ||
+      process.env.SLACK_DEBUG_PARSE === "true",
     /** After connecting, fetch channel history and import parsed orders (no celebrations) */
     backfillOnStart:
       process.env.SLACK_BACKFILL_ON_START === "true" ||

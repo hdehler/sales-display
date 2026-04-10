@@ -12,6 +12,51 @@ function parseSectionFieldText(text: string): { label: string; value: string } |
   return { label, value };
 }
 
+/** Walk rich_text / nested elements and collect text (Slide often uses rich_text instead of section fields). */
+function collectRichTextStrings(elements: unknown[]): string[] {
+  const parts: string[] = [];
+  for (const el of elements) {
+    if (!el || typeof el !== "object") continue;
+    const e = el as Record<string, unknown>;
+    switch (e.type) {
+      case "text":
+        if (typeof e.text === "string" && e.text.length) parts.push(e.text);
+        break;
+      case "link":
+        if (typeof e.text === "string" && e.text.length) parts.push(e.text);
+        break;
+      case "emoji":
+        if (typeof e.name === "string") parts.push(`:${e.name}:`);
+        break;
+      default:
+        if (Array.isArray(e.elements))
+          parts.push(...collectRichTextStrings(e.elements));
+    }
+  }
+  return parts;
+}
+
+function mergeLinesIntoFields(lines: string[], out: Record<string, string>): void {
+  const cleaned = lines.map((l) => l.trim()).filter(Boolean);
+  for (let i = 0; i < cleaned.length - 1; i++) {
+    const parsed = parseSectionFieldText(`${cleaned[i]}\n${cleaned[i + 1]}`);
+    if (parsed) out[parsed.label] = parsed.value;
+  }
+}
+
+function extractFromMrkdwnBlob(text: string, out: Record<string, string>): void {
+  const lines = text.split(/\r?\n/);
+  mergeLinesIntoFields(lines, out);
+  for (const line of lines) {
+    const sameLine = line.match(/^\*?([^*:]+?)\*?\s*:\s*(.+)$/);
+    if (sameLine) {
+      const label = sameLine[1].replace(/\*+/g, "").trim();
+      const value = sameLine[2].trim();
+      if (label && value) out[label] = value;
+    }
+  }
+}
+
 function extractKeyValuesFromBlocks(blocks: unknown[]): Record<string, string> {
   const out: Record<string, string> = {};
 
@@ -39,11 +84,46 @@ function extractKeyValuesFromBlocks(blocks: unknown[]): Record<string, string> {
       if (typeof ft === "string") {
         const parsed = parseSectionFieldText(ft);
         if (parsed) out[parsed.label] = parsed.value;
+        extractFromMrkdwnBlob(ft, out);
       }
+    }
+
+    if (b.type === "context" && Array.isArray(b.elements)) {
+      for (const el of b.elements) {
+        if (!el || typeof el !== "object") continue;
+        const ce = el as { type?: string; text?: string };
+        if (ce.type === "mrkdwn" && typeof ce.text === "string")
+          extractFromMrkdwnBlob(ce.text, out);
+        if (ce.type === "plain_text" && typeof ce.text === "string")
+          extractFromMrkdwnBlob(ce.text, out);
+      }
+    }
+
+    if (b.type === "rich_text" && Array.isArray(b.elements)) {
+      const strings = collectRichTextStrings(b.elements);
+      const blob = strings.join("\n");
+      mergeLinesIntoFields(blob.split(/\r?\n/), out);
+      extractFromMrkdwnBlob(blob, out);
+      if (blob.toLowerCase().includes("new order created"))
+        out._header = out._header || "New Order Created";
     }
   }
 
   return out;
+}
+
+/** True if the payload has Block Kit we might try to parse (for debug logging). */
+export function slackMessageHasStructuredContent(msg: Record<string, unknown>): boolean {
+  if (Array.isArray(msg.blocks) && msg.blocks.length > 0) return true;
+  const atts = msg.attachments;
+  if (!Array.isArray(atts)) return false;
+  return atts.some(
+    (a) =>
+      a &&
+      typeof a === "object" &&
+      Array.isArray((a as { blocks?: unknown[] }).blocks) &&
+      (a as { blocks: unknown[] }).blocks.length > 0,
+  );
 }
 
 function getBlocksFromMessage(msg: Record<string, unknown>): unknown[] | null {

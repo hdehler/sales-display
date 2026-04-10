@@ -2,6 +2,7 @@ import { App, LogLevel } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
 import { parseMessageToSale } from "./parseSlackMessage.js";
+import { slackMessageHasStructuredContent } from "./parseSlideOrder.js";
 import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
 import type { Sale } from "../shared/types.js";
 
@@ -57,7 +58,29 @@ export async function initSlack(): Promise<void> {
 
     const msg = message as unknown as Record<string, unknown>;
     const sale = parseMessageToSale(msg);
-    if (!sale) return;
+    if (!sale) {
+      if (
+        config.slack.debugParse &&
+        config.slack.salesChannelId &&
+        slackMessageHasStructuredContent(msg)
+      ) {
+        const blockTypes = Array.isArray(msg.blocks)
+          ? (msg.blocks as { type?: string }[]).map((b) => b?.type).filter(Boolean)
+          : [];
+        console.warn(
+          "[Slack] Structured message in sales channel did not parse as a sale. " +
+            "Check Block Kit shape or Event Subscriptions (e.g. message.groups for private channels). " +
+            JSON.stringify({
+              subtype: msg.subtype,
+              bot_id: msg.bot_id,
+              textPreview:
+                typeof msg.text === "string" ? msg.text.slice(0, 100) : "",
+              blockTypes,
+            }),
+        );
+      }
+      return;
+    }
 
     if (sale.meta?.source === "slide_cloud") {
       console.log(
