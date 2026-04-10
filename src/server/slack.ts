@@ -39,10 +39,12 @@ function shouldSkipSlackMessageSubtype(msg: Record<string, unknown>): boolean {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+let rateLimitedUntil = 0;
+
 /**
- * Re-fetch a single message via conversations.history (Socket payloads for other bots
- * often arrive with blocks=0, text=""). Waits 2s before the first attempt so Slack
- * has time to materialize the full message; retries once after a rate-limit pause.
+ * Re-fetch a single message via conversations.history.
+ * Socket payloads for other bots often arrive with blocks=0, text="".
+ * Waits 3s so Slack materializes the full message; respects rate limits globally.
  */
 async function refetchAndParse(
   client: WebClient,
@@ -50,11 +52,17 @@ async function refetchAndParse(
   ts: string,
   attempt = 1,
 ): Promise<Sale | null> {
-  const MAX_ATTEMPTS = 2;
-  const INITIAL_DELAY_MS = 2000;
-  const RATE_LIMIT_WAIT_MS = 12000;
+  const MAX_ATTEMPTS = 3;
+  const INITIAL_DELAY_MS = 3000;
 
   if (attempt === 1) await sleep(INITIAL_DELAY_MS);
+
+  const now = Date.now();
+  if (now < rateLimitedUntil) {
+    const wait = rateLimitedUntil - now + 1000;
+    console.log(`[Slack] Waiting ${Math.round(wait / 1000)}s for rate limit to clear before re-fetch…`);
+    await sleep(wait);
+  }
 
   try {
     const hist = await client.conversations.history({
@@ -77,17 +85,22 @@ async function refetchAndParse(
     return sale;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("rate") && attempt < MAX_ATTEMPTS) {
+    const retryMatch = msg.match(/retry.after[:\s]*(\d+)/i);
+    const retryAfterSec = retryMatch ? parseInt(retryMatch[1], 10) : 15;
+
+    if (
+      (msg.toLowerCase().includes("rate") || msg.includes("429")) &&
+      attempt < MAX_ATTEMPTS
+    ) {
+      const waitMs = (retryAfterSec + 2) * 1000;
+      rateLimitedUntil = Date.now() + waitMs;
       console.warn(
-        `[Slack] Re-fetch rate-limited; waiting ${RATE_LIMIT_WAIT_MS}ms then retrying (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
+        `[Slack] Re-fetch rate-limited (retry-after ${retryAfterSec}s); waiting ${Math.round(waitMs / 1000)}s then retrying (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
       );
-      await sleep(RATE_LIMIT_WAIT_MS);
+      await sleep(waitMs);
       return refetchAndParse(client, channel, ts, attempt + 1);
     }
-    console.warn(
-      "[Slack] conversations.history re-fetch failed:",
-      msg,
-    );
+    console.warn("[Slack] conversations.history re-fetch failed:", msg);
     return null;
   }
 }

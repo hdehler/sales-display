@@ -42,8 +42,8 @@ export const config = {
      * still picks up Slide. Set to 0 to disable.
      */
     pollHistoryMs: (() => {
-      const n = parseInt(process.env.SLACK_POLL_HISTORY_MS || "120000", 10);
-      return Number.isFinite(n) && n >= 0 ? n : 120000;
+      const n = parseInt(process.env.SLACK_POLL_HISTORY_MS || "0", 10);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
     })(),
     /** Log every incoming message event (channel, subtype) — proves whether Socket delivers events */
     logMessageEvents:
