@@ -4,7 +4,7 @@ import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "none";
-  /** Deezer preview URL or jingle ID */
+  /** Deezer preview URL (may include #t=N offset) or jingle ID */
   value: string;
   label: string;
 }
@@ -24,6 +24,15 @@ interface SongSearchProps {
   label?: string;
 }
 
+function parseOffset(url: string): number {
+  const m = url.match(/#t=(\d+(?:\.\d+)?)$/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+function stripOffset(url: string): string {
+  return url.replace(/#t=[\d.]+$/, "");
+}
+
 export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const [tab, setTab] = useState<"search" | "jingles">(
     value && !JINGLES.some((j) => j.id === value) && value !== "" ? "search" : "jingles",
@@ -33,6 +42,9 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const [searching, setSearching] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isDeezerValue = value.startsWith("http");
+  const currentOffset = isDeezerValue ? parseOffset(value) : 0;
 
   const displayLabel = getDisplayLabel(value);
 
@@ -104,6 +116,25 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     onChange({ type: "none", value: "", label: "None" });
   }
 
+  function setOffset(seconds: number) {
+    if (!isDeezerValue) return;
+    const base = stripOffset(value);
+    const newVal = seconds > 0 ? `${base}#t=${seconds}` : base;
+    onChange({
+      type: "deezer",
+      value: newVal,
+      label: displayLabel.replace(/^🎶 /, ""),
+    });
+  }
+
+  function previewFromOffset() {
+    if (!isDeezerValue) return;
+    stopPreview();
+    playSong(value);
+    setPlayingId("offset-preview");
+    setTimeout(() => setPlayingId(null), 20_000);
+  }
+
   return (
     <div>
       {label && (
@@ -112,16 +143,58 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
 
       {/* Current selection */}
       {value && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-xs">
-          <span className="text-accent font-medium truncate flex-1">
-            {displayLabel}
-          </span>
-          <button
-            onClick={selectNone}
-            className="text-text-muted hover:text-text-secondary flex-shrink-0"
-          >
-            ✕
-          </button>
+        <div className="mb-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-xs">
+            <span className="text-accent font-medium truncate flex-1">
+              {displayLabel}
+            </span>
+            <button
+              onClick={selectNone}
+              className="text-text-muted hover:text-text-secondary flex-shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Start offset scrubber — only for Deezer songs */}
+          {isDeezerValue && (
+            <div className="mt-2 px-3 py-2.5 rounded-lg bg-surface border border-border">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                  Start at
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs tabular-nums text-text-secondary font-medium">
+                    {currentOffset.toFixed(0)}s
+                  </span>
+                  <button
+                    onClick={previewFromOffset}
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] transition-colors ${
+                      playingId === "offset-preview"
+                        ? "bg-accent text-surface"
+                        : "bg-accent/20 text-accent hover:bg-accent/30"
+                    }`}
+                  >
+                    {playingId === "offset-preview" ? "■" : "▶"}
+                  </button>
+                </div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={0.5}
+                value={currentOffset}
+                onChange={(e) => setOffset(parseFloat(e.target.value))}
+                className="w-full h-1.5 accent-accent cursor-pointer"
+              />
+              <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+                <span>0s</span>
+                <span>5s</span>
+                <span>10s</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

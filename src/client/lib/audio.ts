@@ -7,11 +7,30 @@ let stopTimer: ReturnType<typeof setTimeout> | null = null;
 const MAX_PLAY_MS = 20_000;
 const FADE_MS = 1_500;
 
+function parseStartOffset(url: string): { cleanUrl: string; offset: number } {
+  const match = url.match(/#t=(\d+(?:\.\d+)?)$/);
+  if (match) {
+    return {
+      cleanUrl: url.replace(/#t=[\d.]+$/, ""),
+      offset: parseFloat(match[1]),
+    };
+  }
+  return { cleanUrl: url, offset: 0 };
+}
+
 export function playUrl(url: string): HTMLAudioElement {
   stopAll();
-  const a = new Audio(url);
+  const { cleanUrl, offset } = parseStartOffset(url);
+  const a = new Audio(cleanUrl);
   a.volume = 1;
   activeAudio = a;
+
+  if (offset > 0) {
+    a.addEventListener("loadedmetadata", () => {
+      if (offset < a.duration) a.currentTime = offset;
+    }, { once: true });
+  }
+
   a.play().catch(() => {});
   a.onended = () => {
     if (activeAudio === a) activeAudio = null;
