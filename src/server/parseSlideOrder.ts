@@ -307,10 +307,52 @@ function buildSaleFromSlideFields(
   };
 }
 
+/**
+ * Slide uses legacy Slack attachments with `fields: [{title, value, short}, …]`.
+ * This is NOT Block Kit — it's the old attachment format.
+ */
+function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Record<string, string> | null {
+  const atts = msg.attachments;
+  if (!Array.isArray(atts)) return null;
+
+  for (const a of atts) {
+    if (!a || typeof a !== "object") continue;
+    const att = a as {
+      fields?: { title?: string; value?: string }[];
+      title?: string;
+      fallback?: string;
+    };
+    if (!Array.isArray(att.fields) || att.fields.length === 0) continue;
+
+    const out: Record<string, string> = {};
+    if (typeof att.title === "string" && att.title.trim()) {
+      out._header = att.title.trim();
+    } else if (typeof att.fallback === "string" && att.fallback.trim()) {
+      out._header = att.fallback.trim();
+    }
+
+    for (const f of att.fields) {
+      if (!f || typeof f !== "object") continue;
+      const title = typeof f.title === "string" ? f.title.trim() : "";
+      const value = typeof f.value === "string" ? f.value.trim() : "";
+      if (title && value) out[title] = value;
+    }
+
+    if (Object.keys(out).length > 1) return out;
+  }
+  return null;
+}
+
 export function parseSlideOrderFromSlackMessage(
   msg: Record<string, unknown>,
   slackTs?: string,
 ): Sale | null {
+  const legacyFields = extractFieldsFromLegacyAttachments(msg);
+  if (legacyFields) {
+    const sale = buildSaleFromSlideFields(legacyFields, slackTs);
+    if (sale) return sale;
+  }
+
   const blocks = getBlocksFromMessage(msg);
   const flattened = blocks ? flattenBlocksForSlideSequential(blocks) : "";
   const topText = slackPrimaryTextBody(msg);
