@@ -60,6 +60,11 @@ if (!salesCols.some((c) => c.name === "claimed_by")) {
   db.exec(`ALTER TABLE sales ADD COLUMN claimed_by INTEGER REFERENCES reps(id)`);
 }
 
+const smCols = db.pragma("table_info(song_mappings)") as { name: string }[];
+if (!smCols.some((c) => c.name === "song_label")) {
+  db.exec(`ALTER TABLE song_mappings ADD COLUMN song_label TEXT DEFAULT ''`);
+}
+
 export function insertSale(sale: Sale): Sale {
   const metaJson = sale.meta ? JSON.stringify(sale.meta) : null;
   const stmt = db.prepare(`
@@ -278,6 +283,7 @@ export interface SongMappingRow {
   match_type: string;
   match_value: string | null;
   song_file: string;
+  song_label: string;
 }
 
 export function getAllSongMappings(): SongMappingRow[] {
@@ -290,6 +296,7 @@ export function createSongMapping(
   matchType: string,
   matchValue: string | null,
   songFile: string,
+  songLabel?: string,
 ): SongMappingRow {
   if (matchType === "default") {
     db.prepare(
@@ -298,9 +305,9 @@ export function createSongMapping(
   }
   const result = db
     .prepare(
-      `INSERT INTO song_mappings (match_type, match_value, song_file) VALUES (?, ?, ?)`,
+      `INSERT INTO song_mappings (match_type, match_value, song_file, song_label) VALUES (?, ?, ?, ?)`,
     )
-    .run(matchType, matchValue, songFile);
+    .run(matchType, matchValue, songFile, songLabel || "");
   return db
     .prepare(`SELECT * FROM song_mappings WHERE id = ?`)
     .get(result.lastInsertRowid as number) as SongMappingRow;

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import type { SongMapping } from "../../shared/types";
 import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
 import { SongSearch, type SongChoice } from "../components/SongSearch";
+import { playSong } from "../lib/audio";
 
 interface SongFiles {
   walkups: string[];
@@ -77,14 +78,17 @@ export default function Settings() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Model → song mappings */}
+            <MappingsSection mappings={mappings} onUpdate={fetchAll} />
+
             {/* Jingle library preview */}
             <div className="rounded-xl border border-border bg-surface-raised p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
                 Built-in jingles
               </h3>
               <p className="text-xs text-text-muted mb-3">
-                These are the walk-up jingles reps can pick from. Tap to
-                preview.
+                These are the synth jingles available as walk-up songs or model
+                celebration songs. Tap to preview.
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {JINGLES.map((j) => (
@@ -119,14 +123,217 @@ export default function Settings() {
 
             {/* Upload mp3 (optional, for custom songs) */}
             <UploadSection songs={songs} onUpdate={fetchAll} />
-
-            {/* Model → song mappings */}
-            <MappingsSection mappings={mappings} onUpdate={fetchAll} />
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function MappingsSection({
+  mappings,
+  onUpdate,
+}: {
+  mappings: SongMapping[];
+  onUpdate: () => void;
+}) {
+  const [newMatch, setNewMatch] = useState("");
+  const [newSongValue, setNewSongValue] = useState("");
+  const [newSongLabel, setNewSongLabel] = useState("");
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editMatch, setEditMatch] = useState("");
+  const [editSongValue, setEditSongValue] = useState("");
+  const [editSongLabel, setEditSongLabel] = useState("");
+
+  async function addMapping() {
+    if (!newMatch.trim() || !newSongValue) return;
+    await fetch("/api/song-mappings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        matchType: "model",
+        matchValue: newMatch.trim(),
+        songFile: newSongValue,
+        songLabel: newSongLabel,
+      }),
+    });
+    setNewMatch("");
+    setNewSongValue("");
+    setNewSongLabel("");
+    onUpdate();
+  }
+
+  async function saveEdit(id: number) {
+    await fetch(`/api/song-mappings/${id}`, { method: "DELETE" });
+    await fetch("/api/song-mappings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        matchType: "model",
+        matchValue: editMatch.trim(),
+        songFile: editSongValue,
+        songLabel: editSongLabel,
+      }),
+    });
+    setEditId(null);
+    onUpdate();
+  }
+
+  async function removeMapping(id: number) {
+    await fetch(`/api/song-mappings/${id}`, { method: "DELETE" });
+    onUpdate();
+  }
+
+  function startEdit(m: SongMapping) {
+    setEditId(m.id);
+    setEditMatch(m.matchValue || "");
+    setEditSongValue(m.songFile);
+    setEditSongLabel(m.songLabel || "");
+  }
+
+  function handleNewSong(choice: SongChoice) {
+    setNewSongValue(choice.value);
+    setNewSongLabel(choice.label);
+  }
+
+  function handleEditSong(choice: SongChoice) {
+    setEditSongValue(choice.value);
+    setEditSongLabel(choice.label);
+  }
+
+  const modelMappings = mappings.filter((m) => m.matchType === "model");
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+        Model → song mappings
+      </h3>
+      <p className="text-xs text-text-muted mb-4">
+        When a device model matches the text below, play this song during the
+        order celebration.
+      </p>
+
+      {/* Add new mapping */}
+      <div className="rounded-xl border border-border bg-surface p-4 mb-4">
+        <div className="text-xs font-semibold uppercase tracking-[0.15em] text-text-muted mb-3">
+          Add mapping
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-text-muted block mb-1">
+              Model contains
+            </label>
+            <input
+              type="text"
+              value={newMatch}
+              onChange={(e) => setNewMatch(e.target.value)}
+              placeholder="e.g. Slide Z1"
+              className="w-full px-3 py-2 rounded-lg bg-surface-raised border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+            />
+          </div>
+          <SongSearch
+            value={newSongValue}
+            onChange={handleNewSong}
+            label="Celebration song"
+          />
+          <button
+            onClick={addMapping}
+            disabled={!newMatch.trim() || !newSongValue}
+            className="w-full px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
+          >
+            Add mapping
+          </button>
+        </div>
+      </div>
+
+      {/* Existing mappings */}
+      <div className="space-y-2">
+        {modelMappings.map((m) => (
+          <div
+            key={m.id}
+            className="rounded-xl border border-border bg-surface p-4"
+          >
+            {editId === m.id ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-text-muted block mb-1">
+                    Model contains
+                  </label>
+                  <input
+                    type="text"
+                    value={editMatch}
+                    onChange={(e) => setEditMatch(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-surface-raised border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <SongSearch
+                  value={editSongValue}
+                  onChange={handleEditSong}
+                  label="Celebration song"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(m.id)}
+                    disabled={!editMatch.trim() || !editSongValue}
+                    className="px-3 py-1.5 rounded-lg bg-emerald text-surface text-sm font-medium disabled:opacity-40"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditId(null)}
+                    className="px-3 py-1.5 rounded-lg text-text-muted text-sm hover:text-text-secondary"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-text-primary text-sm">
+                    {m.matchValue}
+                  </div>
+                  <div className="text-xs text-text-muted truncate">
+                    {m.songLabel || getSongLabel(m.songFile)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => playSong(m.songFile)}
+                  className="w-7 h-7 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center text-[10px] transition-colors flex-shrink-0"
+                >
+                  ▶
+                </button>
+                <button
+                  onClick={() => startEdit(m)}
+                  className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => removeMapping(m.id)}
+                  className="text-xs text-red-soft hover:text-red-400 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {modelMappings.length === 0 && (
+          <div className="text-text-muted text-xs text-center py-4">
+            No mappings yet. Add one above.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getSongLabel(song: string): string {
+  const jingle = JINGLES.find((j) => j.id === song);
+  if (jingle) return jingle.name;
+  if (song.startsWith("http")) return "Deezer song";
+  return song;
 }
 
 function UploadSection({
@@ -138,7 +345,7 @@ function UploadSection({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadFolder, setUploadFolder] = useState<"walkups" | "models">(
-    "walkups",
+    "models",
   );
   const [uploading, setUploading] = useState(false);
 
@@ -158,7 +365,8 @@ function UploadSection({
         Custom audio files (optional)
       </h3>
       <p className="text-xs text-text-muted mb-3">
-        Upload mp3/wav files for custom walk-ups or model-specific songs.
+        Upload trimmed mp3/wav clips if you want a specific part of a song.
+        Then use them in model mappings or rep walk-up songs.
       </p>
       <div className="flex gap-3 items-end mb-4">
         <div>
@@ -225,154 +433,6 @@ function UploadSection({
         </div>
       </div>
     </div>
-  );
-}
-
-function MappingsSection({
-  mappings,
-  onUpdate,
-}: {
-  mappings: SongMapping[];
-  onUpdate: () => void;
-}) {
-  const [newMatch, setNewMatch] = useState("");
-  const [newSongValue, setNewSongValue] = useState("");
-
-  async function addMapping() {
-    if (!newMatch.trim() || !newSongValue) return;
-    await fetch("/api/song-mappings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        matchType: "model",
-        matchValue: newMatch.trim(),
-        songFile: newSongValue,
-      }),
-    });
-    setNewMatch("");
-    setNewSongValue("");
-    onUpdate();
-  }
-
-  async function removeMapping(id: number) {
-    await fetch(`/api/song-mappings/${id}`, { method: "DELETE" });
-    onUpdate();
-  }
-
-  function handleSongChoice(choice: SongChoice) {
-    setNewSongValue(choice.value);
-  }
-
-  return (
-    <div className="rounded-xl border border-border bg-surface-raised p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
-        Model → song mappings
-      </h3>
-      <p className="text-xs text-text-muted mb-3">
-        When a device model matches the text, play this song during the initial
-        celebration (before someone claims it). Search real songs or pick a
-        jingle.
-      </p>
-      <div className="space-y-3 mb-4">
-        <div>
-          <label className="text-xs text-text-muted block mb-1">
-            Model contains
-          </label>
-          <input
-            type="text"
-            value={newMatch}
-            onChange={(e) => setNewMatch(e.target.value)}
-            placeholder="e.g. Slide Z1"
-            className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
-          />
-        </div>
-        <SongSearch
-          value={newSongValue}
-          onChange={handleSongChoice}
-          label="Celebration song"
-        />
-        <button
-          onClick={addMapping}
-          disabled={!newMatch.trim() || !newSongValue}
-          className="px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
-        >
-          Add mapping
-        </button>
-      </div>
-      <div className="space-y-2">
-        {mappings
-          .filter((m) => m.matchType === "model")
-          .map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center gap-3 rounded-lg bg-surface p-3 text-sm"
-            >
-              <span className="text-text-primary font-medium">
-                "{m.matchValue}"
-              </span>
-              <span className="text-text-muted">→</span>
-              <span className="text-text-secondary truncate flex-1">
-                {getSongLabel(m.songFile)}
-              </span>
-              <PlayInline src={m.songFile} />
-              <button
-                onClick={() => removeMapping(m.id)}
-                className="ml-auto text-xs text-red-soft"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        {mappings.filter((m) => m.matchType === "model").length === 0 && (
-          <div className="text-text-muted text-xs text-center py-4">
-            No mappings yet. Add one above.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function getSongLabel(song: string): string {
-  const jingle = JINGLES.find((j) => j.id === song);
-  if (jingle) return jingle.name;
-  if (song.startsWith("http")) return "Deezer song";
-  return song;
-}
-
-function PlayInline({ src }: { src: string }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  function toggle() {
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setPlaying(false);
-      return;
-    }
-    const jingle = JINGLES.find((j) => j.id === src);
-    if (jingle) {
-      playJingle(jingle.id);
-      setPlaying(true);
-      setTimeout(() => setPlaying(false), 3000);
-      return;
-    }
-    const url = src.startsWith("http") ? src : `/sounds/models/${src}`;
-    const a = new Audio(url);
-    audioRef.current = a;
-    a.play().catch(() => {});
-    a.onended = () => setPlaying(false);
-    setPlaying(true);
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      className="w-5 h-5 rounded-full bg-accent/20 hover:bg-accent/30 flex items-center justify-center text-accent text-[8px] transition-colors flex-shrink-0"
-    >
-      {playing ? "■" : "▶"}
-    </button>
   );
 }
 

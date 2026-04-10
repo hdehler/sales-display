@@ -296,26 +296,29 @@ app.get("/api/song-mappings", (_req, res) => {
       matchType: r.match_type,
       matchValue: r.match_value,
       songFile: r.song_file,
+      songLabel: r.song_label || "",
     })),
   );
 });
 
 app.post("/api/song-mappings", (req, res) => {
-  const { matchType, matchValue, songFile } = req.body as {
+  const { matchType, matchValue, songFile, songLabel } = req.body as {
     matchType?: string;
     matchValue?: string | null;
     songFile?: string;
+    songLabel?: string;
   };
   if (!matchType || !songFile) {
     res.status(400).json({ error: "matchType and songFile required" });
     return;
   }
-  const m = createSongMapping(matchType, matchValue ?? null, songFile);
+  const m = createSongMapping(matchType, matchValue ?? null, songFile, songLabel);
   res.json({
     id: m.id,
     matchType: m.match_type,
     matchValue: m.match_value,
     songFile: m.song_file,
+    songLabel: m.song_label || "",
   });
 });
 

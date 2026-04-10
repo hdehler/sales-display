@@ -80,4 +80,5 @@ export interface SongMapping {
   matchType: string;
   matchValue: string | null;
   songFile: string;
+  songLabel: string;
 }
