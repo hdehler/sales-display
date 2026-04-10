@@ -6,52 +6,89 @@ const ROW_2 = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"];
 const ROW_3 = ["a", "s", "d", "f", "g", "h", "j", "k", "l"];
 const ROW_4 = ["z", "x", "c", "v", "b", "n", "m"];
 
+function isTextInput(el: EventTarget | null): el is HTMLInputElement | HTMLTextAreaElement {
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (el instanceof HTMLInputElement) {
+    const t = el.type;
+    return t === "text" || t === "search" || t === "number" || t === "email" || t === "url" || t === "";
+  }
+  return false;
+}
+
 export function VirtualKeyboard() {
   const [visible, setVisible] = useState(false);
   const [shifted, setShifted] = useState(false);
   const activeRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const kbRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
 
   const show = useCallback((el: HTMLInputElement | HTMLTextAreaElement) => {
+    clearHideTimer();
     activeRef.current = el;
     setVisible(true);
-  }, []);
+  }, [clearHideTimer]);
 
   const hide = useCallback(() => {
     setVisible(false);
     activeRef.current = null;
   }, []);
 
+  const scheduleHide = useCallback(() => {
+    clearHideTimer();
+    hideTimerRef.current = setTimeout(() => {
+      const active = document.activeElement;
+      if (kbRef.current?.contains(active)) return;
+      if (isTextInput(active)) return;
+      hide();
+    }, 250);
+  }, [clearHideTimer, hide]);
+
   useEffect(() => {
-    function onFocus(e: FocusEvent) {
-      const t = e.target as HTMLElement;
-      if (
-        t instanceof HTMLInputElement &&
-        (t.type === "text" || t.type === "search" || t.type === "number" || t.type === "email" || t.type === "url")
-      ) {
-        show(t);
-      } else if (t instanceof HTMLTextAreaElement) {
-        show(t);
+    function onFocusIn(e: FocusEvent) {
+      if (isTextInput(e.target)) {
+        show(e.target);
       }
     }
 
-    function onBlur(e: FocusEvent) {
+    function onFocusOut(e: FocusEvent) {
       const related = e.relatedTarget as HTMLElement | null;
       if (related && kbRef.current?.contains(related)) return;
-      setTimeout(() => {
-        if (!kbRef.current?.contains(document.activeElement)) {
-          hide();
-        }
-      }, 100);
+      scheduleHide();
     }
 
-    document.addEventListener("focusin", onFocus);
-    document.addEventListener("focusout", onBlur);
+    // Touch/click fallback: on some Electron/Pi setups, focusin doesn't fire
+    // reliably on touch. Catching pointerdown on capture ensures we see it.
+    function onPointerDown(e: PointerEvent) {
+      if (isTextInput(e.target)) {
+        // Small delay to let the browser set focus first
+        setTimeout(() => {
+          if (isTextInput(document.activeElement)) {
+            show(document.activeElement);
+          }
+        }, 50);
+      }
+    }
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
-      document.removeEventListener("focusin", onFocus);
-      document.removeEventListener("focusout", onBlur);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("pointerdown", onPointerDown, true);
     };
-  }, [show, hide]);
+  }, [show, scheduleHide]);
+
+  useEffect(() => {
+    return () => clearHideTimer();
+  }, [clearHideTimer]);
 
   function emitInput(el: HTMLInputElement | HTMLTextAreaElement, newValue: string) {
     const nativeSetter = Object.getOwnPropertyDescriptor(
@@ -127,7 +164,10 @@ export function VirtualKeyboard() {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", bounce: 0.1, duration: 0.35 }}
-          onPointerDown={(e) => e.preventDefault()}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            clearHideTimer();
+          }}
         >
           <div className="max-w-3xl mx-auto px-3 py-3 space-y-2">
             {/* Row 1 — numbers */}
