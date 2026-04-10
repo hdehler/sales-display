@@ -2,39 +2,23 @@ import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
+import { playJingle, JINGLES } from "../lib/jingles";
 
-function playSong(url?: string) {
-  if (url) {
-    const audio = new Audio(url);
-    audio.play().catch(() => playGeneratedChime());
+function playAudio(event: CelebrationEvent) {
+  if (event.jingleId && JINGLES.some((j) => j.id === event.jingleId)) {
+    playJingle(event.jingleId);
     return;
   }
-  const fallback = new Audio("/sounds/celebration.mp3");
-  fallback.play().catch(() => playGeneratedChime());
+  if (event.songUrl) {
+    const audio = new Audio(event.songUrl);
+    audio.play().catch(() => playDefaultJingle());
+    return;
+  }
+  playDefaultJingle();
 }
 
-function playGeneratedChime() {
-  try {
-    const ctx = new AudioContext();
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(
-        0.01,
-        ctx.currentTime + i * 0.15 + 0.5,
-      );
-      osc.start(ctx.currentTime + i * 0.15);
-      osc.stop(ctx.currentTime + i * 0.15 + 0.5);
-    });
-  } catch {
-    /* no audio context */
-  }
+function playDefaultJingle() {
+  playJingle("champion");
 }
 
 function fireConfetti(isWalkup: boolean) {
@@ -68,7 +52,7 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
   const pack = event.slidePack;
 
   useEffect(() => {
-    playSong(event.songUrl);
+    playAudio(event);
     fireConfetti(isWalkup);
 
     const end = Date.now() + Math.min(event.duration * 1000, 15000);

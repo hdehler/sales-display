@@ -1,14 +1,16 @@
 import { AnimatePresence } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useSocket } from "./hooks/useSocket";
 import { Dashboard } from "./components/Dashboard";
 import { Celebration } from "./components/Celebration";
 import { ClaimOverlay } from "./components/ClaimOverlay";
+import { RepManager } from "./components/RepManager";
 import type { CelebrationEvent } from "../shared/types";
 
 export default function App() {
   const { dashboard, celebration, connected } = useSocket();
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
+  const [teamOpen, setTeamOpen] = useState(false);
 
   if (celebration && celebration.type !== "walkup") {
     lastCelebrationRef.current = celebration;
@@ -44,7 +46,7 @@ export default function App() {
       {/* Content */}
       <div className="relative z-[2] h-full">
         {dashboard ? (
-          <Dashboard data={dashboard} />
+          <Dashboard data={dashboard} onOpenTeam={() => setTeamOpen(true)} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -64,6 +66,8 @@ export default function App() {
       </AnimatePresence>
 
       <ClaimOverlay lastCelebration={lastCelebrationRef.current} />
+
+      <RepManager open={teamOpen} onClose={() => setTeamOpen(false)} />
     </div>
   );
 }

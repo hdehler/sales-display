@@ -181,9 +181,14 @@ export function buildWalkupCelebration(
   const rep = getRepById(repId);
   if (!rep) return null;
 
-  const songUrl = rep.walkup_song
-    ? `/sounds/walkups/${rep.walkup_song}`
-    : resolveSongUrl(sale.product);
+  const walkup = rep.walkup_song || "";
+  const isJingle = walkup && !walkup.includes(".");
+  const songUrl = isJingle
+    ? undefined
+    : walkup
+      ? `/sounds/walkups/${walkup}`
+      : resolveSongUrl(sale.product);
+  const jingleId = isJingle ? walkup : undefined;
 
   return {
     sale,
@@ -191,6 +196,7 @@ export function buildWalkupCelebration(
     message: `${rep.name} closed it!`,
     duration: config.celebration.defaultDuration,
     songUrl,
+    jingleId,
     rep: {
       name: rep.name,
       avatarColor: rep.avatar_color,

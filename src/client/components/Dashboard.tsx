@@ -6,10 +6,15 @@ import { StatsCards } from "./StatsCards";
 import { Leaderboard } from "./Leaderboard";
 import { SalesChart } from "./SalesChart";
 
-export function Dashboard({ data }: { data: DashboardData }) {
+interface DashboardProps {
+  data: DashboardData;
+  onOpenTeam?: () => void;
+}
+
+export function Dashboard({ data, onOpenTeam }: DashboardProps) {
   return (
     <div className="h-screen flex flex-col">
-      <Header />
+      <Header onOpenTeam={onOpenTeam} />
       <SalesTicker sales={data.recentSales} />
 
       <div className="flex-1 grid grid-cols-12 gap-4 p-5 min-h-0">

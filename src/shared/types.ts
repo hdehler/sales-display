@@ -58,6 +58,8 @@ export interface CelebrationEvent {
   };
   /** Path to audio file to play (resolved server-side) */
   songUrl?: string;
+  /** Jingle ID to synthesize client-side (takes priority over songUrl) */
+  jingleId?: string;
   /** Present for walk-up celebrations after a rep claims the sale */
   rep?: {
     name: string;
@@ -68,6 +70,7 @@ export interface CelebrationEvent {
 export interface Rep {
   id: number;
   name: string;
+  /** Jingle ID from the built-in library, or filename for uploaded mp3 */
   walkupSong: string | null;
   avatarColor: string;
 }

@@ -37,9 +37,6 @@ const salesCols = db
 if (!salesCols.some((c) => c.name === "meta_json")) {
   db.exec(`ALTER TABLE sales ADD COLUMN meta_json TEXT`);
 }
-if (!salesCols.some((c) => c.name === "claimed_by")) {
-  db.exec(`ALTER TABLE sales ADD COLUMN claimed_by INTEGER REFERENCES reps(id)`);
-}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reps (
@@ -58,6 +55,10 @@ db.exec(`
     song_file TEXT NOT NULL
   )
 `);
+
+if (!salesCols.some((c) => c.name === "claimed_by")) {
+  db.exec(`ALTER TABLE sales ADD COLUMN claimed_by INTEGER REFERENCES reps(id)`);
+}
 
 export function insertSale(sale: Sale): Sale {
   const metaJson = sale.meta ? JSON.stringify(sale.meta) : null;
