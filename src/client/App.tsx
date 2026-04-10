@@ -13,6 +13,7 @@ export default function App() {
   const { dashboard, celebration, connected, dismissCelebration } = useSocket();
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
   const [teamOpen, setTeamOpen] = useState(false);
+  const [repsVersion, setRepsVersion] = useState(0);
 
   if (celebration && celebration.type !== "walkup") {
     lastCelebrationRef.current = celebration;
@@ -69,7 +70,7 @@ export default function App() {
       </div>
 
       {/* Walk-up bar — reps tap their face to play their song */}
-      {!celebration && <WalkUpBar />}
+      {!celebration && <WalkUpBar version={repsVersion} />}
 
       <AnimatePresence>
         {celebration && (
@@ -79,7 +80,7 @@ export default function App() {
 
       <ClaimOverlay lastCelebration={lastCelebrationRef.current} />
 
-      <RepManager open={teamOpen} onClose={() => setTeamOpen(false)} />
+      <RepManager open={teamOpen} onClose={() => setTeamOpen(false)} onRepsChanged={() => setRepsVersion((v) => v + 1)} />
     </div>
   );
 }

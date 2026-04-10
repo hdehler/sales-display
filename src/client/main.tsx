@@ -1,6 +1,7 @@
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { VirtualKeyboard } from "./components/VirtualKeyboard";
 
 const App = lazy(() => import("./App.tsx"));
 const Settings = lazy(() => import("./pages/Settings.tsx"));
@@ -18,5 +19,6 @@ createRoot(document.getElementById("root")!).render(
     >
       {isSettings ? <Settings /> : <App />}
     </Suspense>
+    <VirtualKeyboard />
   </StrictMode>,
 );

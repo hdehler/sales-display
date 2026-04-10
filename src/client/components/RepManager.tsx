@@ -13,9 +13,10 @@ const AVATAR_COLORS = [
 interface RepManagerProps {
   open: boolean;
   onClose: () => void;
+  onRepsChanged?: () => void;
 }
 
-export function RepManager({ open, onClose }: RepManagerProps) {
+export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
   const [reps, setReps] = useState<Rep[]>([]);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(AVATAR_COLORS[0]);
@@ -50,6 +51,7 @@ export function RepManager({ open, onClose }: RepManagerProps) {
     setNewName("");
     setNewSong("");
     fetchReps();
+    onRepsChanged?.();
   }
 
   async function saveEdit(id: number) {
@@ -64,11 +66,13 @@ export function RepManager({ open, onClose }: RepManagerProps) {
     });
     setEditId(null);
     fetchReps();
+    onRepsChanged?.();
   }
 
   async function removeRep(id: number) {
     await fetch(`/api/reps/${id}`, { method: "DELETE" });
     fetchReps();
+    onRepsChanged?.();
   }
 
   function startEdit(rep: Rep) {

@@ -80,25 +80,25 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-surface text-text-primary">
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-8 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-3xl text-text-primary">Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-display text-4xl text-white">Settings</h1>
           <a
             href="/"
-            className="text-sm text-accent hover:text-accent/80 transition-colors"
+            className="text-base text-accent hover:text-accent/80 transition-colors font-medium"
           >
             ← Dashboard
           </a>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-border mb-6">
+        <div className="flex border-b border-border mb-8">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-5 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+              className={`px-6 py-3 text-base font-semibold transition-all border-b-2 -mb-px ${
                 tab === t.id
                   ? "border-accent text-accent"
                   : "border-transparent text-text-muted hover:text-text-secondary"
@@ -110,7 +110,7 @@ export default function Settings() {
         </div>
 
         {loading || !draft ? (
-          <div className="text-text-muted text-sm py-12 text-center">
+          <div className="text-text-muted text-lg py-16 text-center">
             Loading…
           </div>
         ) : (
@@ -126,8 +126,8 @@ export default function Settings() {
             {/* Save bar — only for General tab */}
             {tab === "general" && (
               <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/95 backdrop-blur-sm">
-                <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-                  <div className="text-xs text-text-muted">
+                <div className="max-w-4xl mx-auto px-8 py-4 flex items-center justify-between">
+                  <div className="text-sm text-text-muted">
                     {saved
                       ? "✓ Saved"
                       : dirty
@@ -137,7 +137,7 @@ export default function Settings() {
                   <button
                     onClick={saveAll}
                     disabled={!dirty || saving}
-                    className={`px-6 py-2 rounded-lg font-medium text-sm transition-all ${
+                    className={`px-8 py-2.5 rounded-lg font-semibold text-base transition-all ${
                       dirty
                         ? "bg-accent text-surface hover:bg-accent/90"
                         : "bg-text-muted/20 text-text-muted cursor-not-allowed"
@@ -172,19 +172,19 @@ function GeneralTab({
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-24">
       {/* Celebration */}
       <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+        <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
           Celebrations
         </h3>
-        <div className="space-y-4 rounded-xl border border-border bg-surface-raised p-5">
+        <div className="space-y-5 rounded-2xl border border-border bg-surface-raised p-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium text-text-primary">
+              <div className="text-base font-semibold text-white">
                 Celebrate all Slide orders
               </div>
-              <div className="text-xs text-text-muted">
+              <div className="text-sm text-text-secondary mt-0.5">
                 Show full-screen celebration for every incoming order
               </div>
             </div>
@@ -195,23 +195,23 @@ function GeneralTab({
                     draft.celebrateSlideOrders === "true" ? "false" : "true",
                 })
               }
-              className={`relative w-11 h-6 rounded-full transition-colors ${
+              className={`relative w-12 h-7 rounded-full transition-colors ${
                 draft.celebrateSlideOrders === "true"
                   ? "bg-accent"
                   : "bg-text-muted/30"
               }`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
                   draft.celebrateSlideOrders === "true" ? "translate-x-5" : ""
                 }`}
               />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="text-xs text-text-muted block mb-1">
+              <label className="text-sm font-medium text-text-secondary block mb-2">
                 Duration (seconds)
               </label>
               <input
@@ -222,11 +222,11 @@ function GeneralTab({
                 onChange={(e) =>
                   onUpdate({ celebrationDuration: e.target.value })
                 }
-                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
               />
             </div>
             <div>
-              <label className="text-xs text-text-muted block mb-1">
+              <label className="text-sm font-medium text-text-secondary block mb-2">
                 Milestone every N orders (0 = off)
               </label>
               <input
@@ -236,7 +236,7 @@ function GeneralTab({
                 onChange={(e) =>
                   onUpdate({ milestoneInterval: e.target.value })
                 }
-                className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -245,16 +245,16 @@ function GeneralTab({
 
       {/* Big orders */}
       <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+        <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
           Big Order
         </h3>
-        <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-3">
-          <p className="text-xs text-text-muted">
+        <div className="rounded-2xl border border-border bg-surface-raised p-6 space-y-4">
+          <p className="text-sm text-text-secondary">
             When a single batch has this many or more orders, play a special
             song instead of the model default.
           </p>
           <div>
-            <label className="text-xs text-text-muted block mb-1">
+            <label className="text-sm font-medium text-text-secondary block mb-2">
               Minimum orders to trigger (0 = disabled)
             </label>
             <input
@@ -264,7 +264,7 @@ function GeneralTab({
               onChange={(e) =>
                 onUpdate({ bigOrderThreshold: e.target.value })
               }
-              className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+              className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
             />
           </div>
           <SongSearch
@@ -344,19 +344,19 @@ function ModelsTab({
   const modelMappings = mappings.filter((m) => m.matchType === "model");
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-text-muted">
+    <div className="space-y-6">
+      <p className="text-sm text-text-secondary">
         When a device model name contains the text below, play the assigned song
         during the order celebration.
       </p>
 
       {/* Add new */}
-      <div className="rounded-xl border border-border bg-surface-raised p-5 space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.15em] text-text-muted">
+      <div className="rounded-2xl border border-border bg-surface-raised p-6 space-y-4">
+        <div className="text-sm font-bold uppercase tracking-widest text-text-secondary">
           Add mapping
         </div>
         <div>
-          <label className="text-xs text-text-muted block mb-1">
+          <label className="text-sm font-medium text-text-secondary block mb-2">
             Model contains
           </label>
           <input
@@ -364,7 +364,7 @@ function ModelsTab({
             value={newMatch}
             onChange={(e) => setNewMatch(e.target.value)}
             placeholder="e.g. Slide Z1"
-            className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+            className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
           />
         </div>
         <SongSearch
@@ -378,30 +378,30 @@ function ModelsTab({
         <button
           onClick={addMapping}
           disabled={!newMatch.trim() || !newSongValue}
-          className="w-full px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
+          className="w-full px-5 py-3 rounded-lg bg-accent text-surface font-semibold text-base hover:bg-accent/90 disabled:opacity-40 transition-colors"
         >
           Add mapping
         </button>
       </div>
 
       {/* Existing */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {modelMappings.map((m) => (
           <div
             key={m.id}
-            className="rounded-xl border border-border bg-surface-raised p-4"
+            className="rounded-2xl border border-border bg-surface-raised p-5"
           >
             {editId === m.id ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-text-muted block mb-1">
+                  <label className="text-sm font-medium text-text-secondary block mb-2">
                     Model contains
                   </label>
                   <input
                     type="text"
                     value={editMatch}
                     onChange={(e) => setEditMatch(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+                    className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
                   />
                 </div>
                 <SongSearch
@@ -412,47 +412,47 @@ function ModelsTab({
                   }}
                   label="Celebration song"
                 />
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     onClick={() => saveEdit(m.id)}
                     disabled={!editMatch.trim() || !editSongValue}
-                    className="px-4 py-2 rounded-lg bg-accent text-surface text-sm font-medium disabled:opacity-40"
+                    className="px-6 py-2.5 rounded-lg bg-accent text-surface text-base font-semibold disabled:opacity-40"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditId(null)}
-                    className="px-4 py-2 rounded-lg text-text-muted text-sm hover:text-text-secondary"
+                    className="px-6 py-2.5 rounded-lg text-text-muted text-base hover:text-text-secondary"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-text-primary text-sm">
+                  <div className="font-semibold text-white text-base">
                     {m.matchValue}
                   </div>
-                  <div className="text-xs text-text-muted truncate">
+                  <div className="text-sm text-text-secondary truncate mt-0.5">
                     {m.songLabel || getSongLabel(m.songFile)}
                   </div>
                 </div>
                 <button
                   onClick={() => playSong(m.songFile)}
-                  className="w-7 h-7 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center text-[10px] transition-colors flex-shrink-0"
+                  className="w-9 h-9 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center text-sm transition-colors flex-shrink-0"
                 >
                   ▶
                 </button>
                 <button
                   onClick={() => startEdit(m)}
-                  className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  className="text-sm font-medium text-text-secondary hover:text-white transition-colors"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => removeMapping(m.id)}
-                  className="text-xs text-red-soft hover:text-red-400 transition-colors"
+                  className="text-sm font-medium text-red-soft hover:text-red-400 transition-colors"
                 >
                   Remove
                 </button>
@@ -461,7 +461,7 @@ function ModelsTab({
           </div>
         ))}
         {modelMappings.length === 0 && (
-          <div className="text-text-muted text-xs text-center py-8 rounded-xl border border-border bg-surface-raised">
+          <div className="text-text-muted text-base text-center py-12 rounded-2xl border border-border bg-surface-raised">
             No model mappings yet. Add one above.
           </div>
         )}
@@ -488,30 +488,30 @@ function SoundsTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <p className="text-xs text-text-muted">
+    <div className="space-y-8">
+      <p className="text-sm text-text-secondary">
         Preview all available sounds. These can be assigned to reps (Team
         drawer) or device models (Model Songs tab).
       </p>
 
       {/* Jingles */}
       <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-3">
+        <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
           Built-in jingles
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-3">
           {JINGLES.map((j) => (
             <button
               key={j.id}
               onClick={() => preview(j.id)}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-xs transition-all ${
+              className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-left text-sm transition-all ${
                 previewingId === j.id
                   ? "bg-accent/15 border border-accent/30 text-accent"
-                  : "bg-surface-raised border border-border text-text-secondary hover:text-text-primary"
+                  : "bg-surface-raised border border-border text-text-secondary hover:text-white"
               }`}
             >
               <span
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                   previewingId === j.id
                     ? "bg-accent text-surface"
                     : "bg-text-muted/20 text-text-muted"
@@ -520,8 +520,8 @@ function SoundsTab() {
                 {previewingId === j.id ? "■" : "▶"}
               </span>
               <div className="min-w-0">
-                <div className="font-medium">{j.name}</div>
-                <div className="text-text-muted text-[10px]">
+                <div className="font-semibold">{j.name}</div>
+                <div className="text-text-muted text-xs mt-0.5">
                   {j.description}
                 </div>
               </div>
@@ -532,10 +532,10 @@ function SoundsTab() {
 
       {/* Deezer note */}
       <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-3">
+        <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
           Deezer songs
         </h3>
-        <div className="rounded-xl border border-border bg-surface-raised p-5 text-xs text-text-muted">
+        <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm text-text-secondary leading-relaxed">
           Search for real songs when assigning walk-up songs (Team drawer) or
           model celebration songs (Model Songs tab). Deezer provides a 30-second
           preview clip — use the start-offset slider to pick the best part.
@@ -544,10 +544,10 @@ function SoundsTab() {
 
       {/* Uploads note */}
       <section>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-3">
+        <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
           Custom uploads
         </h3>
-        <div className="rounded-xl border border-border bg-surface-raised p-5 text-xs text-text-muted">
+        <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm text-text-secondary leading-relaxed">
           Upload your own MP3 or WAV files when assigning songs. Uploaded files
           appear in the "Uploads" tab of the song picker. Use the start-offset
           slider to pick the exact 20-second window you want.

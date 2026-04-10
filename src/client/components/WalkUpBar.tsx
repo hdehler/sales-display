@@ -4,7 +4,7 @@ import type { Rep } from "../../shared/types";
 import { playSong, stopAll } from "../lib/audio";
 import { JINGLES } from "../lib/jingles";
 
-export function WalkUpBar() {
+export function WalkUpBar({ version = 0 }: { version?: number }) {
   const [reps, setReps] = useState<Rep[]>([]);
   const [activeRep, setActiveRep] = useState<Rep | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -14,7 +14,7 @@ export function WalkUpBar() {
       .then((r) => r.json())
       .then((data) => setReps((data as Rep[]).filter((r) => r.walkupSong)))
       .catch(() => {});
-  }, []);
+  }, [version]);
 
   const play = useCallback((rep: Rep) => {
     if (activeRep?.id === rep.id) {
