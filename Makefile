@@ -1,7 +1,7 @@
 # Sales display — shortcuts for common commands
 # Usage: make help | make start | make dev | …
 
-.PHONY: help run install build setup start dev desktop slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
+.PHONY: help run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
 
 .DEFAULT_GOAL := help
 
@@ -27,7 +27,8 @@ help:
 	@echo "  make setup            install + build (same as npm run setup)"
 	@echo "  make start            API only (http://localhost:3000) — use with PM2 on Pi"
 	@echo "  make dev              Dev mode: hot-reload server + Vite (browser)"
-	@echo "  make desktop          Electron only (API must already be running)"
+	@echo "  make desktop          Electron (Linux SSH: auto DISPLAY=:0 if unset)"
+	@echo "  make desktop-pi       alias for make desktop"
 	@echo "  make slack-backfill   Import Slack channel history (optional: N=800)"
 	@echo "  make stats            curl /api/stats (server must be running)"
 	@echo "  make clean            Remove dist/client"
@@ -61,6 +62,8 @@ dev:
 
 desktop:
 	npm run desktop
+
+desktop-pi: desktop
 
 # Default 500 messages; override: make slack-backfill N=800
 slack-backfill:

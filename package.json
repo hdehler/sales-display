@@ -10,7 +10,7 @@
     "start": "NODE_ENV=production tsx src/server/index.ts",
     "start:all": "concurrently -k -n api,ui -c blue,magenta \"npm run start\" \"sh -c 'sleep 5 && exec npm run desktop'\"",
     "setup": "npm install && npm run build",
-    "desktop": "electron .",
+    "desktop": "sh scripts/run-electron.sh",
     "slack-backfill": "tsx src/server/slack-backfill-cli.ts"
   },
   "dependencies": {
