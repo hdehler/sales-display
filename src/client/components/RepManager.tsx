@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep } from "../../shared/types";
 import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
+import { SongSearch, type SongChoice } from "./SongSearch";
 
 const AVATAR_COLORS = [
   "#e2a336", "#ef4444", "#3b82f6", "#10b981", "#a855f7",
@@ -17,12 +18,11 @@ export function RepManager({ open, onClose }: RepManagerProps) {
   const [reps, setReps] = useState<Rep[]>([]);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(AVATAR_COLORS[0]);
-  const [newJingle, setNewJingle] = useState("");
+  const [newSong, setNewSong] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
-  const [editJingle, setEditJingle] = useState("");
-  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [editSong, setEditSong] = useState("");
 
   const fetchReps = useCallback(async () => {
     try {
@@ -43,11 +43,11 @@ export function RepManager({ open, onClose }: RepManagerProps) {
       body: JSON.stringify({
         name: newName.trim(),
         avatarColor: newColor,
-        walkupSong: newJingle || undefined,
+        walkupSong: newSong || undefined,
       }),
     });
     setNewName("");
-    setNewJingle("");
+    setNewSong("");
     fetchReps();
   }
 
@@ -58,7 +58,7 @@ export function RepManager({ open, onClose }: RepManagerProps) {
       body: JSON.stringify({
         name: editName,
         avatarColor: editColor,
-        walkupSong: editJingle || null,
+        walkupSong: editSong || null,
       }),
     });
     setEditId(null);
@@ -74,19 +74,27 @@ export function RepManager({ open, onClose }: RepManagerProps) {
     setEditId(rep.id);
     setEditName(rep.name);
     setEditColor(rep.avatarColor);
-    setEditJingle(rep.walkupSong || "");
+    setEditSong(rep.walkupSong || "");
   }
 
-  function preview(jingleId: string) {
-    if (previewingId === jingleId) {
-      stopJingle();
-      setPreviewingId(null);
+  function handleNewSong(choice: SongChoice) {
+    setNewSong(choice.value);
+  }
+
+  function handleEditSong(choice: SongChoice) {
+    setEditSong(choice.value);
+  }
+
+  function previewCurrent(song: string) {
+    if (!song) return;
+    if (JINGLES.some((j) => j.id === song)) {
+      playJingle(song);
       return;
     }
-    stopJingle();
-    playJingle(jingleId);
-    setPreviewingId(jingleId);
-    setTimeout(() => setPreviewingId(null), 3000);
+    if (song.startsWith("http")) {
+      const a = new Audio(song);
+      a.play().catch(() => {});
+    }
   }
 
   return (
@@ -149,15 +157,11 @@ export function RepManager({ open, onClose }: RepManagerProps) {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-text-muted mb-1.5">Walk-up jingle</div>
-                    <JinglePicker
-                      value={newJingle}
-                      onChange={setNewJingle}
-                      onPreview={preview}
-                      previewingId={previewingId}
-                    />
-                  </div>
+                  <SongSearch
+                    value={newSong}
+                    onChange={handleNewSong}
+                    label="Walk-up song"
+                  />
                   <button
                     onClick={addRep}
                     disabled={!newName.trim()}
@@ -195,11 +199,10 @@ export function RepManager({ open, onClose }: RepManagerProps) {
                             />
                           ))}
                         </div>
-                        <JinglePicker
-                          value={editJingle}
-                          onChange={setEditJingle}
-                          onPreview={preview}
-                          previewingId={previewingId}
+                        <SongSearch
+                          value={editSong}
+                          onChange={handleEditSong}
+                          label="Walk-up song"
                         />
                         <div className="flex gap-2">
                           <button
@@ -228,22 +231,16 @@ export function RepManager({ open, onClose }: RepManagerProps) {
                           <div className="font-medium text-text-primary">
                             {rep.name}
                           </div>
-                          <div className="text-xs text-text-muted">
-                            {rep.walkupSong
-                              ? JINGLES.find((j) => j.id === rep.walkupSong)?.name || rep.walkupSong
-                              : "No jingle"}
+                          <div className="text-xs text-text-muted truncate">
+                            {getSongLabel(rep.walkupSong)}
                           </div>
                         </div>
-                        {rep.walkupSong && JINGLES.some((j) => j.id === rep.walkupSong) && (
+                        {rep.walkupSong && (
                           <button
-                            onClick={() => preview(rep.walkupSong!)}
-                            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] transition-colors flex-shrink-0 ${
-                              previewingId === rep.walkupSong
-                                ? "bg-accent text-surface"
-                                : "bg-accent/20 text-accent hover:bg-accent/30"
-                            }`}
+                            onClick={() => previewCurrent(rep.walkupSong!)}
+                            className="w-7 h-7 rounded-full bg-accent/20 text-accent hover:bg-accent/30 flex items-center justify-center text-[10px] transition-colors flex-shrink-0"
                           >
-                            {previewingId === rep.walkupSong ? "■" : "▶"}
+                            ▶
                           </button>
                         )}
                         <button
@@ -276,60 +273,10 @@ export function RepManager({ open, onClose }: RepManagerProps) {
   );
 }
 
-function JinglePicker({
-  value,
-  onChange,
-  onPreview,
-  previewingId,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  onPreview: (id: string) => void;
-  previewingId: string | null;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
-      <button
-        onClick={() => onChange("")}
-        className={`text-left px-3 py-2 rounded-lg text-xs transition-all ${
-          !value
-            ? "bg-accent/15 border border-accent/30 text-accent"
-            : "bg-surface border border-border text-text-muted hover:text-text-secondary"
-        }`}
-      >
-        None
-      </button>
-      {JINGLES.map((j) => (
-        <div
-          key={j.id}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
-            value === j.id
-              ? "bg-accent/15 border border-accent/30 text-accent"
-              : "bg-surface border border-border text-text-secondary hover:text-text-primary"
-          }`}
-          onClick={() => onChange(j.id)}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview(j.id);
-            }}
-            className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-              previewingId === j.id
-                ? "bg-accent text-surface"
-                : "bg-text-muted/20 text-text-muted hover:bg-accent/30 hover:text-accent"
-            }`}
-          >
-            {previewingId === j.id ? "■" : "▶"}
-          </button>
-          <div className="min-w-0">
-            <div className="font-medium truncate">{j.name}</div>
-            <div className="text-text-muted truncate text-[10px]">
-              {j.description}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+function getSongLabel(song: string | null): string {
+  if (!song) return "No walk-up song";
+  const jingle = JINGLES.find((j) => j.id === song);
+  if (jingle) return jingle.name;
+  if (song.startsWith("http")) return "Custom song";
+  return song;
 }

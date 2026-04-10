@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { SongMapping } from "../../shared/types";
 import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
+import { SongSearch, type SongChoice } from "../components/SongSearch";
 
 interface SongFiles {
   walkups: string[];
@@ -120,11 +121,7 @@ export default function Settings() {
             <UploadSection songs={songs} onUpdate={fetchAll} />
 
             {/* Model → song mappings */}
-            <MappingsSection
-              songs={songs}
-              mappings={mappings}
-              onUpdate={fetchAll}
-            />
+            <MappingsSection mappings={mappings} onUpdate={fetchAll} />
           </div>
         )}
       </div>
@@ -232,36 +229,38 @@ function UploadSection({
 }
 
 function MappingsSection({
-  songs,
   mappings,
   onUpdate,
 }: {
-  songs: SongFiles;
   mappings: SongMapping[];
   onUpdate: () => void;
 }) {
   const [newMatch, setNewMatch] = useState("");
-  const [newSong, setNewSong] = useState("");
+  const [newSongValue, setNewSongValue] = useState("");
 
   async function addMapping() {
-    if (!newMatch.trim() || !newSong) return;
+    if (!newMatch.trim() || !newSongValue) return;
     await fetch("/api/song-mappings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         matchType: "model",
         matchValue: newMatch.trim(),
-        songFile: newSong,
+        songFile: newSongValue,
       }),
     });
     setNewMatch("");
-    setNewSong("");
+    setNewSongValue("");
     onUpdate();
   }
 
   async function removeMapping(id: number) {
     await fetch(`/api/song-mappings/${id}`, { method: "DELETE" });
     onUpdate();
+  }
+
+  function handleSongChoice(choice: SongChoice) {
+    setNewSongValue(choice.value);
   }
 
   return (
@@ -271,9 +270,10 @@ function MappingsSection({
       </h3>
       <p className="text-xs text-text-muted mb-3">
         When a device model matches the text, play this song during the initial
-        celebration (before someone claims it).
+        celebration (before someone claims it). Search real songs or pick a
+        jingle.
       </p>
-      <div className="flex flex-wrap gap-3 items-end mb-4">
+      <div className="space-y-3 mb-4">
         <div>
           <label className="text-xs text-text-muted block mb-1">
             Model contains
@@ -282,30 +282,21 @@ function MappingsSection({
             type="text"
             value={newMatch}
             onChange={(e) => setNewMatch(e.target.value)}
-            placeholder="Slide Z1"
-            className="px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+            placeholder="e.g. Slide Z1"
+            className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
           />
         </div>
-        <div>
-          <label className="text-xs text-text-muted block mb-1">Song file</label>
-          <select
-            value={newSong}
-            onChange={(e) => setNewSong(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
-          >
-            <option value="">Select…</option>
-            {songs.models.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SongSearch
+          value={newSongValue}
+          onChange={handleSongChoice}
+          label="Celebration song"
+        />
         <button
           onClick={addMapping}
-          className="px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm"
+          disabled={!newMatch.trim() || !newSongValue}
+          className="px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
         >
-          Add
+          Add mapping
         </button>
       </div>
       <div className="space-y-2">
@@ -320,7 +311,10 @@ function MappingsSection({
                 "{m.matchValue}"
               </span>
               <span className="text-text-muted">→</span>
-              <span className="text-text-secondary">{m.songFile}</span>
+              <span className="text-text-secondary truncate flex-1">
+                {getSongLabel(m.songFile)}
+              </span>
+              <PlayInline src={m.songFile} />
               <button
                 onClick={() => removeMapping(m.id)}
                 className="ml-auto text-xs text-red-soft"
@@ -331,11 +325,54 @@ function MappingsSection({
           ))}
         {mappings.filter((m) => m.matchType === "model").length === 0 && (
           <div className="text-text-muted text-xs text-center py-4">
-            No mappings. Upload model songs above first.
+            No mappings yet. Add one above.
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function getSongLabel(song: string): string {
+  const jingle = JINGLES.find((j) => j.id === song);
+  if (jingle) return jingle.name;
+  if (song.startsWith("http")) return "Deezer song";
+  return song;
+}
+
+function PlayInline({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle() {
+    if (playing && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setPlaying(false);
+      return;
+    }
+    const jingle = JINGLES.find((j) => j.id === src);
+    if (jingle) {
+      playJingle(jingle.id);
+      setPlaying(true);
+      setTimeout(() => setPlaying(false), 3000);
+      return;
+    }
+    const url = src.startsWith("http") ? src : `/sounds/models/${src}`;
+    const a = new Audio(url);
+    audioRef.current = a;
+    a.play().catch(() => {});
+    a.onended = () => setPlaying(false);
+    setPlaying(true);
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      className="w-5 h-5 rounded-full bg-accent/20 hover:bg-accent/30 flex items-center justify-center text-accent text-[8px] transition-colors flex-shrink-0"
+    >
+      {playing ? "■" : "▶"}
+    </button>
   );
 }
 

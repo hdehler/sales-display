@@ -20,21 +20,33 @@ export function setCelebrationCallback(cb: CelebrationCallback): void {
   onCelebration = cb;
 }
 
-function resolveSongUrl(product?: string): string | undefined {
+interface ResolvedSong {
+  songUrl?: string;
+  jingleId?: string;
+}
+
+function classifySongValue(val: string): ResolvedSong {
+  if (val.startsWith("http")) return { songUrl: val };
+  if (val.includes(".")) return { songUrl: `/sounds/models/${val}` };
+  return { jingleId: val };
+}
+
+function resolveSong(product?: string): ResolvedSong {
   if (product) {
     const modelSong = getSongForModel(product);
-    if (modelSong) return `/sounds/models/${modelSong}`;
+    if (modelSong) return classifySongValue(modelSong);
   }
   const def = getDefaultSong();
-  if (def) return `/sounds/${def}`;
-  return undefined;
+  if (def) return classifySongValue(def);
+  return {};
 }
+
 
 export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
   const { triggerProducts, milestoneInterval, defaultDuration } =
     config.celebration;
 
-  const songUrl = resolveSongUrl(sale.product);
+  const { songUrl, jingleId } = resolveSong(sale.product);
 
   if (triggerProducts.length > 0) {
     const match = triggerProducts.some((kw) =>
@@ -47,6 +59,7 @@ export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
         message: `${sale.rep} just closed a deal!`,
         duration: defaultDuration,
         songUrl,
+        jingleId,
       };
     }
   }
@@ -60,6 +73,7 @@ export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
         message: `${count} sales today!`,
         duration: defaultDuration,
         songUrl,
+        jingleId,
       };
     }
   }
@@ -77,7 +91,7 @@ export function shouldCelebrateSlidePack(
   const first = sales[0];
   const account = first.customer;
   const slidePack = { account, count: sales.length, sales };
-  const songUrl = resolveSongUrl(first.product);
+  const { songUrl, jingleId } = resolveSong(first.product);
 
   const packMessage =
     sales.length === 1
@@ -98,6 +112,7 @@ export function shouldCelebrateSlidePack(
         slidePack,
         message: packMessage,
         songUrl,
+        jingleId,
       };
     }
   }
@@ -112,6 +127,7 @@ export function shouldCelebrateSlidePack(
         slidePack,
         message: `${count} orders today!`,
         songUrl,
+        jingleId,
       };
     }
   }
@@ -124,6 +140,7 @@ export function shouldCelebrateSlidePack(
       slidePack,
       message: packMessage,
       songUrl,
+      jingleId,
     };
   }
 
@@ -182,13 +199,24 @@ export function buildWalkupCelebration(
   if (!rep) return null;
 
   const walkup = rep.walkup_song || "";
-  const isJingle = walkup && !walkup.includes(".");
-  const songUrl = isJingle
-    ? undefined
-    : walkup
-      ? `/sounds/walkups/${walkup}`
-      : resolveSongUrl(sale.product);
-  const jingleId = isJingle ? walkup : undefined;
+  const isUrl = walkup.startsWith("http");
+  const isFile = walkup.includes(".") && !isUrl;
+  const isJingle = walkup && !isUrl && !isFile;
+
+  let songUrl: string | undefined;
+  let jingleId: string | undefined;
+
+  if (isUrl) {
+    songUrl = walkup;
+  } else if (isFile) {
+    songUrl = `/sounds/walkups/${walkup}`;
+  } else if (isJingle) {
+    jingleId = walkup;
+  } else {
+    const fallback = resolveSong(sale.product);
+    songUrl = fallback.songUrl;
+    jingleId = fallback.jingleId;
+  }
 
   return {
     sale,

@@ -198,6 +198,43 @@ app.delete("/api/reps/:id", (req, res) => {
   }
 });
 
+// ── Deezer song search proxy (avoids CORS) ───────────────
+
+app.get("/api/songs/search", async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  if (!q) {
+    res.json({ data: [] });
+    return;
+  }
+  try {
+    const url = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=12`;
+    const r = await fetch(url);
+    const json = (await r.json()) as {
+      data?: {
+        id: number;
+        title: string;
+        artist: { name: string };
+        album: { title: string; cover_small: string };
+        preview: string;
+        duration: number;
+      }[];
+    };
+    const results = (json.data || []).map((t) => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist.name,
+      album: t.album.title,
+      cover: t.album.cover_small,
+      previewUrl: t.preview,
+      duration: t.duration,
+    }));
+    res.json({ data: results });
+  } catch (e) {
+    console.error("[Deezer] Search failed:", e);
+    res.status(502).json({ error: "deezer_search_failed" });
+  }
+});
+
 // ── Song files & mappings ─────────────────────────────────
 
 const soundsRoot = path.join(__dirname, "../../public/sounds");
