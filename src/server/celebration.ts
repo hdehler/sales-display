@@ -6,6 +6,7 @@ import {
   getDefaultSong,
   getRepById,
   claimSale,
+  getSetting,
 } from "./db.js";
 import type { Sale, CelebrationEvent } from "../shared/types.js";
 
@@ -130,6 +131,23 @@ export function shouldCelebrateSlidePack(
         jingleId,
       };
     }
+  }
+
+  const bigThreshold = parseInt(getSetting("bigOrderThreshold") || "0", 10);
+  const isBigOrder = bigThreshold > 0 && sales.length >= bigThreshold;
+
+  if (isBigOrder) {
+    const bigSong = getSetting("bigOrderSong") || "";
+    const resolved = bigSong ? classifySongValue(bigSong) : { songUrl, jingleId };
+    return {
+      sale: first,
+      type: "product",
+      duration: defaultDuration,
+      slidePack,
+      message: `🔥 ${sales.length} orders from ${account}!`,
+      songUrl: resolved.songUrl,
+      jingleId: resolved.jingleId,
+    };
   }
 
   if (config.celebration.celebrateSlideOrders) {

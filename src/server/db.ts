@@ -65,6 +65,38 @@ if (!smCols.some((c) => c.name === "song_label")) {
   db.exec(`ALTER TABLE song_mappings ADD COLUMN song_label TEXT DEFAULT ''`);
 }
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )
+`);
+
+// ── Runtime settings (DB overrides .env defaults) ───────────
+
+export function getSetting(key: string): string | null {
+  const row = db.prepare(`SELECT value FROM app_settings WHERE key = ?`).get(key) as
+    | { value: string }
+    | undefined;
+  return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+  db.prepare(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(key, value);
+}
+
+export function getAllSettings(): Record<string, string> {
+  const rows = db.prepare(`SELECT key, value FROM app_settings`).all() as {
+    key: string;
+    value: string;
+  }[];
+  const obj: Record<string, string> = {};
+  for (const r of rows) obj[r.key] = r.value;
+  return obj;
+}
+
 export function insertSale(sale: Sale): Sale {
   const metaJson = sale.meta ? JSON.stringify(sale.meta) : null;
   const stmt = db.prepare(`

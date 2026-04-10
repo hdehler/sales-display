@@ -31,6 +31,9 @@ import {
   getAllSongMappings,
   createSongMapping,
   deleteSongMapping,
+  getAllSettings,
+  getSetting,
+  setSetting,
 } from "./db.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 import { readdirSync, mkdirSync, writeFileSync } from "fs";
@@ -233,6 +236,49 @@ app.get("/api/songs/search", async (req, res) => {
     console.error("[Deezer] Search failed:", e);
     res.status(502).json({ error: "deezer_search_failed" });
   }
+});
+
+// ── App settings (runtime config) ─────────────────────────
+
+const SETTINGS_DEFAULTS: Record<string, string> = {
+  celebrationDuration: String(config.celebration.defaultDuration),
+  milestoneInterval: String(config.celebration.milestoneInterval),
+  celebrateSlideOrders: config.celebration.celebrateSlideOrders ? "true" : "false",
+  bigOrderThreshold: "0",
+  bigOrderSong: "",
+  bigOrderSongLabel: "",
+};
+
+function getEffectiveSettings(): Record<string, string> {
+  const stored = getAllSettings();
+  return { ...SETTINGS_DEFAULTS, ...stored };
+}
+
+{
+  const s = getEffectiveSettings();
+  config.celebration.defaultDuration = parseInt(s.celebrationDuration, 10) || 30;
+  config.celebration.milestoneInterval = parseInt(s.milestoneInterval, 10) || 0;
+  config.celebration.celebrateSlideOrders = s.celebrateSlideOrders === "true";
+}
+
+app.get("/api/settings", (_req, res) => {
+  res.json(getEffectiveSettings());
+});
+
+app.put("/api/settings", (req, res) => {
+  const body = req.body as Record<string, string>;
+  for (const [key, val] of Object.entries(body)) {
+    if (key in SETTINGS_DEFAULTS) {
+      setSetting(key, String(val));
+    }
+  }
+  const updated = getEffectiveSettings();
+
+  config.celebration.defaultDuration = parseInt(updated.celebrationDuration, 10) || 30;
+  config.celebration.milestoneInterval = parseInt(updated.milestoneInterval, 10) || 0;
+  config.celebration.celebrateSlideOrders = updated.celebrateSlideOrders === "true";
+
+  res.json(updated);
 });
 
 // ── Song files & mappings ─────────────────────────────────

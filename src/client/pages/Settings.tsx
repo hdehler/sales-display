@@ -1,33 +1,33 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { SongMapping } from "../../shared/types";
 import { JINGLES, playJingle, stopJingle } from "../lib/jingles";
 import { SongSearch, type SongChoice } from "../components/SongSearch";
 import { playSong } from "../lib/audio";
 
-interface SongFiles {
-  walkups: string[];
-  models: string[];
-  root: string[];
+interface AppSettings {
+  celebrationDuration: string;
+  milestoneInterval: string;
+  celebrateSlideOrders: string;
+  bigOrderThreshold: string;
+  bigOrderSong: string;
+  bigOrderSongLabel: string;
 }
 
 export default function Settings() {
-  const [songs, setSongs] = useState<SongFiles>({
-    walkups: [],
-    models: [],
-    root: [],
-  });
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [mappings, setMappings] = useState<SongMapping[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [songsRes, mappingsRes] = await Promise.all([
-        fetch("/api/songs").then((r) => r.json()),
+      const [settingsRes, mappingsRes] = await Promise.all([
+        fetch("/api/settings").then((r) => r.json()),
         fetch("/api/song-mappings").then((r) => r.json()),
       ]);
-      setSongs(songsRes as SongFiles);
+      setSettings(settingsRes as AppSettings);
       setMappings(mappingsRes as SongMapping[]);
     } catch (e) {
       console.error("Failed to load settings:", e);
@@ -38,6 +38,23 @@ export default function Settings() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  async function saveSettings(patch: Partial<AppSettings>) {
+    if (!settings) return;
+    const updated = { ...settings, ...patch };
+    setSettings(updated);
+    setSaving(true);
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch {
+      /* offline */
+    }
+    setSaving(false);
+  }
 
   function preview(jingleId: string) {
     if (previewingId === jingleId) {
@@ -60,8 +77,7 @@ export default function Settings() {
               Settings
             </h1>
             <p className="text-sm text-text-secondary mt-1">
-              Song mappings and audio configuration. Manage reps from the
-              dashboard Team button.
+              Celebration config, model song mappings, and big order songs.
             </p>
           </div>
           <a
@@ -72,12 +88,25 @@ export default function Settings() {
           </a>
         </div>
 
-        {loading ? (
+        {loading || !settings ? (
           <div className="text-text-muted text-sm py-12 text-center">
             Loading…
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Celebration config */}
+            <ConfigSection
+              settings={settings}
+              saving={saving}
+              onSave={saveSettings}
+            />
+
+            {/* Big order song */}
+            <BigOrderSection
+              settings={settings}
+              onSave={saveSettings}
+            />
+
             {/* Model → song mappings */}
             <MappingsSection mappings={mappings} onUpdate={fetchAll} />
 
@@ -87,8 +116,8 @@ export default function Settings() {
                 Built-in jingles
               </h3>
               <p className="text-xs text-text-muted mb-3">
-                These are the synth jingles available as walk-up songs or model
-                celebration songs. Tap to preview.
+                Synth jingles available for walk-ups, models, or big orders.
+                Tap to preview.
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {JINGLES.map((j) => (
@@ -120,15 +149,155 @@ export default function Settings() {
                 ))}
               </div>
             </div>
-
-            {/* Upload mp3 (optional, for custom songs) */}
-            <UploadSection songs={songs} onUpdate={fetchAll} />
           </div>
         )}
       </div>
     </div>
   );
 }
+
+// ── Config Section ──────────────────────────────────────────
+
+function ConfigSection({
+  settings,
+  saving,
+  onSave,
+}: {
+  settings: AppSettings;
+  saving: boolean;
+  onSave: (patch: Partial<AppSettings>) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+        Celebration
+      </h3>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-text-primary">
+              Celebrate all Slide orders
+            </div>
+            <div className="text-xs text-text-muted">
+              Show full-screen celebration for every incoming order
+            </div>
+          </div>
+          <button
+            onClick={() =>
+              onSave({
+                celebrateSlideOrders:
+                  settings.celebrateSlideOrders === "true" ? "false" : "true",
+              })
+            }
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              settings.celebrateSlideOrders === "true"
+                ? "bg-accent"
+                : "bg-text-muted/30"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                settings.celebrateSlideOrders === "true"
+                  ? "translate-x-5"
+                  : ""
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-text-muted block mb-1">
+              Celebration duration (seconds)
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={120}
+              value={settings.celebrationDuration}
+              onChange={(e) =>
+                onSave({ celebrationDuration: e.target.value })
+              }
+              className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted block mb-1">
+              Milestone every N orders (0 = off)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={settings.milestoneInterval}
+              onChange={(e) =>
+                onSave({ milestoneInterval: e.target.value })
+              }
+              className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+            />
+          </div>
+        </div>
+
+        {saving && (
+          <div className="text-[10px] text-accent">Saving…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Big Order Section ───────────────────────────────────────
+
+function BigOrderSection({
+  settings,
+  onSave,
+}: {
+  settings: AppSettings;
+  onSave: (patch: Partial<AppSettings>) => void;
+}) {
+  function handleSong(choice: SongChoice) {
+    onSave({
+      bigOrderSong: choice.value,
+      bigOrderSongLabel: choice.label,
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-1">
+        Big order celebration
+      </h3>
+      <p className="text-xs text-text-muted mb-4">
+        When a single batch has this many or more orders, play a special song
+        instead of the model default.
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs text-text-muted block mb-1">
+            Minimum orders to trigger (0 = disabled)
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={settings.bigOrderThreshold}
+            onChange={(e) =>
+              onSave({ bigOrderThreshold: e.target.value })
+            }
+            className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
+          />
+        </div>
+        <SongSearch
+          value={settings.bigOrderSong}
+          onChange={handleSong}
+          label="Big order song"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Model Mappings ──────────────────────────────────────────
 
 function MappingsSection({
   mappings,
@@ -334,132 +503,4 @@ function getSongLabel(song: string): string {
   if (jingle) return jingle.name;
   if (song.startsWith("http")) return "Deezer song";
   return song;
-}
-
-function UploadSection({
-  songs,
-  onUpdate,
-}: {
-  songs: SongFiles;
-  onUpdate: () => void;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadFolder, setUploadFolder] = useState<"walkups" | "models">(
-    "models",
-  );
-  const [uploading, setUploading] = useState(false);
-
-  async function uploadFile(file: File) {
-    setUploading(true);
-    const form = new FormData();
-    form.append("file", file);
-    form.append("folder", uploadFolder);
-    await fetch("/api/songs/upload", { method: "POST", body: form });
-    setUploading(false);
-    onUpdate();
-  }
-
-  return (
-    <div className="rounded-xl border border-border bg-surface-raised p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
-        Custom audio files (optional)
-      </h3>
-      <p className="text-xs text-text-muted mb-3">
-        Upload trimmed mp3/wav clips if you want a specific part of a song.
-        Then use them in model mappings or rep walk-up songs.
-      </p>
-      <div className="flex gap-3 items-end mb-4">
-        <div>
-          <label className="text-xs text-text-muted block mb-1">Folder</label>
-          <select
-            value={uploadFolder}
-            onChange={(e) =>
-              setUploadFolder(e.target.value as "walkups" | "models")
-            }
-            className="px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent"
-          >
-            <option value="walkups">Walk-ups</option>
-            <option value="models">Models</option>
-          </select>
-        </div>
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadFile(f);
-            }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="px-4 py-2 rounded-lg bg-accent text-surface font-medium text-sm hover:bg-accent/90 transition-colors disabled:opacity-50"
-          >
-            {uploading ? "Uploading…" : "Upload file"}
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4 text-xs">
-        <div>
-          <div className="text-text-muted mb-1">
-            Walk-ups ({songs.walkups.length})
-          </div>
-          {songs.walkups.map((f) => (
-            <div key={f} className="flex items-center gap-2 text-text-secondary py-0.5">
-              <PlayBtn src={`/sounds/walkups/${f}`} />
-              <span className="truncate">{f}</span>
-            </div>
-          ))}
-          {songs.walkups.length === 0 && (
-            <div className="text-text-muted">None</div>
-          )}
-        </div>
-        <div>
-          <div className="text-text-muted mb-1">
-            Models ({songs.models.length})
-          </div>
-          {songs.models.map((f) => (
-            <div key={f} className="flex items-center gap-2 text-text-secondary py-0.5">
-              <PlayBtn src={`/sounds/models/${f}`} />
-              <span className="truncate">{f}</span>
-            </div>
-          ))}
-          {songs.models.length === 0 && (
-            <div className="text-text-muted">None</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlayBtn({ src }: { src: string }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  function toggle() {
-    if (playing && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setPlaying(false);
-      return;
-    }
-    const a = new Audio(src);
-    audioRef.current = a;
-    a.play().catch(() => {});
-    a.onended = () => setPlaying(false);
-    setPlaying(true);
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      className="w-5 h-5 rounded-full bg-accent/20 hover:bg-accent/30 flex items-center justify-center text-accent text-[8px] transition-colors flex-shrink-0"
-    >
-      {playing ? "■" : "▶"}
-    </button>
-  );
 }
