@@ -47,6 +47,55 @@ export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
   return null;
 }
 
+/** After debounced Slide inserts; DB already has all rows. */
+export function shouldCelebrateSlidePack(
+  sales: Sale[],
+): CelebrationEvent | null {
+  if (sales.length === 0) return null;
+  const { triggerProducts, milestoneInterval, defaultDuration } =
+    config.celebration;
+  const first = sales[0];
+  const account = first.customer;
+  const slidePack = { account, count: sales.length, sales };
+
+  const packMessage =
+    sales.length === 1
+      ? `${account} — new order created`
+      : `${sales.length} orders from ${account}`;
+
+  if (triggerProducts.length > 0) {
+    const match = sales.some((sale) =>
+      triggerProducts.some((kw) =>
+        sale.product.toLowerCase().includes(kw.toLowerCase()),
+      ),
+    );
+    if (match) {
+      return {
+        sale: first,
+        type: "product",
+        duration: defaultDuration,
+        slidePack,
+        message: packMessage,
+      };
+    }
+  }
+
+  if (milestoneInterval > 0) {
+    const count = getTodaySaleCount();
+    if (count > 0 && count % milestoneInterval === 0) {
+      return {
+        sale: first,
+        type: "milestone",
+        duration: defaultDuration,
+        slidePack,
+        message: `${count} orders today!`,
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function triggerCelebration(
   event: CelebrationEvent,
 ): Promise<void> {
@@ -65,9 +114,10 @@ async function processQueue(): Promise<void> {
   processing = true;
   const event = queue.shift()!;
 
-  console.log(
-    `[Celebration] Starting: ${event.type} — ${event.sale.rep} $${event.sale.amount}`,
-  );
+  const packInfo = event.slidePack
+    ? `${event.slidePack.account} ×${event.slidePack.count}`
+    : `${event.sale.rep} $${event.sale.amount}`;
+  console.log(`[Celebration] Starting: ${event.type} — ${packInfo}`);
 
   onCelebration?.(event);
 

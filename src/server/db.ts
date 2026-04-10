@@ -108,13 +108,16 @@ export function getRecentSales(limit = 20): Sale[] {
   return rows.map(rowToSale);
 }
 
+/** Slide Cloud orders don’t include a salesperson — we rank by account (customer). */
 export function getLeaderboard(): LeaderboardEntry[] {
   const start = monthStart();
   return db
     .prepare(
-      `SELECT rep, SUM(amount) as total, COUNT(*) as count
+      `SELECT customer as name, COUNT(*) as count
        FROM sales WHERE timestamp >= ?
-       GROUP BY rep ORDER BY total DESC LIMIT 10`,
+       GROUP BY customer
+       ORDER BY count DESC
+       LIMIT 10`,
     )
     .all(start) as LeaderboardEntry[];
 }
@@ -178,10 +181,9 @@ export function getDashboardData(): DashboardData {
   return {
     recentSales: getRecentSales(),
     leaderboard: getLeaderboard(),
-    todayTotal: today.total,
-    weekTotal: week.total,
-    monthTotal: month.total,
     todayCount: today.count,
+    weekCount: week.count,
+    monthCount: month.count,
     dailyTotals: getDailyTotals(),
   };
 }

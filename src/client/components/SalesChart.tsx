@@ -13,15 +13,9 @@ function formatShortDate(dateStr: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function formatCurrency(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-  return `$${n.toFixed(0)}`;
-}
-
 export function SalesChart({ data }: { data: DailyTotal[] }) {
   const chartData = data.map((d) => ({
     date: formatShortDate(d.date),
-    total: d.total,
     count: d.count,
   }));
 
@@ -29,22 +23,22 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
     <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 p-6 flex flex-col h-full">
       <h2 className="text-lg font-bold mb-4 text-slate-200 flex items-center gap-2">
         <span className="text-blue-400">&#9679;</span>
-        Sales Trend
+        Order volume
         <span className="text-xs font-normal text-slate-500 ml-auto">
-          Last 14 Days
+          Last 14 days
         </span>
       </h2>
 
       {chartData.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-600 text-sm">
-          No sales data yet
+          No order data yet
         </div>
       ) : (
         <div className="flex-1 min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>
-                <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="ordersGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
                   <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
@@ -56,11 +50,11 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
                 tick={{ fill: "#64748b", fontSize: 11 }}
               />
               <YAxis
+                allowDecimals={false}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "#64748b", fontSize: 11 }}
-                tickFormatter={formatCurrency}
-                width={50}
+                width={36}
               />
               <Tooltip
                 contentStyle={{
@@ -70,17 +64,17 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
                   fontSize: "0.875rem",
                 }}
                 labelStyle={{ color: "#94a3b8" }}
-                formatter={(value: number) => [
-                  `$${value.toLocaleString()}`,
-                  "Revenue",
+                formatter={(value: number | undefined) => [
+                  `${value ?? 0} orders`,
+                  "Count",
                 ]}
               />
               <Area
                 type="monotone"
-                dataKey="total"
+                dataKey="count"
                 stroke="#10b981"
                 strokeWidth={2}
-                fill="url(#salesGrad)"
+                fill="url(#ordersGrad)"
               />
             </AreaChart>
           </ResponsiveContainer>

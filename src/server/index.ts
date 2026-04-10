@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
 import { config } from "./config.js";
+import { enqueueSlideOrder } from "./slideOrderBatcher.js";
 import {
   initSlack,
   setSaleCallback,
@@ -13,6 +14,7 @@ import {
 import { initPlugs } from "./plugs.js";
 import {
   shouldCelebrate,
+  shouldCelebrateSlidePack,
   triggerCelebration,
   setCelebrationCallback,
 } from "./celebration.js";
@@ -86,6 +88,18 @@ function ingestSlackSale(
 }
 
 setSaleCallback((sale) => {
+  if (sale.meta?.source === "slide_cloud") {
+    const saved = insertSaleIfNew(sale);
+    if (!saved) return;
+    io.emit("sale:new", saved);
+    broadcastDashboard();
+    enqueueSlideOrder(saved, config.slideBatchDebounceMs, (batch) => {
+      broadcastDashboard();
+      const ev = shouldCelebrateSlidePack(batch);
+      if (ev) triggerCelebration(ev);
+    });
+    return;
+  }
   ingestSlackSale(sale, { celebrate: true, notifySocket: true });
 });
 

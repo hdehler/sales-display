@@ -42,6 +42,12 @@ export const config = {
     milestoneInterval: parseInt(process.env.MILESTONE_INTERVAL || "10", 10),
   },
 
+  /** Quiet time (ms) after the last Slide order before flushing a batch for the same account */
+  slideBatchDebounceMs: parseInt(
+    process.env.SLIDE_BATCH_DEBOUNCE_MS || "4000",
+    10,
+  ),
+
   messagePatterns: [
     {
       regex: /\$([0-9,.]+)\s+(?:sale\s+)?(?:to|from)\s+(.+?)\s+(?:by|-)\s+(.+?)(?:\s*[-–—]\s*(.+))?$/i,

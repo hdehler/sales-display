@@ -22,10 +22,9 @@ export function Dashboard({ data }: { data: DashboardData }) {
 
       <div className="px-6 pb-6">
         <StatsCards
-          todayTotal={data.todayTotal}
-          weekTotal={data.weekTotal}
-          monthTotal={data.monthTotal}
           todayCount={data.todayCount}
+          weekCount={data.weekCount}
+          monthCount={data.monthCount}
         />
       </div>
     </div>

@@ -22,9 +22,9 @@ export interface Sale {
   meta?: SlideOrderMeta;
 }
 
+/** Ranked row: `name` is account/customer (Slide has no per-rep field in Slack). */
 export interface LeaderboardEntry {
-  rep: string;
-  total: number;
+  name: string;
   count: number;
 }
 
@@ -37,10 +37,10 @@ export interface DailyTotal {
 export interface DashboardData {
   recentSales: Sale[];
   leaderboard: LeaderboardEntry[];
-  todayTotal: number;
-  weekTotal: number;
-  monthTotal: number;
+  /** Order counts (no $ — Slide has no price in Slack) */
   todayCount: number;
+  weekCount: number;
+  monthCount: number;
   dailyTotals: DailyTotal[];
 }
 
@@ -49,4 +49,10 @@ export interface CelebrationEvent {
   type: "product" | "milestone";
   message?: string;
   duration: number;
+  /** Present when multiple Slide orders for one account are batched */
+  slidePack?: {
+    account: string;
+    count: number;
+    sales: Sale[];
+  };
 }

@@ -104,6 +104,7 @@ bash scripts/setup-pi.sh
 Sale posts from **Slide Cloud** use Slack **Block Kit** (structured fields like Account, Order, Hardware, Service), not plain text. The server parses those blocks automatically when it sees **New Order Created** (or Account + Order + Hardware/Service).
 
 - **Ticker / dashboard:** shows **order id** (e.g. `o_52x4laoem1w4`), **account**, and **hardware · service**.
+- **Leaderboard:** ranks **accounts** (customer) by order count this month — Slide does **not** send who sold the deal in Slack.
 - **Celebration overlay:** **NEW ORDER!** with order id and account (no dollar amount — Slide messages do not include price in the notification).
 - **Triggers:** use `CELEBRATION_TRIGGER_PRODUCTS` keywords that appear in the combined hardware/service line (e.g. `F1-16`, `Subscription`).
 
