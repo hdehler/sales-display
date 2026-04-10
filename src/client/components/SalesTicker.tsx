@@ -69,9 +69,14 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
                 </span>
                 <span className="text-slate-500">—</span>
                 <span className="text-emerald-400/90">new order created</span>
-                <span className="text-slate-600 font-mono text-xs">
-                  {row.sale.meta?.orderId}
-                </span>
+                {row.sale.product && (
+                  <>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400 max-w-[16rem] truncate">
+                      {row.sale.product}
+                    </span>
+                  </>
+                )}
               </>
             ) : (
               <>

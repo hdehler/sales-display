@@ -272,18 +272,14 @@ function buildSaleFromSlideFields(
   if (!/^o_[a-z0-9]+$/i.test(orderId)) return null;
 
   const hardware = fields.Hardware?.trim() || "";
-  const service = fields.Service?.trim() || "";
-  const product =
-    hardware && service
-      ? `${hardware} · ${service}`
-      : hardware || service || "Slide order";
+  const product = hardware || "Slide order";
 
   const meta: SlideOrderMeta = {
     source: "slide_cloud",
     orderId,
     region: fields["Datacenter Region"]?.trim(),
     hardware: hardware || undefined,
-    service: service || undefined,
+    service: fields.Service?.trim() || undefined,
     orderHistory: fields["Order History"]?.trim(),
     purchasedAt: fields["Purchased At"]?.trim(),
     earliestShipDate: fields["Earliest Ship Date"]?.trim(),

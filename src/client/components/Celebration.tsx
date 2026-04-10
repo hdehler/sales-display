@@ -126,24 +126,18 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
             </div>
           )}
 
-          {single && pack.sales[0]?.meta?.orderId && (
-            <div className="text-lg font-mono text-slate-400 mb-4">
-              {pack.sales[0].meta.orderId}
-            </div>
-          )}
-
-          {pack.sales[0]?.product && (
-            <div className="text-base text-slate-300 max-w-3xl mx-auto leading-snug">
-              {!single
-                ? pack.sales
-                    .map((s) => s.product)
-                    .filter(Boolean)
-                    .filter((p, idx, a) => a.indexOf(p) === idx)
-                    .slice(0, 4)
-                    .join(" · ")
-                : pack.sales[0].product}
-            </div>
-          )}
+          {(() => {
+            const products = pack.sales
+              .map((s) => s.product)
+              .filter(Boolean)
+              .filter((p, idx, a) => a.indexOf(p) === idx)
+              .slice(0, 4);
+            return products.length > 0 ? (
+              <div className="text-xl md:text-2xl text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
+                {products.join(" · ")}
+              </div>
+            ) : null;
+          })()}
 
           {event.message && (
             <motion.div
@@ -193,9 +187,11 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
         </motion.div>
 
         {isSlide ? (
-          <div className="text-5xl md:text-7xl font-black mb-6 text-white drop-shadow-2xl font-mono tracking-tight break-all max-w-[90vw]">
-            {event.sale.meta!.orderId}
-          </div>
+          event.sale.product ? (
+            <div className="text-3xl md:text-4xl font-bold mb-6 text-white drop-shadow-2xl max-w-[90vw]">
+              {event.sale.product}
+            </div>
+          ) : null
         ) : event.sale.amount > 0 ? (
           <div className="text-8xl font-black mb-8 text-white drop-shadow-2xl">
             {formatCurrency(event.sale.amount)}
@@ -207,20 +203,13 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
         <div className="text-3xl font-bold text-emerald-400 mb-3">
           {event.sale.customer}
         </div>
-        {isSlide ? (
-          <div className="text-sm text-slate-500 mb-2">
-            {event.sale.customer} — new order created
-          </div>
-        ) : event.sale.rep.trim() ? (
+        {!isSlide && event.sale.rep.trim() ? (
           <div className="text-xl text-slate-400 mb-2">{event.sale.rep}</div>
         ) : null}
-        {event.sale.product && (
+        {!isSlide && event.sale.product && (
           <div className="text-lg text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
             {event.sale.product}
           </div>
-        )}
-        {isSlide && event.sale.meta?.region && (
-          <div className="text-sm text-slate-500 mt-3">{event.sale.meta.region}</div>
         )}
         {event.message && (
           <motion.div
