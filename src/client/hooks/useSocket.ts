@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { DashboardData, CelebrationEvent } from "../../shared/types";
 
-const SOCKET_URL = import.meta.env.DEV ? "http://localhost:3000" : "";
+function socketIoUrl(): string {
+  if (import.meta.env.DEV) return "http://localhost:3000";
+  if (typeof window !== "undefined" && window.location?.origin)
+    return window.location.origin;
+  return "";
+}
 
 export function useSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -11,11 +16,26 @@ export function useSocket() {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const s = io(SOCKET_URL);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/dashboard");
+        if (!r.ok) return;
+        const data = (await r.json()) as DashboardData;
+        if (!cancelled) setDashboard(data);
+      } catch {
+        /* server down or dev without proxy */
+      }
+    })();
+
+    const s = io(socketIoUrl(), {
+      transports: ["websocket", "polling"],
+    });
     setSocket(s);
 
     s.on("connect", () => setConnected(true));
     s.on("disconnect", () => setConnected(false));
+    s.on("connect_error", () => setConnected(false));
 
     s.on("dashboard:update", (data: DashboardData) => {
       setDashboard(data);
@@ -30,6 +50,7 @@ export function useSocket() {
     });
 
     return () => {
+      cancelled = true;
       s.disconnect();
     };
   }, []);

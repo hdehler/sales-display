@@ -58,6 +58,14 @@ export const config = {
 
   messagePatterns: [
     {
+      regex: /^(.+?)\s+sold\s+\$([0-9,.]+)\s+to\s+(.+)$/i,
+      groups: { rep: 1, amount: 2, customer: 3, product: 4 },
+    },
+    {
+      regex: /^(.+?)\s+sold\s+\$([0-9,.]+)\s+for\s+(.+)$/i,
+      groups: { rep: 1, amount: 2, customer: 3, product: 4 },
+    },
+    {
       regex: /\$([0-9,.]+)\s+(?:sale\s+)?(?:to|from)\s+(.+?)\s+(?:by|-)\s+(.+?)(?:\s*[-–—]\s*(.+))?$/i,
       groups: { amount: 1, customer: 2, rep: 3, product: 4 },
     },

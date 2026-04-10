@@ -47,10 +47,19 @@ app.get("/api/stats", (_req, res) => {
   });
 });
 
+/** Same payload as `dashboard:update` — lets the Pi UI load even if Socket.IO is flaky. */
+app.get("/api/dashboard", (_req, res) => {
+  res.json(getDashboardData());
+});
+
 if (process.env.NODE_ENV === "production") {
   const clientDir = path.join(__dirname, "../../dist/client");
   app.use(express.static(clientDir));
-  app.get("/{*splat}", (_req, res) => {
+  app.get("/{*splat}", (req, res) => {
+    if (req.path.startsWith("/api")) {
+      res.status(404).json({ error: "unknown_api_route", path: req.path });
+      return;
+    }
     res.sendFile(path.join(clientDir, "index.html"));
   });
 }

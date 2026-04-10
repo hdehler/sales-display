@@ -12,6 +12,7 @@ export interface SlideOrderMeta {
 
 export interface Sale {
   id?: number;
+  /** Empty when `meta.source === "slide_cloud"` — Slide does not include who sold the deal. */
   rep: string;
   customer: string;
   product: string;

@@ -1,6 +1,15 @@
 import { config } from "./config.js";
-import { parseSlideOrderFromSlackMessage } from "./parseSlideOrder.js";
+import {
+  parseSlideOrderFromSlackMessage,
+  slackPrimaryTextBody,
+} from "./parseSlideOrder.js";
 import type { Sale } from "../shared/types.js";
+
+/**
+ * Ingest flow: Slack messages → parse → SQLite `sales` (not an external “orders” DB).
+ * 1) Slide / order bot: run-on “Account…Order…” (and Block Kit) → **customer = account**, **order id** in meta, **rep = ""** (no salesperson in Slack).
+ * 2) Manual channel posts: regexes on message text (see config.messagePatterns).
+ */
 
 /** Slack message `ts` (seconds.micros) → ISO timestamp for DB ordering */
 export function slackTsToIso(ts: string): string {
@@ -36,9 +45,9 @@ export function parseMessageToSale(msg: Record<string, unknown>): Sale | null {
   let sale: Sale | null = parseSlideOrderFromSlackMessage(msg, ts);
 
   if (!sale) {
-    const text = typeof msg.text === "string" ? msg.text : "";
-    if (!text) return null;
-    sale = parsePlainTextSale(text, ts);
+    const text = slackPrimaryTextBody(msg);
+    if (!text.trim()) return null;
+    sale = parsePlainTextSale(text.trim(), ts);
   }
 
   if (sale && ts) {

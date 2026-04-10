@@ -211,9 +211,9 @@ export function Celebration({ event }: { event: CelebrationEvent }) {
           <div className="text-sm text-slate-500 mb-2">
             {event.sale.customer} — new order created
           </div>
-        ) : (
+        ) : event.sale.rep.trim() ? (
           <div className="text-xl text-slate-400 mb-2">{event.sale.rep}</div>
-        )}
+        ) : null}
         {event.sale.product && (
           <div className="text-lg text-slate-300 mt-2 max-w-3xl mx-auto leading-snug">
             {event.sale.product}

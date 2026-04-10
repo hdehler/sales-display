@@ -140,8 +140,10 @@ function getBlocksFromMessage(msg: Record<string, unknown>): unknown[] | null {
   return null;
 }
 
-/** Plain body for sequential Slide parse — some apps only populate `text`, others `attachments[].fallback`. */
-function getCandidateSlidePlaintext(msg: Record<string, unknown>): string {
+/**
+ * Top-level message text or attachment fallback (used for Slide sequential parse and manual $-sale lines).
+ */
+export function slackPrimaryTextBody(msg: Record<string, unknown>): string {
   const t = typeof msg.text === "string" ? msg.text : "";
   if (t.trim()) return t;
   const atts = msg.attachments;
@@ -293,7 +295,7 @@ function buildSaleFromSlideFields(
     .join("\n");
 
   return {
-    rep: "Slide Cloud",
+    rep: "",
     customer,
     product,
     amount: 0,
@@ -310,7 +312,7 @@ export function parseSlideOrderFromSlackMessage(
 ): Sale | null {
   const blocks = getBlocksFromMessage(msg);
   const flattened = blocks ? flattenBlocksForSlideSequential(blocks) : "";
-  const topText = getCandidateSlidePlaintext(msg);
+  const topText = slackPrimaryTextBody(msg);
 
   if (blocks) {
     const fromBlocks = extractKeyValuesFromBlocks(blocks);

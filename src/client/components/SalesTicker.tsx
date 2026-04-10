@@ -78,8 +78,12 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
                 <span className="font-medium text-slate-200">
                   {row.sale.customer}
                 </span>
-                <span className="text-slate-600">·</span>
-                <span className="text-slate-400">{row.sale.rep}</span>
+                {row.sale.rep.trim() ? (
+                  <>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400">{row.sale.rep}</span>
+                  </>
+                ) : null}
                 {row.sale.product ? (
                   <>
                     <span className="text-slate-600">·</span>
