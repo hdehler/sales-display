@@ -36,6 +36,16 @@ export const config = {
       process.env.SLACK_BACKFILL_PAGE_DELAY_MS || "1200",
       10,
     ),
+    /**
+     * Poll conversations.history on the sales channel (ms). Socket Mode often does NOT deliver
+     * `message` events for other apps’ bots unless `message.channels` is subscribed — polling
+     * still picks up Slide. Set to 0 to disable.
+     */
+    pollHistoryMs: parseInt(process.env.SLACK_POLL_HISTORY_MS || "30000", 10),
+    /** Log every incoming message event (channel, subtype) — proves whether Socket delivers events */
+    logMessageEvents:
+      process.env.SLACK_LOG_MESSAGE_EVENTS === "1" ||
+      process.env.SLACK_LOG_MESSAGE_EVENTS === "true",
   },
 
   plugs: {

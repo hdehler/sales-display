@@ -14,6 +14,15 @@ function shouldRefetchMessageForParse(msg: Record<string, unknown>): boolean {
   return false;
 }
 
+/**
+ * Ignore edits, deletes, joins, etc. User posts have no subtype; Slide uses `bot_message`.
+ */
+function isProcessableMessageSubtype(msg: Record<string, unknown>): boolean {
+  const sub = typeof msg.subtype === "string" ? msg.subtype : "";
+  if (!sub) return true;
+  return sub === "bot_message";
+}
+
 type SaleCallback = (sale: Sale) => void;
 let onSale: SaleCallback | null = null;
 
@@ -54,25 +63,23 @@ export async function initSlack(): Promise<void> {
     logLevel: LogLevel.WARN,
   });
 
-  slackApp.message(async ({ message, client }) => {
-    if (!("channel" in message)) return;
+  async function handleSalesChannelMessage(
+    message: Record<string, unknown>,
+    client: WebClient,
+    opts?: { fromPoll?: boolean },
+  ): Promise<void> {
+    if (!("channel" in message) || typeof message.channel !== "string") return;
 
     const configuredCh = config.slack.salesChannelId;
-    const incomingCh =
-      typeof message.channel === "string"
-        ? message.channel.toUpperCase()
-        : "";
-    if (configuredCh && incomingCh !== configuredCh) {
-      return;
-    }
+    const incomingCh = message.channel.toUpperCase();
+    if (configuredCh && incomingCh !== configuredCh) return;
 
-    const msg = message as unknown as Record<string, unknown>;
+    const msg = message;
     let sale = parseMessageToSale(msg);
 
     if (
       !sale &&
       shouldRefetchMessageForParse(msg) &&
-      typeof message.channel === "string" &&
       typeof message.ts === "string"
     ) {
       try {
@@ -103,6 +110,14 @@ export async function initSlack(): Promise<void> {
     }
 
     if (!sale) {
+      const fromBot = Boolean(msg.bot_id || msg.subtype === "bot_message");
+      if (fromBot && configuredCh && !opts?.fromPoll) {
+        const nBlocks = Array.isArray(msg.blocks) ? msg.blocks.length : 0;
+        const tLen = typeof msg.text === "string" ? msg.text.length : 0;
+        console.warn(
+          `[Slack] Unparsed app/bot message in sales channel (ts=${msg.ts}) blocks=${nBlocks} textLen=${tLen}. If Slide posts look correct, set SLACK_DEBUG_PARSE=1 and restart.`,
+        );
+      }
       if (
         config.slack.debugParse &&
         config.slack.salesChannelId &&
@@ -136,21 +151,96 @@ export async function initSlack(): Promise<void> {
       );
     }
     onSale?.(sale);
+  }
+
+  // Use raw `message` events so other apps’ `bot_message` payloads are not skipped (more reliable than `app.message()`).
+  slackApp.event("message", async ({ event, client }) => {
+    const ev = event as unknown as Record<string, unknown>;
+    if (config.slack.logMessageEvents) {
+      console.log(
+        `[Slack] socket message event ch=${ev.channel} subtype=${ev.subtype === undefined ? "(none)" : String(ev.subtype)} bot=${ev.bot_id ? "yes" : "no"} blocks=${Array.isArray(ev.blocks) ? ev.blocks.length : 0}`,
+      );
+    }
+    if (!isProcessableMessageSubtype(ev)) return;
+    await handleSalesChannelMessage(ev, client as WebClient);
   });
 
   await slackApp.start();
   console.log("[Slack] Connected via Socket Mode");
+  console.log(
+    "[Slack] If other bots’ posts never log anything, add Event Subscriptions → Subscribe to bot events → message.channels at api.slack.com/apps (then reinstall to workspace).",
+  );
 
-  void verifySalesChannel(slackApp.client as WebClient);
+  const slackClient = slackApp.client as WebClient;
+  void verifySalesChannel(slackClient);
+  startSalesChannelHistoryPoll(
+    slackClient,
+    config.slack.pollHistoryMs,
+    handleSalesChannelMessage,
+  );
 
   if (
     config.slack.backfillOnStart &&
     config.slack.salesChannelId &&
     onHistorySale
   ) {
-    const client = slackApp.client as WebClient;
-    void runBackfillJob(client);
+    void runBackfillJob(slackClient);
   }
+}
+
+function startSalesChannelHistoryPoll(
+  client: WebClient,
+  intervalMs: number,
+  handleMessage: (
+    m: Record<string, unknown>,
+    c: WebClient,
+    o?: { fromPoll?: boolean },
+  ) => Promise<void>,
+): void {
+  const channel = config.slack.salesChannelId;
+  if (intervalMs <= 0 || !channel) {
+    if (intervalMs > 0 && !channel) {
+      console.warn(
+        "[Slack] SLACK_POLL_HISTORY_MS is set but SLACK_SALES_CHANNEL_ID is empty — poll disabled.",
+      );
+    }
+    return;
+  }
+
+  let busy = false;
+  const tick = async (): Promise<void> => {
+    if (busy) return;
+    busy = true;
+    try {
+      const r = await client.conversations.history({
+        channel,
+        limit: 50,
+      });
+      if (!r.ok || !r.messages?.length) return;
+      const ordered = [...r.messages].reverse();
+      for (const raw of ordered) {
+        const rec = {
+          ...(raw as object),
+          channel,
+        } as Record<string, unknown>;
+        if (!isProcessableMessageSubtype(rec)) continue;
+        await handleMessage(rec, client, { fromPoll: true });
+      }
+    } catch (e) {
+      console.warn(
+        "[Slack] Poll conversations.history failed:",
+        e instanceof Error ? e.message : e,
+      );
+    } finally {
+      busy = false;
+    }
+  };
+
+  console.log(
+    `[Slack] Polling #${channel.slice(0, 4)}… every ${intervalMs}ms (catches Slide if Socket events are missing). Set SLACK_POLL_HISTORY_MS=0 to disable.`,
+  );
+  void tick();
+  setInterval(() => void tick(), intervalMs);
 }
 
 async function verifySalesChannel(client: WebClient): Promise<void> {
