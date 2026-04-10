@@ -37,6 +37,61 @@ function shouldSkipSlackMessageSubtype(msg: Record<string, unknown>): boolean {
   return SKIP_MESSAGE_SUBTYPES.has(sub);
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Re-fetch a single message via conversations.history (Socket payloads for other bots
+ * often arrive with blocks=0, text=""). Waits 2s before the first attempt so Slack
+ * has time to materialize the full message; retries once after a rate-limit pause.
+ */
+async function refetchAndParse(
+  client: WebClient,
+  channel: string,
+  ts: string,
+  attempt = 1,
+): Promise<Sale | null> {
+  const MAX_ATTEMPTS = 2;
+  const INITIAL_DELAY_MS = 2000;
+  const RATE_LIMIT_WAIT_MS = 12000;
+
+  if (attempt === 1) await sleep(INITIAL_DELAY_MS);
+
+  try {
+    const hist = await client.conversations.history({
+      channel,
+      oldest: ts,
+      latest: ts,
+      inclusive: true,
+      limit: 1,
+    });
+    const full = hist.messages?.[0] as unknown as
+      | Record<string, unknown>
+      | undefined;
+    if (!full) return null;
+    const sale = parseMessageToSale(full);
+    if (sale) {
+      console.log(
+        "[Slack] Parsed after conversations.history re-fetch (Socket payload was incomplete).",
+      );
+    }
+    return sale;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("rate") && attempt < MAX_ATTEMPTS) {
+      console.warn(
+        `[Slack] Re-fetch rate-limited; waiting ${RATE_LIMIT_WAIT_MS}ms then retrying (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
+      );
+      await sleep(RATE_LIMIT_WAIT_MS);
+      return refetchAndParse(client, channel, ts, attempt + 1);
+    }
+    console.warn(
+      "[Slack] conversations.history re-fetch failed:",
+      msg,
+    );
+    return null;
+  }
+}
+
 type SaleCallback = (sale: Sale) => void;
 let onSale: SaleCallback | null = null;
 
@@ -96,31 +151,11 @@ export async function initSlack(): Promise<void> {
       shouldRefetchMessageForParse(msg) &&
       typeof message.ts === "string"
     ) {
-      try {
-        const hist = await client.conversations.history({
-          channel: message.channel,
-          oldest: message.ts,
-          latest: message.ts,
-          inclusive: true,
-          limit: 1,
-        });
-        const full = hist.messages?.[0] as unknown as
-          | Record<string, unknown>
-          | undefined;
-        if (full) {
-          sale = parseMessageToSale(full);
-          if (sale) {
-            console.log(
-              "[Slack] Parsed after conversations.history re-fetch (Socket payload was incomplete).",
-            );
-          }
-        }
-      } catch (err) {
-        console.warn(
-          "[Slack] conversations.history re-fetch failed (need channels:history + bot in channel):",
-          err instanceof Error ? err.message : err,
-        );
-      }
+      sale = await refetchAndParse(
+        client,
+        message.channel,
+        message.ts as string,
+      );
     }
 
     if (!sale) {
@@ -240,7 +275,7 @@ function startSalesChannelHistoryPoll(
     try {
       const r = await client.conversations.history({
         channel,
-        limit: 50,
+        limit: 10,
       });
       if (!r.ok) {
         if (config.slack.logPoll) {
