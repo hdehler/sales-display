@@ -93,6 +93,16 @@ export function shouldCelebrateSlidePack(
     }
   }
 
+  if (config.celebration.celebrateSlideOrders) {
+    return {
+      sale: first,
+      type: "product",
+      duration: defaultDuration,
+      slidePack,
+      message: packMessage,
+    };
+  }
+
   return null;
 }
 

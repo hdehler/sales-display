@@ -44,11 +44,15 @@ export const config = {
       .split(",")
       .filter(Boolean),
     milestoneInterval: parseInt(process.env.MILESTONE_INTERVAL || "10", 10),
+    /** Every Slide order shows the full-screen celebration (set false to only use keywords/milestone below). */
+    celebrateSlideOrders:
+      process.env.CELEBRATE_SLIDE_ORDERS !== "false" &&
+      process.env.CELEBRATE_SLIDE_ORDERS !== "0",
   },
 
   /** Quiet time (ms) after the last Slide order before flushing a batch for the same account */
   slideBatchDebounceMs: parseInt(
-    process.env.SLIDE_BATCH_DEBOUNCE_MS || "4000",
+    process.env.SLIDE_BATCH_DEBOUNCE_MS || "1500",
     10,
   ),
 
