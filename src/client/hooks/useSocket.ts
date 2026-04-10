@@ -45,6 +45,10 @@ export function useSocket() {
       setCelebration(event);
     });
 
+    s.on("celebration:walkup", (event: CelebrationEvent) => {
+      setCelebration(event);
+    });
+
     s.on("celebration:end", () => {
       setCelebration(null);
     });

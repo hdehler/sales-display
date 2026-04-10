@@ -17,17 +17,18 @@
     "@slack/bolt": "^4.7.0",
     "better-sqlite3": "^12.8.0",
     "canvas-confetti": "^1.9.4",
+    "concurrently": "^9.2.1",
     "dotenv": "^17.4.1",
     "electron": "^35.0.0",
     "express": "^5.2.1",
     "framer-motion": "^12.38.0",
+    "multer": "^2.1.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "recharts": "^3.8.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "tplink-smarthome-api": "^5.0.0",
-    "concurrently": "^9.2.1"
+    "tplink-smarthome-api": "^5.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
@@ -35,6 +36,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

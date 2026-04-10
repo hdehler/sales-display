@@ -6,4 +6,3 @@ data/
 *.db-journal
 *.db-wal
 git reset --hard HEAD~1
-dashboard-main/

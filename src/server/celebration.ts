@@ -1,6 +1,12 @@
 import { config } from "./config.js";
 import { setAllPlugs } from "./plugs.js";
-import { getTodaySaleCount } from "./db.js";
+import {
+  getTodaySaleCount,
+  getSongForModel,
+  getDefaultSong,
+  getRepById,
+  claimSale,
+} from "./db.js";
 import type { Sale, CelebrationEvent } from "../shared/types.js";
 
 type CelebrationCallback = (event: CelebrationEvent) => void;
@@ -14,9 +20,21 @@ export function setCelebrationCallback(cb: CelebrationCallback): void {
   onCelebration = cb;
 }
 
+function resolveSongUrl(product?: string): string | undefined {
+  if (product) {
+    const modelSong = getSongForModel(product);
+    if (modelSong) return `/sounds/models/${modelSong}`;
+  }
+  const def = getDefaultSong();
+  if (def) return `/sounds/${def}`;
+  return undefined;
+}
+
 export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
   const { triggerProducts, milestoneInterval, defaultDuration } =
     config.celebration;
+
+  const songUrl = resolveSongUrl(sale.product);
 
   if (triggerProducts.length > 0) {
     const match = triggerProducts.some((kw) =>
@@ -28,6 +46,7 @@ export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
         type: "product",
         message: `${sale.rep} just closed a deal!`,
         duration: defaultDuration,
+        songUrl,
       };
     }
   }
@@ -40,6 +59,7 @@ export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
         type: "milestone",
         message: `${count} sales today!`,
         duration: defaultDuration,
+        songUrl,
       };
     }
   }
@@ -57,6 +77,7 @@ export function shouldCelebrateSlidePack(
   const first = sales[0];
   const account = first.customer;
   const slidePack = { account, count: sales.length, sales };
+  const songUrl = resolveSongUrl(first.product);
 
   const packMessage =
     sales.length === 1
@@ -76,6 +97,7 @@ export function shouldCelebrateSlidePack(
         duration: defaultDuration,
         slidePack,
         message: packMessage,
+        songUrl,
       };
     }
   }
@@ -89,6 +111,7 @@ export function shouldCelebrateSlidePack(
         duration: defaultDuration,
         slidePack,
         message: `${count} orders today!`,
+        songUrl,
       };
     }
   }
@@ -100,6 +123,7 @@ export function shouldCelebrateSlidePack(
       duration: defaultDuration,
       slidePack,
       message: packMessage,
+      songUrl,
     };
   }
 
@@ -146,6 +170,32 @@ async function processQueue(): Promise<void> {
     console.log("[Celebration] Ended");
     setTimeout(() => processQueue(), 2000);
   }, event.duration * 1000);
+}
+
+export function buildWalkupCelebration(
+  saleId: number,
+  repId: number,
+): CelebrationEvent | null {
+  const sale = claimSale(saleId, repId);
+  if (!sale) return null;
+  const rep = getRepById(repId);
+  if (!rep) return null;
+
+  const songUrl = rep.walkup_song
+    ? `/sounds/walkups/${rep.walkup_song}`
+    : resolveSongUrl(sale.product);
+
+  return {
+    sale,
+    type: "walkup",
+    message: `${rep.name} closed it!`,
+    duration: config.celebration.defaultDuration,
+    songUrl,
+    rep: {
+      name: rep.name,
+      avatarColor: rep.avatar_color,
+    },
+  };
 }
 
 export function cancelCelebration(): void {

@@ -18,9 +18,23 @@ import {
   shouldCelebrateSlidePack,
   triggerCelebration,
   setCelebrationCallback,
+  buildWalkupCelebration,
 } from "./celebration.js";
-import { insertSaleIfNew, getDashboardData, getSalesStats } from "./db.js";
+import {
+  insertSaleIfNew,
+  getDashboardData,
+  getSalesStats,
+  getAllReps,
+  createRep,
+  updateRep,
+  deleteRep,
+  getAllSongMappings,
+  createSongMapping,
+  deleteSongMapping,
+} from "./db.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
+import { readdirSync, mkdirSync, writeFileSync } from "fs";
+import multer from "multer";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -110,6 +124,191 @@ app.get("/api/dashboard", (_req, res) => {
   res.json(getDashboardData());
 });
 
+// ── JSON body parser ──────────────────────────────────────
+app.use(express.json());
+
+// ── Reps CRUD ─────────────────────────────────────────────
+
+app.get("/api/reps", (_req, res) => {
+  const rows = getAllReps();
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      walkupSong: r.walkup_song,
+      avatarColor: r.avatar_color,
+    })),
+  );
+});
+
+app.post("/api/reps", (req, res) => {
+  const { name, walkupSong, avatarColor } = req.body as {
+    name?: string;
+    walkupSong?: string;
+    avatarColor?: string;
+  };
+  if (!name?.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+  try {
+    const r = createRep(name.trim(), walkupSong, avatarColor);
+    res.json({
+      id: r.id,
+      name: r.name,
+      walkupSong: r.walkup_song,
+      avatarColor: r.avatar_color,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE")) {
+      res.status(409).json({ error: "rep_already_exists" });
+      return;
+    }
+    throw e;
+  }
+});
+
+app.put("/api/reps/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { name, walkupSong, avatarColor } = req.body as {
+    name?: string;
+    walkupSong?: string | null;
+    avatarColor?: string;
+  };
+  const r = updateRep(id, { name, walkupSong, avatarColor });
+  if (!r) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({
+    id: r.id,
+    name: r.name,
+    walkupSong: r.walkup_song,
+    avatarColor: r.avatar_color,
+  });
+});
+
+app.delete("/api/reps/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (deleteRep(id)) {
+    res.json({ ok: true });
+  } else {
+    res.status(404).json({ error: "not_found" });
+  }
+});
+
+// ── Song files & mappings ─────────────────────────────────
+
+const soundsRoot = path.join(__dirname, "../../public/sounds");
+
+function listSoundFiles(): {
+  walkups: string[];
+  models: string[];
+  root: string[];
+} {
+  const readDir = (sub: string) => {
+    try {
+      return readdirSync(path.join(soundsRoot, sub)).filter((f) =>
+        /\.(mp3|wav|ogg|m4a|webm)$/i.test(f),
+      );
+    } catch {
+      return [];
+    }
+  };
+  let root: string[] = [];
+  try {
+    root = readdirSync(soundsRoot).filter(
+      (f) => /\.(mp3|wav|ogg|m4a|webm)$/i.test(f),
+    );
+  } catch {
+    /* no root files */
+  }
+  return { walkups: readDir("walkups"), models: readDir("models"), root };
+}
+
+app.get("/api/songs", (_req, res) => {
+  res.json(listSoundFiles());
+});
+
+const upload = multer({ limits: { fileSize: 20 * 1024 * 1024 } });
+
+app.post("/api/songs/upload", upload.single("file"), (req, res) => {
+  const folder = (req.body?.folder as string) || "walkups";
+  if (!["walkups", "models", "root"].includes(folder)) {
+    res.status(400).json({ error: "invalid_folder" });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ error: "no_file" });
+    return;
+  }
+  const dest =
+    folder === "root" ? soundsRoot : path.join(soundsRoot, folder);
+  mkdirSync(dest, { recursive: true });
+  const filename = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+  writeFileSync(path.join(dest, filename), req.file.buffer);
+  res.json({ ok: true, filename, folder });
+});
+
+app.get("/api/song-mappings", (_req, res) => {
+  const rows = getAllSongMappings();
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      matchType: r.match_type,
+      matchValue: r.match_value,
+      songFile: r.song_file,
+    })),
+  );
+});
+
+app.post("/api/song-mappings", (req, res) => {
+  const { matchType, matchValue, songFile } = req.body as {
+    matchType?: string;
+    matchValue?: string | null;
+    songFile?: string;
+  };
+  if (!matchType || !songFile) {
+    res.status(400).json({ error: "matchType and songFile required" });
+    return;
+  }
+  const m = createSongMapping(matchType, matchValue ?? null, songFile);
+  res.json({
+    id: m.id,
+    matchType: m.match_type,
+    matchValue: m.match_value,
+    songFile: m.song_file,
+  });
+});
+
+app.delete("/api/song-mappings/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (deleteSongMapping(id)) {
+    res.json({ ok: true });
+  } else {
+    res.status(404).json({ error: "not_found" });
+  }
+});
+
+// ── Sale claim (walk-up trigger) ──────────────────────────
+
+app.post("/api/sales/:id/claim", (req, res) => {
+  const saleId = parseInt(req.params.id, 10);
+  const { repId } = req.body as { repId?: number };
+  if (!repId) {
+    res.status(400).json({ error: "repId is required" });
+    return;
+  }
+  const ev = buildWalkupCelebration(saleId, repId);
+  if (!ev) {
+    res.status(404).json({ error: "sale or rep not found" });
+    return;
+  }
+  triggerCelebration(ev);
+  res.json({ ok: true, celebration: ev });
+});
+
 if (process.env.NODE_ENV === "production") {
   const clientDir = path.join(__dirname, "../../dist/client");
   app.use(express.static(clientDir));
@@ -133,7 +332,9 @@ function broadcastDashboard(): void {
 }
 
 setCelebrationCallback((event: CelebrationEvent) => {
-  io.emit("celebration:start", event);
+  const eventName =
+    event.type === "walkup" ? "celebration:walkup" : "celebration:start";
+  io.emit(eventName, event);
   setTimeout(() => io.emit("celebration:end"), event.duration * 1000);
 });
 

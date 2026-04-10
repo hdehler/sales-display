@@ -47,7 +47,7 @@ export interface DashboardData {
 
 export interface CelebrationEvent {
   sale: Sale;
-  type: "product" | "milestone";
+  type: "product" | "milestone" | "walkup";
   message?: string;
   duration: number;
   /** Present when multiple Slide orders for one account are batched */
@@ -56,4 +56,25 @@ export interface CelebrationEvent {
     count: number;
     sales: Sale[];
   };
+  /** Path to audio file to play (resolved server-side) */
+  songUrl?: string;
+  /** Present for walk-up celebrations after a rep claims the sale */
+  rep?: {
+    name: string;
+    avatarColor?: string;
+  };
+}
+
+export interface Rep {
+  id: number;
+  name: string;
+  walkupSong: string | null;
+  avatarColor: string;
+}
+
+export interface SongMapping {
+  id: number;
+  matchType: string;
+  matchValue: string | null;
+  songFile: string;
 }

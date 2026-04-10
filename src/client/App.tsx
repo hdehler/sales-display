@@ -1,10 +1,18 @@
 import { AnimatePresence } from "framer-motion";
+import { useRef } from "react";
 import { useSocket } from "./hooks/useSocket";
 import { Dashboard } from "./components/Dashboard";
 import { Celebration } from "./components/Celebration";
+import { ClaimOverlay } from "./components/ClaimOverlay";
+import type { CelebrationEvent } from "../shared/types";
 
 export default function App() {
   const { dashboard, celebration, connected } = useSocket();
+  const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
+
+  if (celebration && celebration.type !== "walkup") {
+    lastCelebrationRef.current = celebration;
+  }
 
   return (
     <div className="h-screen w-screen bg-surface text-text-primary overflow-hidden relative">
@@ -54,6 +62,8 @@ export default function App() {
       <AnimatePresence>
         {celebration && <Celebration event={celebration} />}
       </AnimatePresence>
+
+      <ClaimOverlay lastCelebration={lastCelebrationRef.current} />
     </div>
   );
 }

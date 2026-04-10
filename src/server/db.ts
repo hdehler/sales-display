@@ -31,12 +31,33 @@ db.exec(`
   )
 `);
 
-const columns = db
+const salesCols = db
   .prepare(`PRAGMA table_info(sales)`)
   .all() as { name: string }[];
-if (!columns.some((c) => c.name === "meta_json")) {
+if (!salesCols.some((c) => c.name === "meta_json")) {
   db.exec(`ALTER TABLE sales ADD COLUMN meta_json TEXT`);
 }
+if (!salesCols.some((c) => c.name === "claimed_by")) {
+  db.exec(`ALTER TABLE sales ADD COLUMN claimed_by INTEGER REFERENCES reps(id)`);
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    walkup_song TEXT,
+    avatar_color TEXT DEFAULT '#e2a336'
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS song_mappings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_type TEXT NOT NULL,
+    match_value TEXT,
+    song_file TEXT NOT NULL
+  )
+`);
 
 export function insertSale(sale: Sale): Sale {
   const metaJson = sale.meta ? JSON.stringify(sale.meta) : null;
@@ -186,6 +207,143 @@ export function getDashboardData(): DashboardData {
     monthCount: month.count,
     dailyTotals: getDailyTotals(),
   };
+}
+
+// ── Reps ────────────────────────────────────────────────────
+
+export interface RepRow {
+  id: number;
+  name: string;
+  walkup_song: string | null;
+  avatar_color: string;
+}
+
+export function getAllReps(): RepRow[] {
+  return db.prepare(`SELECT * FROM reps ORDER BY name`).all() as RepRow[];
+}
+
+export function getRepById(id: number): RepRow | undefined {
+  return db.prepare(`SELECT * FROM reps WHERE id = ?`).get(id) as
+    | RepRow
+    | undefined;
+}
+
+export function createRep(
+  name: string,
+  walkupSong?: string,
+  avatarColor?: string,
+): RepRow {
+  const result = db
+    .prepare(
+      `INSERT INTO reps (name, walkup_song, avatar_color) VALUES (?, ?, ?)`,
+    )
+    .run(name, walkupSong || null, avatarColor || "#e2a336");
+  return getRepById(result.lastInsertRowid as number)!;
+}
+
+export function updateRep(
+  id: number,
+  data: { name?: string; walkupSong?: string | null; avatarColor?: string },
+): RepRow | undefined {
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (data.name !== undefined) {
+    sets.push("name = ?");
+    vals.push(data.name);
+  }
+  if (data.walkupSong !== undefined) {
+    sets.push("walkup_song = ?");
+    vals.push(data.walkupSong);
+  }
+  if (data.avatarColor !== undefined) {
+    sets.push("avatar_color = ?");
+    vals.push(data.avatarColor);
+  }
+  if (sets.length === 0) return getRepById(id);
+  vals.push(id);
+  db.prepare(`UPDATE reps SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  return getRepById(id);
+}
+
+export function deleteRep(id: number): boolean {
+  const r = db.prepare(`DELETE FROM reps WHERE id = ?`).run(id);
+  return r.changes > 0;
+}
+
+// ── Song mappings ───────────────────────────────────────────
+
+export interface SongMappingRow {
+  id: number;
+  match_type: string;
+  match_value: string | null;
+  song_file: string;
+}
+
+export function getAllSongMappings(): SongMappingRow[] {
+  return db
+    .prepare(`SELECT * FROM song_mappings ORDER BY match_type, match_value`)
+    .all() as SongMappingRow[];
+}
+
+export function createSongMapping(
+  matchType: string,
+  matchValue: string | null,
+  songFile: string,
+): SongMappingRow {
+  if (matchType === "default") {
+    db.prepare(
+      `DELETE FROM song_mappings WHERE match_type = 'default'`,
+    ).run();
+  }
+  const result = db
+    .prepare(
+      `INSERT INTO song_mappings (match_type, match_value, song_file) VALUES (?, ?, ?)`,
+    )
+    .run(matchType, matchValue, songFile);
+  return db
+    .prepare(`SELECT * FROM song_mappings WHERE id = ?`)
+    .get(result.lastInsertRowid as number) as SongMappingRow;
+}
+
+export function deleteSongMapping(id: number): boolean {
+  const r = db.prepare(`DELETE FROM song_mappings WHERE id = ?`).run(id);
+  return r.changes > 0;
+}
+
+export function getSongForModel(model: string): string | null {
+  const row = db
+    .prepare(
+      `SELECT song_file FROM song_mappings WHERE match_type = 'model' AND ? LIKE '%' || match_value || '%' LIMIT 1`,
+    )
+    .get(model) as { song_file: string } | undefined;
+  return row?.song_file ?? null;
+}
+
+export function getDefaultSong(): string | null {
+  const row = db
+    .prepare(
+      `SELECT song_file FROM song_mappings WHERE match_type = 'default' LIMIT 1`,
+    )
+    .get() as { song_file: string } | undefined;
+  return row?.song_file ?? null;
+}
+
+// ── Sale claiming ───────────────────────────────────────────
+
+export function claimSale(
+  saleId: number,
+  repId: number,
+): Sale | null {
+  db.prepare(`UPDATE sales SET claimed_by = ? WHERE id = ?`).run(repId, saleId);
+  const row = db
+    .prepare(
+      `SELECT id, rep, customer, product, amount, timestamp,
+              slack_ts as slackTs, raw_message as rawMessage, meta_json
+       FROM sales WHERE id = ?`,
+    )
+    .get(saleId) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return rowToSale(row);
 }
 
 function periodStart(period: "day" | "week" | "month"): string {
