@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { useMemo } from "react";
-import { SPIRIT_EMOJI_FONT_STACK } from "../../shared/animals";
+import { useMemo, useState, useCallback } from "react";
+import { emojiToTwemojiPngUrl } from "../../shared/animals";
 
 interface Drop {
   id: number;
@@ -28,7 +28,7 @@ function generateDrops(count: number): Drop[] {
   return drops;
 }
 
-/** Falling emoji layer (pointer-events none). */
+/** Falling Twemoji PNGs (no reliance on OS emoji fonts). */
 export function AnimalEmojiRain({
   emoji,
   count = 44,
@@ -37,43 +37,57 @@ export function AnimalEmojiRain({
   count?: number;
 }) {
   const drops = useMemo(() => generateDrops(count), [count]);
+  const [failed, setFailed] = useState<Set<number>>(() => new Set());
+  const url = useMemo(() => emojiToTwemojiPngUrl(emoji, 72), [emoji]);
 
-  if (!emoji) return null;
+  const onImgError = useCallback((id: number) => {
+    setFailed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  if (!emoji.trim() || !url) return null;
 
   return (
     <div
       className="fixed inset-0 z-[54] pointer-events-none overflow-hidden"
       aria-hidden
     >
-      {drops.map((d) => (
-        <motion.span
-          key={d.id}
-          className="absolute opacity-90"
-          style={{
-            left: `${d.x}%`,
-            top: -64,
-            fontSize: d.size,
-            fontFamily: SPIRIT_EMOJI_FONT_STACK,
-            lineHeight: 1,
-            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.35))",
-          }}
-          initial={{ y: 0, x: 0, rotate: 0, opacity: 0.85 }}
-          animate={{
-            y: "calc(100vh + 80px)",
-            x: d.drift,
-            rotate: d.rotate,
-            opacity: [0.85, 0.75, 0.5, 0],
-          }}
-          transition={{
-            duration: d.duration,
-            delay: d.delay,
-            repeat: Infinity,
-            ease: "linear",
-          }}
-        >
-          {emoji}
-        </motion.span>
-      ))}
+      {drops.map((d) =>
+        failed.has(d.id) ? null : (
+          <motion.img
+            key={d.id}
+            src={url}
+            alt=""
+            draggable={false}
+            className="absolute opacity-95"
+            style={{
+              left: `${d.x}%`,
+              top: -64,
+              width: d.size,
+              height: d.size,
+              objectFit: "contain",
+              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))",
+            }}
+            initial={{ y: 0, x: 0, rotate: 0, opacity: 0.9 }}
+            animate={{
+              y: "calc(100vh + 80px)",
+              x: d.drift,
+              rotate: d.rotate,
+              opacity: [0.9, 0.75, 0.45, 0],
+            }}
+            transition={{
+              duration: d.duration,
+              delay: d.delay,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            onError={() => onImgError(d.id)}
+          />
+        ),
+      )}
     </div>
   );
 }

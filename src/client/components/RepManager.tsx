@@ -2,11 +2,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep } from "../../shared/types";
 import {
-  SPIRIT_EMOJI_FONT_STACK,
   spiritAnimalEmoji,
   spiritAnimalLabel,
 } from "../../shared/animals";
 import { SpiritAnimalPicker } from "./SpiritAnimalPicker";
+import { TwemojiImg } from "./TwemojiImg";
 import { JINGLES } from "../lib/jingles";
 import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice } from "./SongSearch";
@@ -268,14 +268,16 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                             {rep.spiritAnimal?.trim() ? (
                               <>
                                 <span> · </span>
-                                <span
-                                  className="inline-block align-middle text-base leading-none mr-0.5"
-                                  style={{ fontFamily: SPIRIT_EMOJI_FONT_STACK }}
-                                  title={spiritAnimalLabel(rep.spiritAnimal)}
-                                >
-                                  {spiritAnimalEmoji(rep.spiritAnimal)}
+                                <span className="inline-flex items-center gap-1 align-middle">
+                                  <TwemojiImg
+                                    emoji={spiritAnimalEmoji(rep.spiritAnimal)}
+                                    displaySize={18}
+                                    assetSize={36}
+                                    title={spiritAnimalLabel(rep.spiritAnimal)}
+                                    className="inline-block shrink-0"
+                                  />
+                                  <span>{spiritAnimalLabel(rep.spiritAnimal)}</span>
                                 </span>
-                                <span>{spiritAnimalLabel(rep.spiritAnimal)}</span>
                               </>
                             ) : null}
                           </div>

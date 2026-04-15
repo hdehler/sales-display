@@ -1,7 +1,3 @@
-/** Prefer for rendering spirit glyphs (avoids blank boxes in some Electron/Linux setups). */
-export const SPIRIT_EMOJI_FONT_STACK =
-  '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","EmojiOne Color",sans-serif';
-
 /** Slugs stored in `reps.spirit_animal` and sent on `CelebrationEvent.repHero`. */
 export const SPIRIT_ANIMALS = [
   { id: "", label: "None", emoji: "" },
@@ -101,4 +97,28 @@ export function spiritAnimalEmoji(id: string): string {
 export function spiritAnimalLabel(id: string): string {
   const row = SPIRIT_ANIMALS.find((a) => a.id === id);
   return row?.label ?? "";
+}
+
+/** Twemoji assets (PNG) — works on Linux/Pi/Electron without system color emoji fonts. */
+const TWEMOJI_BASE =
+  "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets";
+
+/**
+ * URL to a Twemoji PNG for a grapheme (e.g. "🦈" → …/72x72/1f988.png).
+ * Returns null for empty input.
+ */
+export function emojiToTwemojiPngUrl(
+  emoji: string,
+  size: 36 | 72 = 72,
+): string | null {
+  const trimmed = emoji.trim();
+  if (!trimmed) return null;
+  const hex: string[] = [];
+  for (const rune of trimmed) {
+    const cp = rune.codePointAt(0);
+    if (cp === undefined) continue;
+    hex.push(cp.toString(16));
+  }
+  if (hex.length === 0) return null;
+  return `${TWEMOJI_BASE}/${size}x${size}/${hex.join("-")}.png`;
 }

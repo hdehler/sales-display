@@ -1,7 +1,5 @@
-import {
-  SPIRIT_ANIMALS,
-  SPIRIT_EMOJI_FONT_STACK,
-} from "../../shared/animals";
+import { SPIRIT_ANIMALS } from "../../shared/animals";
+import { TwemojiImg } from "./TwemojiImg";
 
 interface SpiritAnimalPickerProps {
   value: string;
@@ -33,12 +31,12 @@ export function SpiritAnimalPicker({
                 : "border-border/60 bg-surface-raised/50 hover:border-border-bright hover:bg-surface-hover"
             }`}
           >
-            <span
-              className="text-[1.65rem] leading-none block min-h-[1.65rem]"
-              style={{ fontFamily: SPIRIT_EMOJI_FONT_STACK }}
-              aria-hidden={!a.emoji}
-            >
-              {a.emoji || "—"}
+            <span className="flex items-center justify-center min-h-[1.75rem]">
+              {a.emoji ? (
+                <TwemojiImg emoji={a.emoji} displaySize={28} assetSize={72} />
+              ) : (
+                <span className="text-text-muted text-lg leading-none">—</span>
+              )}
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary leading-tight text-center line-clamp-2">
               {a.label}
