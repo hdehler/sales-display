@@ -14,6 +14,7 @@
     "slack-backfill": "tsx src/server/slack-backfill-cli.ts"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
     "@slack/bolt": "^4.7.0",
     "better-sqlite3": "^12.8.0",
     "canvas-confetti": "^1.9.4",
