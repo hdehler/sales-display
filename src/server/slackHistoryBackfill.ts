@@ -1,5 +1,6 @@
 import type { WebClient } from "@slack/web-api";
 import { parseMessageToSale } from "./parseSlackMessage.js";
+import { enrichSaleWithAccountOwnerFromDwh } from "./bigqueryAccountOwner.js";
 import type { Sale } from "../shared/types.js";
 
 export interface BackfillOptions {
@@ -58,7 +59,8 @@ export async function runSlackHistoryBackfill(
       const sale = parseMessageToSale(msg);
       if (!sale) continue;
 
-      if (onInsert(sale)) inserted += 1;
+      const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
+      if (onInsert(enriched)) inserted += 1;
     }
 
     cursor = res.response_metadata?.next_cursor;

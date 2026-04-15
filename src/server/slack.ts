@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { parseMessageToSale } from "./parseSlackMessage.js";
 import { slackMessageHasStructuredContent } from "./parseSlideOrder.js";
 import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
+import { enrichSaleWithAccountOwnerFromDwh } from "./bigqueryAccountOwner.js";
 import type { Sale } from "../shared/types.js";
 
 /** Socket events for other apps’ messages often omit `blocks`; history has the full layout. */
@@ -238,6 +239,10 @@ export async function initSlack(): Promise<void> {
       console.log(
         `[Slack] Parsed sale: ${sale.rep} — $${sale.amount} — ${sale.customer}`,
       );
+    }
+    sale = await enrichSaleWithAccountOwnerFromDwh(sale);
+    if (sale.meta?.source === "slide_cloud" && sale.rep.trim()) {
+      console.log(`[Slack] DWH owner: ${sale.rep} — ${sale.customer}`);
     }
     onSale?.(sale);
   }

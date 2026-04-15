@@ -46,6 +46,39 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               </div>
             </div>
           </div>
+
+          <div className="flex-1 min-h-0 rounded-2xl border border-border bg-surface-raised/60 p-5 flex flex-col">
+            <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
+              Top reps · month
+            </div>
+            {data.repLeaderboard.length === 0 ? (
+              <p className="text-sm text-text-secondary leading-relaxed">
+                No rep-attributed orders yet. When Slide accounts match the DWH,
+                owner names appear here.
+              </p>
+            ) : (
+              <ol className="space-y-2 overflow-y-auto min-h-0 flex-1">
+                {data.repLeaderboard.map((row, i) => (
+                  <li
+                    key={row.name}
+                    className="flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="text-text-muted font-mono w-5 shrink-0">
+                        {i + 1}.
+                      </span>
+                      <span className="font-medium text-white truncate">
+                        {row.name}
+                      </span>
+                    </span>
+                    <span className="text-accent font-semibold tabular-nums shrink-0">
+                      {row.count}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </div>
 
         {/* Right — recent orders feed */}

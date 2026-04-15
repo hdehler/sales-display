@@ -12,7 +12,10 @@ export interface SlideOrderMeta {
 
 export interface Sale {
   id?: number;
-  /** Empty when `meta.source === "slide_cloud"` — Slide does not include who sold the deal. */
+  /**
+   * Salesperson name from Slack text patterns, or from BigQuery (Slide account → HubSpot owner)
+   * when `meta.source === "slide_cloud"` and DWH lookup succeeds.
+   */
   rep: string;
   customer: string;
   product: string;
@@ -37,7 +40,10 @@ export interface DailyTotal {
 
 export interface DashboardData {
   recentSales: Sale[];
+  /** Top accounts by order count this month (customer field). */
   leaderboard: LeaderboardEntry[];
+  /** Top reps by order count this month (non-empty `rep` on stored sales). */
+  repLeaderboard: LeaderboardEntry[];
   /** Order counts (no $ — Slide has no price in Slack) */
   todayCount: number;
   weekCount: number;

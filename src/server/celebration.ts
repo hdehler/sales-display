@@ -95,10 +95,12 @@ export function shouldCelebrateSlidePack(
   const slidePack = { account, count: sales.length, sales };
   const { songUrl, jingleId } = resolveSong(first.product);
 
+  const repSuffix = first.rep?.trim() ? ` — ${first.rep.trim()}` : "";
+
   const packMessage =
     sales.length === 1
-      ? `${account} — new order created`
-      : `${sales.length} orders from ${account}`;
+      ? `${account} — new order created${repSuffix}`
+      : `${sales.length} orders from ${account}${repSuffix}`;
 
   if (triggerProducts.length > 0) {
     const match = sales.some((sale) =>
@@ -145,7 +147,7 @@ export function shouldCelebrateSlidePack(
       type: "product",
       duration: defaultDuration,
       slidePack,
-      message: `🔥 ${sales.length} orders from ${account}!`,
+      message: `🔥 ${sales.length} orders from ${account}!${repSuffix}`,
       songUrl: resolved.songUrl,
       jingleId: resolved.jingleId,
     };

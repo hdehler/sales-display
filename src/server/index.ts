@@ -4,7 +4,10 @@ import { Server } from "socket.io";
 import path from "path";
 import { fileURLToPath } from "url";
 import { WebClient } from "@slack/web-api";
-import { config } from "./config.js";
+import { config, isBigQueryAccountOwnerConfigured } from "./config.js";
+import {
+  probeBigQueryAccountOwner,
+} from "./bigqueryAccountOwner.js";
 import { enqueueSlideOrder } from "./slideOrderBatcher.js";
 import {
   initSlack,
@@ -54,6 +57,17 @@ const io = new Server(server, {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
+});
+
+/** BigQuery DWH probe (auth + table readable). 503 only when configured but the probe fails. */
+app.get("/api/health/bigquery", async (_req, res) => {
+  const configured = isBigQueryAccountOwnerConfigured();
+  const r = await probeBigQueryAccountOwner();
+  if (!configured) {
+    res.json({ configured: false, ...r });
+    return;
+  }
+  res.status(r.ok ? 200 : 503).json({ configured: true, ...r });
 });
 
 app.get("/api/stats", (_req, res) => {
@@ -495,6 +509,17 @@ async function start(): Promise<void> {
   } catch (err) {
     console.error("[Slack] Failed to connect:", err);
     console.warn("[Slack] Server will continue without Slack integration.");
+  }
+
+  if (isBigQueryAccountOwnerConfigured()) {
+    const bq = await probeBigQueryAccountOwner();
+    if (bq.ok) {
+      console.log(
+        `[BigQuery] Account owner lookup ready (probe ${bq.elapsedMs ?? "?"}ms)`,
+      );
+    } else {
+      console.warn(`[BigQuery] Probe failed — Slide rep enrichment disabled: ${bq.error}`);
+    }
   }
 
   console.log("[Server] All systems initialized");

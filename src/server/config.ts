@@ -80,6 +80,31 @@ export const config = {
     10,
   ),
 
+  /**
+   * BigQuery: map Slide `customer` (account) → HubSpot owner name.
+   * Auth: set GOOGLE_APPLICATION_CREDENTIALS to a service account JSON path on the Pi
+   * (BigQuery Job User + dataViewer on the DWH project).
+   */
+  bigqueryAccountOwner: {
+    projectId: process.env.BIGQUERY_PROJECT_ID || "",
+    /** Full id: project.dataset.table (no backticks), e.g. dwh-prod-484216.marts.rpt_console_account_hubspot_owner */
+    tableRef: process.env.BIGQUERY_ACCOUNT_OWNER_TABLE || "",
+    accountColumn:
+      process.env.BIGQUERY_ACCOUNT_NAME_COLUMN || "account_name",
+    repColumn:
+      process.env.BIGQUERY_OWNER_NAME_COLUMN || "hubspot_owner_resolved_name",
+    /** Tie-break when multiple rows match the same account_name */
+    orderByColumn:
+      process.env.BIGQUERY_ACCOUNT_OWNER_ORDER_BY || "account_id",
+    /** Query job location, e.g. US or EU — leave empty for default */
+    location: process.env.BIGQUERY_LOCATION || "",
+    /** Max cached account → rep mappings (reduces repeated BQ queries) */
+    lookupCacheMax: parseInt(
+      process.env.BIGQUERY_LOOKUP_CACHE_MAX || "512",
+      10,
+    ),
+  },
+
   messagePatterns: [
     {
       regex: /^(.+?)\s+sold\s+\$([0-9,.]+)\s+to\s+(.+)$/i,
@@ -103,3 +128,11 @@ export const config = {
     },
   ] as const,
 };
+
+/** True when project + table ref are set (BigQuery client can run lookups). */
+export function isBigQueryAccountOwnerConfigured(): boolean {
+  const b = config.bigqueryAccountOwner;
+  return (
+    b.projectId.trim().length > 0 && b.tableRef.trim().length > 0
+  );
+}

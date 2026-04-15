@@ -71,19 +71,19 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
     <AnimatePresence>
       {visible && claimableSale && !claimed && (
         <motion.div
-          className="fixed bottom-0 left-0 right-0 z-40 p-4"
+          className="fixed bottom-0 left-0 right-0 z-40 p-6"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
         >
-          <div className="max-w-4xl mx-auto rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+          <div className="max-w-4xl mx-auto rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.15em] text-accent mb-1">
+                <div className="text-sm font-bold uppercase tracking-widest text-accent mb-1">
                   Who sold it?
                 </div>
-                <div className="text-sm text-text-secondary">
+                <div className="text-base text-text-secondary">
                   {claimableSale.account}
                   {claimableSale.product && (
                     <span className="text-text-muted">
@@ -95,29 +95,29 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
               </div>
               <button
                 onClick={() => setVisible(false)}
-                className="text-text-muted hover:text-text-secondary transition-colors text-sm px-2"
+                className="text-text-muted hover:text-text-secondary transition-colors text-base px-4 py-2 rounded-lg hover:bg-surface-hover"
               >
                 Dismiss
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {reps.map((rep, i) => (
                 <motion.button
                   key={rep.id}
                   onClick={() => handleClaim(rep.id)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:border-accent/40 bg-surface-hover hover:bg-accent-soft transition-all active:scale-95"
+                  className="flex items-center gap-3 px-5 py-3.5 rounded-xl border border-border hover:border-accent/40 bg-surface-hover hover:bg-accent-soft transition-all active:scale-95"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                 >
                   <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold text-white flex-shrink-0"
                     style={{ backgroundColor: rep.avatarColor }}
                   >
                     {rep.name.charAt(0).toUpperCase()}
                   </span>
-                  <span className="text-sm font-medium text-text-primary">
+                  <span className="text-base font-semibold text-white">
                     {rep.name}
                   </span>
                 </motion.button>

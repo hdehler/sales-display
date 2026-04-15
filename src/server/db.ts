@@ -181,6 +181,21 @@ export function getLeaderboard(): LeaderboardEntry[] {
     .all(start) as LeaderboardEntry[];
 }
 
+/** Rep names from stored sales (BigQuery-enriched Slide + manual Slack formats). */
+export function getRepLeaderboard(): LeaderboardEntry[] {
+  const start = monthStart();
+  return db
+    .prepare(
+      `SELECT rep as name, COUNT(*) as count
+       FROM sales
+       WHERE timestamp >= ? AND TRIM(rep) != ''
+       GROUP BY rep
+       ORDER BY count DESC
+       LIMIT 10`,
+    )
+    .all(start) as LeaderboardEntry[];
+}
+
 export function getPeriodTotal(period: "day" | "week" | "month"): {
   total: number;
   count: number;
@@ -240,6 +255,7 @@ export function getDashboardData(): DashboardData {
   return {
     recentSales: getRecentSales(),
     leaderboard: getLeaderboard(),
+    repLeaderboard: getRepLeaderboard(),
     todayCount: today.count,
     weekCount: week.count,
     monthCount: month.count,
