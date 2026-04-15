@@ -11,6 +11,7 @@ interface AppSettings {
   bigOrderThreshold: string;
   bigOrderSong: string;
   bigOrderSongLabel: string;
+  bigOrderOverridesRepWalkup: string;
 }
 
 type Tab = "general" | "models" | "sounds";
@@ -253,6 +254,44 @@ function GeneralTab({
             When a single batch has this many or more orders, play a special
             song instead of the model default.
           </p>
+          <div className="flex items-center justify-between gap-4 pt-1 pb-2 border-b border-border">
+            <div>
+              <div className="text-base font-semibold text-white">
+                Big order song overrides rep walk-up
+              </div>
+              <div className="text-sm text-text-secondary mt-0.5">
+                On: play the big order track (or model default if none set),
+                even when the account owner matches a teammate with a personal
+                walk-up. Off: matched rep walk-up still wins. Hero visuals always
+                follow the rep when matched.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({
+                  bigOrderOverridesRepWalkup:
+                    draft.bigOrderOverridesRepWalkup === "true"
+                      ? "false"
+                      : "true",
+                })
+              }
+              className={`relative shrink-0 w-12 h-7 rounded-full transition-colors ${
+                draft.bigOrderOverridesRepWalkup === "true"
+                  ? "bg-accent"
+                  : "bg-text-muted/30"
+              }`}
+              aria-pressed={draft.bigOrderOverridesRepWalkup === "true"}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                  draft.bigOrderOverridesRepWalkup === "true"
+                    ? "translate-x-5"
+                    : ""
+                }`}
+              />
+            </button>
+          </div>
           <div>
             <label className="text-sm font-medium text-text-secondary block mb-2">
               Minimum orders to trigger (0 = disabled)
@@ -270,6 +309,7 @@ function GeneralTab({
           <SongSearch
             value={draft.bigOrderSong}
             onChange={handleBigSong}
+            walkupLabel={draft.bigOrderSongLabel}
             label="Big order song"
           />
         </div>

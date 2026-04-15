@@ -288,6 +288,8 @@ const SETTINGS_DEFAULTS: Record<string, string> = {
   bigOrderThreshold: "0",
   bigOrderSong: "",
   bigOrderSongLabel: "",
+  /** When "true", big-order celebration keeps the configured big-order audio instead of the matched rep walk-up. */
+  bigOrderOverridesRepWalkup: "false",
 };
 
 function getEffectiveSettings(): Record<string, string> {

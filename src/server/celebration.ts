@@ -65,9 +65,29 @@ export function repWalkupToResolvedSong(
 function attachSlideRepHero(
   event: CelebrationEvent,
   first: Sale,
+  opts?: { skipRepWalkup?: boolean },
 ): CelebrationEvent {
   const nm = first.rep?.trim();
   if (!nm) return event;
+
+  if (opts?.skipRepWalkup) {
+    const row = getRepByDisplayName(nm);
+    if (row) {
+      return {
+        ...event,
+        repHero: {
+          name: row.name,
+          avatarColor: row.avatar_color,
+          animal: row.spirit_animal?.trim() || undefined,
+        },
+      };
+    }
+    return {
+      ...event,
+      repHero: { name: nm },
+    };
+  }
+
   const row = getRepByDisplayName(nm);
   if (row) {
     const song = repWalkupToResolvedSong(row.walkup_song, first.product);
@@ -192,6 +212,8 @@ export function shouldCelebrateSlidePack(
   if (isBigOrder) {
     const bigSong = getSetting("bigOrderSong") || "";
     const resolved = bigSong ? classifySongValue(bigSong) : { songUrl, jingleId };
+    const bigOrderOverridesRepWalkup =
+      getSetting("bigOrderOverridesRepWalkup") === "true";
     return attachSlideRepHero(
       {
         sale: first,
@@ -203,6 +225,7 @@ export function shouldCelebrateSlidePack(
         jingleId: resolved.jingleId,
       },
       first,
+      bigOrderOverridesRepWalkup ? { skipRepWalkup: true } : undefined,
     );
   }
 

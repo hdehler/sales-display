@@ -5,6 +5,7 @@ import type { CelebrationEvent } from "../../shared/types";
 import { spiritAnimalEmoji } from "../../shared/animals";
 import { playSong, stopAll } from "../lib/audio";
 import { AnimalEmojiRain } from "./AnimalEmojiRain";
+import { MixedEmojiLogoRain } from "./MixedEmojiLogoRain";
 import { LogoConfetti } from "./LogoConfetti";
 
 function fireConfetti(isWalkup: boolean) {
@@ -104,6 +105,10 @@ export function Celebration({ event, onStop }: CelebrationProps) {
     (showSlideRepHero && Boolean(slideAnimalEmojiChar)) ||
     (isWalkup && Boolean(walkupAnimalEmoji));
 
+  /** Slide + spirit animal: logos and Twemoji share one layer, ~50/50, same fall timing. */
+  const showMixedSlideEmojiLogoRain =
+    showSlideRepHero && Boolean(slideAnimalEmojiChar);
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[#08090d]"
@@ -120,13 +125,16 @@ export function Celebration({ event, onStop }: CelebrationProps) {
         style={{ background: backdropGradient }}
       />
 
-      {/* Logo confetti — lighter when spirit animal rain is on */}
-      <LogoConfetti count={showAnimalRain ? (isWalkup ? 8 : 10) : isWalkup ? 24 : 16} />
-      {showAnimalRain ? (
-        <AnimalEmojiRain
-          emoji={showSlideRepHero ? slideAnimalEmojiChar : walkupAnimalEmoji}
-          count={isWalkup ? 36 : 48}
+      {/* Logos only when not mixed with spirit-animal rain (walk-up or Slide without animal). */}
+      {!showMixedSlideEmojiLogoRain && (
+        <LogoConfetti
+          count={showAnimalRain ? (isWalkup ? 8 : 10) : isWalkup ? 24 : 16}
         />
+      )}
+      {showMixedSlideEmojiLogoRain ? (
+        <MixedEmojiLogoRain emoji={slideAnimalEmojiChar} totalCount={40} />
+      ) : showAnimalRain ? (
+        <AnimalEmojiRain emoji={walkupAnimalEmoji} count={isWalkup ? 36 : 48} />
       ) : null}
 
       {/* Stop button — always visible, top-right */}
