@@ -1,7 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep } from "../../shared/types";
-import { SPIRIT_ANIMALS } from "../../shared/animals";
+import {
+  SPIRIT_EMOJI_FONT_STACK,
+  spiritAnimalEmoji,
+  spiritAnimalLabel,
+} from "../../shared/animals";
+import { SpiritAnimalPicker } from "./SpiritAnimalPicker";
 import { JINGLES } from "../lib/jingles";
 import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice } from "./SongSearch";
@@ -171,17 +176,10 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                     <div className="text-sm text-text-secondary mb-2">
                       Spirit animal
                     </div>
-                    <select
+                    <SpiritAnimalPicker
                       value={newSpiritAnimal}
-                      onChange={(e) => setNewSpiritAnimal(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
-                    >
-                      {SPIRIT_ANIMALS.map((a) => (
-                        <option key={a.id || "none"} value={a.id}>
-                          {a.id ? `${a.emoji ? `${a.emoji} ` : ""}${a.label}` : a.label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setNewSpiritAnimal}
+                    />
                     <p className="text-xs text-text-muted mt-2 leading-relaxed">
                       Use the same name as in HubSpot (DWH) so walk-up song and animal
                       apply on Slide orders.
@@ -233,19 +231,10 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           <div className="text-sm text-text-secondary mb-2">
                             Spirit animal
                           </div>
-                          <select
+                          <SpiritAnimalPicker
                             value={editSpiritAnimal}
-                            onChange={(e) => setEditSpiritAnimal(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
-                          >
-                            {SPIRIT_ANIMALS.map((a) => (
-                              <option key={a.id || "none"} value={a.id}>
-                                {a.id
-                                  ? `${a.emoji ? `${a.emoji} ` : ""}${a.label}`
-                                  : a.label}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={setEditSpiritAnimal}
+                          />
                         </div>
                         <div className="flex gap-3">
                           <button
@@ -276,7 +265,19 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           </div>
                           <div className="text-sm text-text-secondary truncate mt-0.5">
                             {getSongLabel(rep.walkupSong)}
-                            {formatSpiritAnimalSuffix(rep.spiritAnimal)}
+                            {rep.spiritAnimal?.trim() ? (
+                              <>
+                                <span> · </span>
+                                <span
+                                  className="inline-block align-middle text-base leading-none mr-0.5"
+                                  style={{ fontFamily: SPIRIT_EMOJI_FONT_STACK }}
+                                  title={spiritAnimalLabel(rep.spiritAnimal)}
+                                >
+                                  {spiritAnimalEmoji(rep.spiritAnimal)}
+                                </span>
+                                <span>{spiritAnimalLabel(rep.spiritAnimal)}</span>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                         {rep.walkupSong && (
@@ -325,9 +326,3 @@ function getSongLabel(song: string | null): string {
   return song;
 }
 
-function formatSpiritAnimalSuffix(id: string | undefined): string {
-  if (!id?.trim()) return "";
-  const a = SPIRIT_ANIMALS.find((x) => x.id === id);
-  if (!a?.id) return "";
-  return ` · ${a.emoji} ${a.label}`;
-}

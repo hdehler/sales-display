@@ -2,11 +2,9 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useCallback } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
-import {
-  spiritAnimalEmoji,
-  spiritAnimalLabel,
-} from "../../shared/animals";
+import { spiritAnimalEmoji } from "../../shared/animals";
 import { playSong, stopAll } from "../lib/audio";
+import { AnimalEmojiRain } from "./AnimalEmojiRain";
 import { LogoConfetti } from "./LogoConfetti";
 
 function fireConfetti(isWalkup: boolean) {
@@ -80,6 +78,12 @@ export function Celebration({ event, onStop }: CelebrationProps) {
   ).trim();
   const showSlideRepHero = isSlide && Boolean(slideRepHeroName);
   const slideAnimal = event.repHero?.animal?.trim();
+  const slideAnimalEmojiChar = slideAnimal
+    ? spiritAnimalEmoji(slideAnimal)
+    : "";
+  const walkupAnimalEmoji = event.rep?.animal
+    ? spiritAnimalEmoji(event.rep.animal)
+    : "";
   const slideAvatarColor = event.repHero?.avatarColor;
 
   const products = pack
@@ -95,6 +99,10 @@ export function Celebration({ event, onStop }: CelebrationProps) {
   const backdropGradient = isWalkup
     ? "radial-gradient(ellipse at 50% 40%, rgba(168,85,247,0.18) 0%, #08090d 55%)"
     : "radial-gradient(ellipse at 50% 40%, rgba(226,163,54,0.15) 0%, #08090d 55%)";
+
+  const showAnimalRain =
+    (showSlideRepHero && Boolean(slideAnimalEmojiChar)) ||
+    (isWalkup && Boolean(walkupAnimalEmoji));
 
   return (
     <motion.div
@@ -112,8 +120,14 @@ export function Celebration({ event, onStop }: CelebrationProps) {
         style={{ background: backdropGradient }}
       />
 
-      {/* Logo confetti */}
-      <LogoConfetti count={isWalkup ? 24 : 16} />
+      {/* Logo confetti — lighter when spirit animal rain is on */}
+      <LogoConfetti count={showAnimalRain ? (isWalkup ? 8 : 10) : isWalkup ? 24 : 16} />
+      {showAnimalRain ? (
+        <AnimalEmojiRain
+          emoji={showSlideRepHero ? slideAnimalEmojiChar : walkupAnimalEmoji}
+          count={isWalkup ? 36 : 48}
+        />
+      ) : null}
 
       {/* Stop button — always visible, top-right */}
       <motion.button
@@ -175,20 +189,6 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               </span>
             </motion.div>
 
-            {event.rep?.animal && spiritAnimalLabel(event.rep.animal) && (
-              <motion.div
-                className="mb-5 text-2xl md:text-3xl font-display text-purple-200/90"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.28 }}
-              >
-                <span className="mr-2" aria-hidden>
-                  {spiritAnimalEmoji(event.rep.animal)}
-                </span>
-                {spiritAnimalLabel(event.rep.animal)}
-              </motion.div>
-            )}
-
             <motion.div
               className="text-2xl md:text-3xl font-display text-text-secondary mb-3"
               initial={{ opacity: 0 }}
@@ -200,7 +200,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
 
             {products.length > 0 && (
               <motion.div
-                className="text-base text-text-muted"
+                className="mt-2 text-lg md:text-2xl font-semibold text-white/95 max-w-3xl mx-auto leading-snug px-5 py-3 rounded-2xl border border-white/15 bg-white/[0.06]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.45 }}
@@ -268,31 +268,12 @@ export function Celebration({ event, onStop }: CelebrationProps) {
                   {account}
                 </motion.div>
 
-                {slideAnimal && spiritAnimalLabel(slideAnimal) && (
-                  <motion.div
-                    className="mb-5 text-xl md:text-2xl font-display text-text-secondary"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.32 }}
-                  >
-                    <span
-                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/15 bg-white/5"
-                      title="Spirit animal (Team)"
-                    >
-                      <span className="text-2xl md:text-3xl" aria-hidden>
-                        {spiritAnimalEmoji(slideAnimal)}
-                      </span>
-                      <span>{spiritAnimalLabel(slideAnimal)}</span>
-                    </span>
-                  </motion.div>
-                )}
-
                 {products.length > 0 && (
                   <motion.div
-                    className="text-lg md:text-xl text-text-muted mb-2 max-w-3xl mx-auto"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.38 }}
+                    className="mt-3 text-xl md:text-3xl font-semibold text-white/95 max-w-4xl mx-auto leading-snug px-6 py-4 rounded-2xl border border-accent/25 bg-accent/10 shadow-[0_0_40px_rgba(226,163,54,0.12)] mb-2"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.45 }}
                   >
                     {products.join(" · ")}
                   </motion.div>
@@ -335,7 +316,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
           </>
         )}
 
-        {event.message && (
+        {event.message && !isSlide && (
           <motion.div
             className="mt-4 inline-block px-5 py-2 rounded-lg bg-accent/10 border border-accent/20 text-accent font-semibold text-base"
             initial={{ opacity: 0, y: 12 }}
