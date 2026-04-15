@@ -173,6 +173,21 @@ export interface BigQueryProbeResult {
   elapsedMs?: number;
 }
 
+const PROBE_QUERY_TIMEOUT_MS = 25_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  });
+}
+
 /** Run a trivial read against the configured mart (startup or GET /api/health/bigquery). */
 export async function probeBigQueryAccountOwner(): Promise<BigQueryProbeResult> {
   if (!isBigQueryAccountOwnerConfigured()) {
@@ -181,12 +196,12 @@ export async function probeBigQueryAccountOwner(): Promise<BigQueryProbeResult> 
       error: "BigQuery account owner not configured (BIGQUERY_PROJECT_ID + BIGQUERY_ACCOUNT_OWNER_TABLE)",
     };
   }
-  const bq = getBigQuery();
-  if (!bq) {
-    return { ok: false, error: "BigQuery client unavailable" };
-  }
   const t0 = Date.now();
   try {
+    const bq = getBigQuery();
+    if (!bq) {
+      return { ok: false, error: "BigQuery client unavailable" };
+    }
     const tableSql = quoteTableRef(
       config.bigqueryAccountOwner.tableRef.trim(),
     );
@@ -195,7 +210,11 @@ export async function probeBigQueryAccountOwner(): Promise<BigQueryProbeResult> 
       query: `SELECT 1 AS ok FROM ${tableSql} LIMIT 1`,
     };
     if (loc) options.location = loc;
-    await bq.query(options);
+    await withTimeout(
+      bq.query(options),
+      PROBE_QUERY_TIMEOUT_MS,
+      "BigQuery probe query",
+    );
     return { ok: true, elapsedMs: Date.now() - t0 };
   } catch (e) {
     return {

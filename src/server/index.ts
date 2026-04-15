@@ -61,13 +61,21 @@ app.get("/api/health", (_req, res) => {
 
 /** BigQuery DWH probe (auth + table readable). 503 only when configured but the probe fails. */
 app.get("/api/health/bigquery", async (_req, res) => {
-  const configured = isBigQueryAccountOwnerConfigured();
-  const r = await probeBigQueryAccountOwner();
-  if (!configured) {
-    res.json({ configured: false, ...r });
-    return;
+  try {
+    const configured = isBigQueryAccountOwnerConfigured();
+    const r = await probeBigQueryAccountOwner();
+    if (!configured) {
+      res.json({ configured: false, ...r });
+      return;
+    }
+    res.status(r.ok ? 200 : 503).json({ configured: true, ...r });
+  } catch (e) {
+    res.status(500).json({
+      configured: isBigQueryAccountOwnerConfigured(),
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
-  res.status(r.ok ? 200 : 503).json({ configured: true, ...r });
 });
 
 app.get("/api/stats", (_req, res) => {
