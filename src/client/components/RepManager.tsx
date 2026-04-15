@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep } from "../../shared/types";
+import { SPIRIT_ANIMALS } from "../../shared/animals";
 import { JINGLES } from "../lib/jingles";
 import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice } from "./SongSearch";
@@ -21,10 +22,12 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(AVATAR_COLORS[0]);
   const [newSong, setNewSong] = useState("");
+  const [newSpiritAnimal, setNewSpiritAnimal] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [editSong, setEditSong] = useState("");
+  const [editSpiritAnimal, setEditSpiritAnimal] = useState("");
 
   const fetchReps = useCallback(async () => {
     try {
@@ -46,10 +49,12 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
         name: newName.trim(),
         avatarColor: newColor,
         walkupSong: newSong || undefined,
+        spiritAnimal: newSpiritAnimal || undefined,
       }),
     });
     setNewName("");
     setNewSong("");
+    setNewSpiritAnimal("");
     fetchReps();
     onRepsChanged?.();
   }
@@ -62,6 +67,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
         name: editName,
         avatarColor: editColor,
         walkupSong: editSong || null,
+        spiritAnimal: editSpiritAnimal || null,
       }),
     });
     setEditId(null);
@@ -80,6 +86,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
     setEditName(rep.name);
     setEditColor(rep.avatarColor);
     setEditSong(rep.walkupSong || "");
+    setEditSpiritAnimal(rep.spiritAnimal || "");
   }
 
   function handleNewSong(choice: SongChoice) {
@@ -160,6 +167,26 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                     onChange={handleNewSong}
                     label="Walk-up song"
                   />
+                  <div>
+                    <div className="text-sm text-text-secondary mb-2">
+                      Spirit animal
+                    </div>
+                    <select
+                      value={newSpiritAnimal}
+                      onChange={(e) => setNewSpiritAnimal(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                    >
+                      {SPIRIT_ANIMALS.map((a) => (
+                        <option key={a.id || "none"} value={a.id}>
+                          {a.id ? `${a.emoji ? `${a.emoji} ` : ""}${a.label}` : a.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                      Use the same name as in HubSpot (DWH) so walk-up song and animal
+                      apply on Slide orders.
+                    </p>
+                  </div>
                   <button
                     onClick={addRep}
                     disabled={!newName.trim()}
@@ -202,6 +229,24 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           onChange={handleEditSong}
                           label="Walk-up song"
                         />
+                        <div>
+                          <div className="text-sm text-text-secondary mb-2">
+                            Spirit animal
+                          </div>
+                          <select
+                            value={editSpiritAnimal}
+                            onChange={(e) => setEditSpiritAnimal(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                          >
+                            {SPIRIT_ANIMALS.map((a) => (
+                              <option key={a.id || "none"} value={a.id}>
+                                {a.id
+                                  ? `${a.emoji ? `${a.emoji} ` : ""}${a.label}`
+                                  : a.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex gap-3">
                           <button
                             onClick={() => saveEdit(rep.id)}
@@ -231,6 +276,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           </div>
                           <div className="text-sm text-text-secondary truncate mt-0.5">
                             {getSongLabel(rep.walkupSong)}
+                            {formatSpiritAnimalSuffix(rep.spiritAnimal)}
                           </div>
                         </div>
                         {rep.walkupSong && (
@@ -277,4 +323,11 @@ function getSongLabel(song: string | null): string {
   if (jingle) return jingle.name;
   if (song.startsWith("http")) return "Custom song";
   return song;
+}
+
+function formatSpiritAnimalSuffix(id: string | undefined): string {
+  if (!id?.trim()) return "";
+  const a = SPIRIT_ANIMALS.find((x) => x.id === id);
+  if (!a?.id) return "";
+  return ` · ${a.emoji} ${a.label}`;
 }

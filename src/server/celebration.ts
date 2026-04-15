@@ -5,6 +5,7 @@ import {
   getSongForModel,
   getDefaultSong,
   getRepById,
+  getRepByDisplayName,
   claimSale,
   getSetting,
 } from "./db.js";
@@ -43,6 +44,49 @@ function resolveSong(product?: string): ResolvedSong {
   return {};
 }
 
+/** Resolve Team walk-up the same way as manual claim; empty walkup falls back to product/default. */
+export function repWalkupToResolvedSong(
+  walkup: string | null | undefined,
+  product: string,
+): ResolvedSong {
+  const w = (walkup ?? "").trim();
+  if (!w) return resolveSong(product);
+  const isUrl = w.startsWith("http");
+  const isSoundsPath = w.startsWith("/sounds/");
+  const isFile = w.includes(".") && !isUrl && !isSoundsPath;
+  const isJingle = !isUrl && !isSoundsPath && !isFile;
+  if (isUrl) return { songUrl: w };
+  if (isSoundsPath) return { songUrl: w };
+  if (isFile) return { songUrl: `/sounds/walkups/${w}` };
+  if (isJingle) return { jingleId: w };
+  return resolveSong(product);
+}
+
+function attachSlideRepHero(
+  event: CelebrationEvent,
+  first: Sale,
+): CelebrationEvent {
+  const nm = first.rep?.trim();
+  if (!nm) return event;
+  const row = getRepByDisplayName(nm);
+  if (row) {
+    const song = repWalkupToResolvedSong(row.walkup_song, first.product);
+    return {
+      ...event,
+      songUrl: song.songUrl,
+      jingleId: song.jingleId,
+      repHero: {
+        name: row.name,
+        avatarColor: row.avatar_color,
+        animal: row.spirit_animal?.trim() || undefined,
+      },
+    };
+  }
+  return {
+    ...event,
+    repHero: { name: nm },
+  };
+}
 
 export function shouldCelebrate(sale: Sale): CelebrationEvent | null {
   const { triggerProducts, milestoneInterval, defaultDuration } =
@@ -109,30 +153,36 @@ export function shouldCelebrateSlidePack(
       ),
     );
     if (match) {
-      return {
-        sale: first,
-        type: "product",
-        duration: defaultDuration,
-        slidePack,
-        message: packMessage,
-        songUrl,
-        jingleId,
-      };
+      return attachSlideRepHero(
+        {
+          sale: first,
+          type: "product",
+          duration: defaultDuration,
+          slidePack,
+          message: packMessage,
+          songUrl,
+          jingleId,
+        },
+        first,
+      );
     }
   }
 
   if (milestoneInterval > 0) {
     const count = getTodaySaleCount();
     if (count > 0 && count % milestoneInterval === 0) {
-      return {
-        sale: first,
-        type: "milestone",
-        duration: defaultDuration,
-        slidePack,
-        message: `${count} orders today!`,
-        songUrl,
-        jingleId,
-      };
+      return attachSlideRepHero(
+        {
+          sale: first,
+          type: "milestone",
+          duration: defaultDuration,
+          slidePack,
+          message: `${count} orders today!`,
+          songUrl,
+          jingleId,
+        },
+        first,
+      );
     }
   }
 
@@ -142,27 +192,33 @@ export function shouldCelebrateSlidePack(
   if (isBigOrder) {
     const bigSong = getSetting("bigOrderSong") || "";
     const resolved = bigSong ? classifySongValue(bigSong) : { songUrl, jingleId };
-    return {
-      sale: first,
-      type: "product",
-      duration: defaultDuration,
-      slidePack,
-      message: `🔥 ${sales.length} orders from ${account}!${repSuffix}`,
-      songUrl: resolved.songUrl,
-      jingleId: resolved.jingleId,
-    };
+    return attachSlideRepHero(
+      {
+        sale: first,
+        type: "product",
+        duration: defaultDuration,
+        slidePack,
+        message: `🔥 ${sales.length} orders from ${account}!${repSuffix}`,
+        songUrl: resolved.songUrl,
+        jingleId: resolved.jingleId,
+      },
+      first,
+    );
   }
 
   if (config.celebration.celebrateSlideOrders) {
-    return {
-      sale: first,
-      type: "product",
-      duration: defaultDuration,
-      slidePack,
-      message: packMessage,
-      songUrl,
-      jingleId,
-    };
+    return attachSlideRepHero(
+      {
+        sale: first,
+        type: "product",
+        duration: defaultDuration,
+        slidePack,
+        message: packMessage,
+        songUrl,
+        jingleId,
+      },
+      first,
+    );
   }
 
   return null;
@@ -219,28 +275,10 @@ export function buildWalkupCelebration(
   const rep = getRepById(repId);
   if (!rep) return null;
 
-  const walkup = rep.walkup_song || "";
-  const isUrl = walkup.startsWith("http");
-  const isSoundsPath = walkup.startsWith("/sounds/");
-  const isFile = walkup.includes(".") && !isUrl && !isSoundsPath;
-  const isJingle = walkup && !isUrl && !isSoundsPath && !isFile;
-
-  let songUrl: string | undefined;
-  let jingleId: string | undefined;
-
-  if (isUrl) {
-    songUrl = walkup;
-  } else if (isSoundsPath) {
-    songUrl = walkup;
-  } else if (isFile) {
-    songUrl = `/sounds/walkups/${walkup}`;
-  } else if (isJingle) {
-    jingleId = walkup;
-  } else {
-    const fallback = resolveSong(sale.product);
-    songUrl = fallback.songUrl;
-    jingleId = fallback.jingleId;
-  }
+  const { songUrl, jingleId } = repWalkupToResolvedSong(
+    rep.walkup_song,
+    sale.product,
+  );
 
   return {
     sale,
@@ -252,6 +290,7 @@ export function buildWalkupCelebration(
     rep: {
       name: rep.name,
       avatarColor: rep.avatar_color,
+      animal: rep.spirit_animal?.trim() || undefined,
     },
   };
 }

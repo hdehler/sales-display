@@ -47,6 +47,11 @@ db.exec(`
   )
 `);
 
+const repsCols = db.pragma("table_info(reps)") as { name: string }[];
+if (!repsCols.some((c) => c.name === "spirit_animal")) {
+  db.exec(`ALTER TABLE reps ADD COLUMN spirit_animal TEXT DEFAULT ''`);
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS song_mappings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,6 +275,7 @@ export interface RepRow {
   name: string;
   walkup_song: string | null;
   avatar_color: string;
+  spirit_animal: string;
 }
 
 export function getAllReps(): RepRow[] {
@@ -282,22 +288,50 @@ export function getRepById(id: number): RepRow | undefined {
     | undefined;
 }
 
+/** Match HubSpot / DWH owner name to a Team row (case-insensitive). */
+export function getRepByDisplayName(displayName: string): RepRow | undefined {
+  const q = displayName.trim();
+  if (!q) return undefined;
+  const rows = db
+    .prepare(
+      `SELECT * FROM reps WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) ORDER BY id ASC LIMIT 2`,
+    )
+    .all(q) as RepRow[];
+  if (rows.length > 1) {
+    console.warn(
+      `[reps] Multiple Team rows for display name ${JSON.stringify(q)}; using lowest id`,
+    );
+  }
+  return rows[0];
+}
+
 export function createRep(
   name: string,
   walkupSong?: string,
   avatarColor?: string,
+  spiritAnimal?: string,
 ): RepRow {
   const result = db
     .prepare(
-      `INSERT INTO reps (name, walkup_song, avatar_color) VALUES (?, ?, ?)`,
+      `INSERT INTO reps (name, walkup_song, avatar_color, spirit_animal) VALUES (?, ?, ?, ?)`,
     )
-    .run(name, walkupSong || null, avatarColor || "#e2a336");
+    .run(
+      name,
+      walkupSong || null,
+      avatarColor || "#e2a336",
+      spiritAnimal?.trim() || "",
+    );
   return getRepById(result.lastInsertRowid as number)!;
 }
 
 export function updateRep(
   id: number,
-  data: { name?: string; walkupSong?: string | null; avatarColor?: string },
+  data: {
+    name?: string;
+    walkupSong?: string | null;
+    avatarColor?: string;
+    spiritAnimal?: string | null;
+  },
 ): RepRow | undefined {
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -312,6 +346,10 @@ export function updateRep(
   if (data.avatarColor !== undefined) {
     sets.push("avatar_color = ?");
     vals.push(data.avatarColor);
+  }
+  if (data.spiritAnimal !== undefined) {
+    sets.push("spirit_animal = ?");
+    vals.push(data.spiritAnimal?.trim() ?? "");
   }
   if (sets.length === 0) return getRepById(id);
   vals.push(id);

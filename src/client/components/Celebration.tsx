@@ -2,6 +2,10 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useCallback } from "react";
 import confetti from "canvas-confetti";
 import type { CelebrationEvent } from "../../shared/types";
+import {
+  spiritAnimalEmoji,
+  spiritAnimalLabel,
+} from "../../shared/animals";
 import { playSong, stopAll } from "../lib/audio";
 import { LogoConfetti } from "./LogoConfetti";
 
@@ -69,6 +73,14 @@ export function Celebration({ event, onStop }: CelebrationProps) {
   const isSlide = pack ? true : event.sale.meta?.source === "slide_cloud";
   const count = pack ? pack.count : 1;
   const single = count === 1;
+
+  const slideRepHeroName = (
+    event.repHero?.name ||
+    (isSlide ? event.sale.rep.trim() : "")
+  ).trim();
+  const showSlideRepHero = isSlide && Boolean(slideRepHeroName);
+  const slideAnimal = event.repHero?.animal?.trim();
+  const slideAvatarColor = event.repHero?.avatarColor;
 
   const products = pack
     ? pack.sales
@@ -163,6 +175,20 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               </span>
             </motion.div>
 
+            {event.rep?.animal && spiritAnimalLabel(event.rep.animal) && (
+              <motion.div
+                className="mb-5 text-2xl md:text-3xl font-display text-purple-200/90"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.28 }}
+              >
+                <span className="mr-2" aria-hidden>
+                  {spiritAnimalEmoji(event.rep.animal)}
+                </span>
+                {spiritAnimalLabel(event.rep.animal)}
+              </motion.div>
+            )}
+
             <motion.div
               className="text-2xl md:text-3xl font-display text-text-secondary mb-3"
               initial={{ opacity: 0 }}
@@ -203,35 +229,108 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               </span>
             </motion.div>
 
-            <motion.h1
-              className="font-display text-5xl md:text-7xl text-text-primary leading-[1.1] mb-5"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.5 }}
-            >
-              {account}
-            </motion.h1>
+            {showSlideRepHero ? (
+              <>
+                {slideAvatarColor && (
+                  <motion.div
+                    className="mb-5 flex justify-center"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", bounce: 0.45, duration: 0.55 }}
+                  >
+                    <div
+                      className="w-20 h-20 md:w-28 md:h-28 rounded-full flex items-center justify-center text-3xl md:text-4xl font-black text-white shadow-2xl"
+                      style={{
+                        background: `linear-gradient(135deg, ${slideAvatarColor}, ${slideAvatarColor}99)`,
+                        boxShadow: `0 0 48px ${slideAvatarColor}44`,
+                      }}
+                    >
+                      {slideRepHeroName.charAt(0).toUpperCase()}
+                    </div>
+                  </motion.div>
+                )}
 
-            {products.length > 0 && (
-              <motion.div
-                className="text-lg md:text-xl text-text-secondary mb-6 max-w-3xl mx-auto"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.35 }}
-              >
-                {products.join(" · ")}
-              </motion.div>
-            )}
+                <motion.h1
+                  className="font-display text-5xl md:text-8xl text-text-primary leading-[1.05] mb-3 md:mb-4"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.55 }}
+                >
+                  {slideRepHeroName}
+                </motion.h1>
 
-            {!isSlide && event.sale.rep.trim() && (
-              <motion.div
-                className="text-base text-text-secondary mb-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                {event.sale.rep}
-              </motion.div>
+                <motion.div
+                  className="font-display text-4xl md:text-6xl text-accent leading-tight mb-4 md:mb-5 max-w-5xl mx-auto"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.22, duration: 0.5 }}
+                >
+                  {account}
+                </motion.div>
+
+                {slideAnimal && spiritAnimalLabel(slideAnimal) && (
+                  <motion.div
+                    className="mb-5 text-xl md:text-2xl font-display text-text-secondary"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.32 }}
+                  >
+                    <span
+                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/15 bg-white/5"
+                      title="Spirit animal (Team)"
+                    >
+                      <span className="text-2xl md:text-3xl" aria-hidden>
+                        {spiritAnimalEmoji(slideAnimal)}
+                      </span>
+                      <span>{spiritAnimalLabel(slideAnimal)}</span>
+                    </span>
+                  </motion.div>
+                )}
+
+                {products.length > 0 && (
+                  <motion.div
+                    className="text-lg md:text-xl text-text-muted mb-2 max-w-3xl mx-auto"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.38 }}
+                  >
+                    {products.join(" · ")}
+                  </motion.div>
+                )}
+              </>
+            ) : (
+              <>
+                <motion.h1
+                  className="font-display text-5xl md:text-7xl text-text-primary leading-[1.1] mb-5"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.5 }}
+                >
+                  {account}
+                </motion.h1>
+
+                {products.length > 0 && (
+                  <motion.div
+                    className="text-lg md:text-xl text-text-secondary mb-6 max-w-3xl mx-auto"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.35 }}
+                  >
+                    {products.join(" · ")}
+                  </motion.div>
+                )}
+
+                {!isSlide && event.sale.rep.trim() && (
+                  <motion.div
+                    className="text-base text-text-secondary mb-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {event.sale.rep}
+                  </motion.div>
+                )}
+              </>
             )}
           </>
         )}

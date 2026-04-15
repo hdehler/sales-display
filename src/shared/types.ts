@@ -70,6 +70,17 @@ export interface CelebrationEvent {
   rep?: {
     name: string;
     avatarColor?: string;
+    /** Spirit animal slug when matched from Team */
+    animal?: string;
+  };
+  /**
+   * Slide (and similar) when `sale.rep` matched a Team row: hero + walkup + spirit animal.
+   */
+  repHero?: {
+    name: string;
+    avatarColor?: string;
+    /** Spirit animal slug from Team (see `SPIRIT_ANIMALS`). */
+    animal?: string;
   };
 }
 
@@ -79,6 +90,8 @@ export interface Rep {
   /** Jingle ID from the built-in library, or filename for uploaded mp3 */
   walkupSong: string | null;
   avatarColor: string;
+  /** Slug from `SPIRIT_ANIMALS`; empty string if unset */
+  spiritAnimal: string;
 }
 
 export interface SongMapping {

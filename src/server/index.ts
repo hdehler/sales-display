@@ -154,36 +154,41 @@ app.use(express.json());
 
 // ── Reps CRUD ─────────────────────────────────────────────
 
+function repToApi(r: {
+  id: number;
+  name: string;
+  walkup_song: string | null;
+  avatar_color: string;
+  spirit_animal?: string;
+}) {
+  return {
+    id: r.id,
+    name: r.name,
+    walkupSong: r.walkup_song,
+    avatarColor: r.avatar_color,
+    spiritAnimal: r.spirit_animal ?? "",
+  };
+}
+
 app.get("/api/reps", (_req, res) => {
   const rows = getAllReps();
-  res.json(
-    rows.map((r) => ({
-      id: r.id,
-      name: r.name,
-      walkupSong: r.walkup_song,
-      avatarColor: r.avatar_color,
-    })),
-  );
+  res.json(rows.map(repToApi));
 });
 
 app.post("/api/reps", (req, res) => {
-  const { name, walkupSong, avatarColor } = req.body as {
+  const { name, walkupSong, avatarColor, spiritAnimal } = req.body as {
     name?: string;
     walkupSong?: string;
     avatarColor?: string;
+    spiritAnimal?: string;
   };
   if (!name?.trim()) {
     res.status(400).json({ error: "name is required" });
     return;
   }
   try {
-    const r = createRep(name.trim(), walkupSong, avatarColor);
-    res.json({
-      id: r.id,
-      name: r.name,
-      walkupSong: r.walkup_song,
-      avatarColor: r.avatar_color,
-    });
+    const r = createRep(name.trim(), walkupSong, avatarColor, spiritAnimal);
+    res.json(repToApi(r));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("UNIQUE")) {
@@ -196,22 +201,18 @@ app.post("/api/reps", (req, res) => {
 
 app.put("/api/reps/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { name, walkupSong, avatarColor } = req.body as {
+  const { name, walkupSong, avatarColor, spiritAnimal } = req.body as {
     name?: string;
     walkupSong?: string | null;
     avatarColor?: string;
+    spiritAnimal?: string | null;
   };
-  const r = updateRep(id, { name, walkupSong, avatarColor });
+  const r = updateRep(id, { name, walkupSong, avatarColor, spiritAnimal });
   if (!r) {
     res.status(404).json({ error: "not_found" });
     return;
   }
-  res.json({
-    id: r.id,
-    name: r.name,
-    walkupSong: r.walkup_song,
-    avatarColor: r.avatar_color,
-  });
+  res.json(repToApi(r));
 });
 
 app.delete("/api/reps/:id", (req, res) => {
