@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { JINGLES } from "../lib/jingles";
-import { playSong, stopAll as stopAudio, playUrl } from "../lib/audio";
+import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "upload" | "none";
@@ -42,6 +42,69 @@ function detectTab(value: string): Tab {
   return "search";
 }
 
+type WalkupKind = "none" | "jingle" | "upload" | "deezer" | "unknown";
+
+function getWalkupDisplay(value: string): {
+  kind: WalkupKind;
+  title: string;
+  subtitle: string;
+  badge: string;
+} {
+  const v = value?.trim() ?? "";
+  if (!v) {
+    return {
+      kind: "none",
+      title: "No walk-up selected",
+      subtitle: "Use Search, Uploads, or Jingles below.",
+      badge: "",
+    };
+  }
+  const jingle = JINGLES.find((j) => j.id === value);
+  if (jingle) {
+    return {
+      kind: "jingle",
+      title: jingle.name,
+      subtitle: jingle.description,
+      badge: "Jingle",
+    };
+  }
+  if (value.startsWith("/sounds/")) {
+    const name = stripOffset(value).split("/").pop() || value;
+    return {
+      kind: "upload",
+      title: name,
+      subtitle: "Uploaded file",
+      badge: "Upload",
+    };
+  }
+  if (value.startsWith("http")) {
+    return {
+      kind: "deezer",
+      title: "Deezer preview",
+      subtitle: "Searched track — adjust start offset below if needed.",
+      badge: "Deezer",
+    };
+  }
+  return {
+    kind: "unknown",
+    title: value,
+    subtitle: "Custom",
+    badge: "Custom",
+  };
+}
+
+/** One-line label for rep lists / summaries (no emoji). */
+export function walkupSongDisplayLine(
+  value: string | null | undefined,
+): string {
+  const d = getWalkupDisplay(value || "");
+  if (d.kind === "none") return "No walk-up song";
+  if (d.kind === "jingle") return d.title;
+  if (d.kind === "upload") return d.title;
+  if (d.kind === "deezer") return "Deezer track";
+  return d.title;
+}
+
 export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
@@ -58,11 +121,15 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const currentOffset = isUrlValue ? parseOffset(value) : 0;
   const maxOffset = isUrlValue ? Math.max(0, audioDuration - 20) : 10;
 
-  const displayLabel = getDisplayLabel(value);
+  const walkup = getWalkupDisplay(value);
 
   useEffect(() => {
     fetchUploads();
   }, []);
+
+  useEffect(() => {
+    setTab(detectTab(value));
+  }, [value]);
 
   useEffect(() => {
     if (!isUrlValue) {
@@ -173,7 +240,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     onChange({
       type: value.startsWith("/sounds/") ? "upload" : "deezer",
       value: newVal,
-      label: displayLabel.replace(/^🎶 /, ""),
+      label: walkup.title,
     });
   }
 
@@ -200,74 +267,137 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     setUploading(false);
   }
 
+  function previewCurrentSelection() {
+    if (!value.trim()) return;
+    if (playingId === "walkup-card") {
+      stopPreview();
+      return;
+    }
+    stopPreview();
+    playSong(value);
+    setPlayingId("walkup-card");
+    setTimeout(() => setPlayingId(null), 20_000);
+  }
+
   return (
     <div>
       {label && (
         <div className="text-xs text-text-muted mb-1.5">{label}</div>
       )}
 
-      {/* Current selection */}
-      {value && (
-        <div className="mb-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-xs">
-            <span className="text-accent font-medium truncate flex-1">
-              {displayLabel}
+      {/* Current walk-up — always visible so edit/add always show selection state */}
+      <div
+        className={`mb-3 rounded-xl border p-4 transition-colors ${
+          value.trim()
+            ? "border-accent/35 bg-gradient-to-br from-accent/[0.12] to-transparent"
+            : "border-dashed border-border bg-surface/40"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[10px] uppercase tracking-widest text-text-muted font-semibold">
+            Current walk-up
+          </span>
+          {value.trim() && walkup.badge && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-accent/20 text-accent">
+              {walkup.badge}
             </span>
-            <button
-              onClick={selectNone}
-              className="text-text-muted hover:text-text-secondary flex-shrink-0"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Start offset scrubber — for Deezer and uploaded audio */}
-          {isUrlValue && (
-            <div className="mt-2 px-3 py-2.5 rounded-lg bg-surface border border-border">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
-                  Start at
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs tabular-nums text-text-secondary font-medium">
-                    {currentOffset.toFixed(0)}s
-                    {audioDuration > 0 && (
-                      <span className="text-text-muted"> / {audioDuration}s</span>
-                    )}
-                  </span>
-                  <button
-                    onClick={previewFromOffset}
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] transition-colors ${
-                      playingId === "offset-preview"
-                        ? "bg-accent text-surface"
-                        : "bg-accent/20 text-accent hover:bg-accent/30"
-                    }`}
-                  >
-                    {playingId === "offset-preview" ? "■" : "▶"}
-                  </button>
-                </div>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={maxOffset || 10}
-                step={0.5}
-                value={currentOffset}
-                onChange={(e) => setOffset(parseFloat(e.target.value))}
-                className="w-full h-1.5 accent-accent cursor-pointer"
-              />
-              <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
-                <span>0s</span>
-                <span>{Math.round((maxOffset || 10) / 2)}s</span>
-                <span>{maxOffset || 10}s</span>
-              </div>
-              <div className="text-[10px] text-text-muted mt-1">
-                Plays 20s starting from this point
-              </div>
-            </div>
           )}
         </div>
-      )}
+        <div className="flex items-start gap-3">
+          <div
+            className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
+              value.trim() ? "bg-accent/25 text-accent" : "bg-surface text-text-muted"
+            }`}
+            aria-hidden
+          >
+            {value.trim() ? "♪" : "♫"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div
+              className={`text-base font-semibold leading-tight ${
+                value.trim() ? "text-white" : "text-text-secondary"
+              }`}
+            >
+              {walkup.title}
+            </div>
+            <p className="text-sm text-text-muted mt-1 leading-snug">
+              {walkup.subtitle}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            {value.trim() ? (
+              <>
+                <button
+                  type="button"
+                  onClick={previewCurrentSelection}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xs transition-colors ${
+                    playingId === "walkup-card"
+                      ? "bg-accent text-surface"
+                      : "bg-accent/20 text-accent hover:bg-accent/35"
+                  }`}
+                  title="Preview"
+                >
+                  {playingId === "walkup-card" ? "■" : "▶"}
+                </button>
+                <button
+                  type="button"
+                  onClick={selectNone}
+                  className="text-[11px] font-medium text-text-muted hover:text-text-secondary px-1 py-0.5"
+                >
+                  Clear
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Start offset scrubber — for Deezer and uploaded audio */}
+        {value.trim() && isUrlValue && (
+          <div className="mt-3 pt-3 border-t border-border/80">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium">
+                Start at
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs tabular-nums text-text-secondary font-medium">
+                  {currentOffset.toFixed(0)}s
+                  {audioDuration > 0 && (
+                    <span className="text-text-muted"> / {audioDuration}s</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={previewFromOffset}
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] transition-colors ${
+                    playingId === "offset-preview"
+                      ? "bg-accent text-surface"
+                      : "bg-accent/20 text-accent hover:bg-accent/30"
+                  }`}
+                >
+                  {playingId === "offset-preview" ? "■" : "▶"}
+                </button>
+              </div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={maxOffset || 10}
+              step={0.5}
+              value={currentOffset}
+              onChange={(e) => setOffset(parseFloat(e.target.value))}
+              className="w-full h-1.5 accent-accent cursor-pointer"
+            />
+            <div className="flex justify-between text-[9px] text-text-muted mt-0.5">
+              <span>0s</span>
+              <span>{Math.round((maxOffset || 10) / 2)}s</span>
+              <span>{maxOffset || 10}s</span>
+            </div>
+            <div className="text-[10px] text-text-muted mt-1">
+              Plays 20s starting from this point
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-2 rounded-md bg-surface p-0.5 border border-border text-[10px]">
@@ -451,16 +581,4 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
       )}
     </div>
   );
-}
-
-function getDisplayLabel(value: string): string {
-  if (!value) return "None";
-  const jingle = JINGLES.find((j) => j.id === value);
-  if (jingle) return `🎵 ${jingle.name}`;
-  if (value.startsWith("/sounds/")) {
-    const name = stripOffset(value).split("/").pop() || value;
-    return `🎶 ${name}`;
-  }
-  if (value.startsWith("http")) return "🎶 Deezer song";
-  return value;
 }

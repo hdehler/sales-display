@@ -7,9 +7,8 @@ import {
 } from "../../shared/animals";
 import { SpiritAnimalPicker } from "./SpiritAnimalPicker";
 import { TwemojiImg } from "./TwemojiImg";
-import { JINGLES } from "../lib/jingles";
 import { playSong } from "../lib/audio";
-import { SongSearch, type SongChoice } from "./SongSearch";
+import { SongSearch, type SongChoice, walkupSongDisplayLine } from "./SongSearch";
 
 const AVATAR_COLORS = [
   "#e2a336", "#ef4444", "#3b82f6", "#10b981", "#a855f7",
@@ -264,7 +263,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                             {rep.name}
                           </div>
                           <div className="text-sm text-text-secondary truncate mt-0.5">
-                            {getSongLabel(rep.walkupSong)}
+                            {walkupSongDisplayLine(rep.walkupSong)}
                             {rep.spiritAnimal?.trim() ? (
                               <>
                                 <span> · </span>
@@ -319,12 +318,3 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
     </AnimatePresence>
   );
 }
-
-function getSongLabel(song: string | null): string {
-  if (!song) return "No walk-up song";
-  const jingle = JINGLES.find((j) => j.id === song);
-  if (jingle) return jingle.name;
-  if (song.startsWith("http")) return "Custom song";
-  return song;
-}
-
