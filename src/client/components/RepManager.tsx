@@ -26,11 +26,13 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(AVATAR_COLORS[0]);
   const [newSong, setNewSong] = useState("");
+  const [newWalkupLabel, setNewWalkupLabel] = useState("");
   const [newSpiritAnimal, setNewSpiritAnimal] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [editSong, setEditSong] = useState("");
+  const [editWalkupLabel, setEditWalkupLabel] = useState("");
   const [editSpiritAnimal, setEditSpiritAnimal] = useState("");
 
   const fetchReps = useCallback(async () => {
@@ -53,11 +55,13 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
         name: newName.trim(),
         avatarColor: newColor,
         walkupSong: newSong || undefined,
+        walkupSongLabel: newWalkupLabel.trim() || null,
         spiritAnimal: newSpiritAnimal || undefined,
       }),
     });
     setNewName("");
     setNewSong("");
+    setNewWalkupLabel("");
     setNewSpiritAnimal("");
     fetchReps();
     onRepsChanged?.();
@@ -71,6 +75,9 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
         name: editName,
         avatarColor: editColor,
         walkupSong: editSong || null,
+        walkupSongLabel: editSong.trim()
+          ? editWalkupLabel.trim() || null
+          : null,
         spiritAnimal: editSpiritAnimal || null,
       }),
     });
@@ -90,15 +97,22 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
     setEditName(rep.name);
     setEditColor(rep.avatarColor);
     setEditSong(rep.walkupSong || "");
+    setEditWalkupLabel(rep.walkupSongLabel?.trim() || "");
     setEditSpiritAnimal(rep.spiritAnimal || "");
   }
 
   function handleNewSong(choice: SongChoice) {
     setNewSong(choice.value);
+    setNewWalkupLabel(
+      choice.type === "none" ? "" : choice.label?.trim() || "",
+    );
   }
 
   function handleEditSong(choice: SongChoice) {
     setEditSong(choice.value);
+    setEditWalkupLabel(
+      choice.type === "none" ? "" : choice.label?.trim() || "",
+    );
   }
 
   function previewCurrent(song: string) {
@@ -169,6 +183,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                   <SongSearch
                     value={newSong}
                     onChange={handleNewSong}
+                    walkupLabel={newWalkupLabel}
                     label="Walk-up song"
                   />
                   <div>
@@ -224,6 +239,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                         <SongSearch
                           value={editSong}
                           onChange={handleEditSong}
+                          walkupLabel={editWalkupLabel}
                           label="Walk-up song"
                         />
                         <div>
@@ -263,7 +279,10 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                             {rep.name}
                           </div>
                           <div className="text-sm text-text-secondary truncate mt-0.5">
-                            {walkupSongDisplayLine(rep.walkupSong)}
+                            {walkupSongDisplayLine(
+                              rep.walkupSong,
+                              rep.walkupSongLabel,
+                            )}
                             {rep.spiritAnimal?.trim() ? (
                               <>
                                 <span> · </span>

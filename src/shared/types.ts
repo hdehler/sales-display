@@ -89,6 +89,8 @@ export interface Rep {
   name: string;
   /** Jingle ID from the built-in library, or filename for uploaded mp3 */
   walkupSong: string | null;
+  /** Deezer (etc.) display title saved at pick time, e.g. Artist — Song */
+  walkupSongLabel?: string | null;
   avatarColor: string;
   /** Slug from `SPIRIT_ANIMALS`; empty string if unset */
   spiritAnimal: string;

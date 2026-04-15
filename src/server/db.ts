@@ -52,6 +52,11 @@ if (!repsCols.some((c) => c.name === "spirit_animal")) {
   db.exec(`ALTER TABLE reps ADD COLUMN spirit_animal TEXT DEFAULT ''`);
 }
 
+const repsCols2 = db.pragma("table_info(reps)") as { name: string }[];
+if (!repsCols2.some((c) => c.name === "walkup_song_label")) {
+  db.exec(`ALTER TABLE reps ADD COLUMN walkup_song_label TEXT`);
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS song_mappings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -274,6 +279,8 @@ export interface RepRow {
   id: number;
   name: string;
   walkup_song: string | null;
+  /** Human-readable title for Deezer URLs (e.g. Artist — Song) */
+  walkup_song_label: string | null;
   avatar_color: string;
   spirit_animal: string;
 }
@@ -310,14 +317,16 @@ export function createRep(
   walkupSong?: string,
   avatarColor?: string,
   spiritAnimal?: string,
+  walkupSongLabel?: string | null,
 ): RepRow {
   const result = db
     .prepare(
-      `INSERT INTO reps (name, walkup_song, avatar_color, spirit_animal) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO reps (name, walkup_song, walkup_song_label, avatar_color, spirit_animal) VALUES (?, ?, ?, ?, ?)`,
     )
     .run(
       name,
       walkupSong || null,
+      walkupSongLabel?.trim() || null,
       avatarColor || "#e2a336",
       spiritAnimal?.trim() || "",
     );
@@ -329,6 +338,7 @@ export function updateRep(
   data: {
     name?: string;
     walkupSong?: string | null;
+    walkupSongLabel?: string | null;
     avatarColor?: string;
     spiritAnimal?: string | null;
   },
@@ -342,6 +352,10 @@ export function updateRep(
   if (data.walkupSong !== undefined) {
     sets.push("walkup_song = ?");
     vals.push(data.walkupSong);
+  }
+  if (data.walkupSongLabel !== undefined) {
+    sets.push("walkup_song_label = ?");
+    vals.push(data.walkupSongLabel?.trim() || null);
   }
   if (data.avatarColor !== undefined) {
     sets.push("avatar_color = ?");

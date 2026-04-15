@@ -69,7 +69,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
       <AnimatePresence>
         {activeRep && (
           <motion.div
-            className="fixed bottom-24 left-0 right-0 z-30 flex justify-center pointer-events-none px-4"
+            className="fixed bottom-24 left-0 right-0 z-40 flex justify-center pointer-events-none px-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -92,7 +92,10 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                   {activeRep.name}
                 </div>
                 <div className="text-sm text-text-secondary mt-0.5 truncate">
-                  {walkupSongDisplayLine(activeRep.walkupSong)}
+                  {walkupSongDisplayLine(
+                    activeRep.walkupSong,
+                    activeRep.walkupSongLabel,
+                  )}
                 </div>
               </div>
               <div className="hidden sm:flex items-center gap-1.5 shrink-0">
@@ -131,13 +134,12 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
         )}
       </AnimatePresence>
 
-      {/* Trigger — single control; team lives in modal */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 p-4 flex justify-center pointer-events-none">
+      {/* Trigger — single control; team lives in modal (Tailwind pointer-events-auto: invalid React `pointerEvents` prop did not undo parent none) */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 flex justify-center pointer-events-none">
         <motion.button
           type="button"
-          pointerEvents="auto"
           onClick={() => setModalOpen(true)}
-          className="px-8 py-3.5 rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl text-sm font-bold uppercase tracking-widest text-accent shadow-lg hover:bg-surface-hover hover:border-accent/40 transition-colors"
+          className="pointer-events-auto px-8 py-3.5 rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl text-sm font-bold uppercase tracking-widest text-accent shadow-lg hover:bg-surface-hover hover:border-accent/40 transition-colors"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -149,7 +151,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
       <AnimatePresence>
         {modalOpen && (
           <motion.div
-            className="fixed inset-0 z-[45] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[55] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -235,7 +237,10 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                             {rep.name}
                           </div>
                           <div className="text-xs text-text-muted truncate">
-                            {walkupSongDisplayLine(rep.walkupSong)}
+                            {walkupSongDisplayLine(
+                              rep.walkupSong,
+                              rep.walkupSongLabel,
+                            )}
                           </div>
                         </div>
                         <span

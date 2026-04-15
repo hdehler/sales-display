@@ -158,6 +158,7 @@ function repToApi(r: {
   id: number;
   name: string;
   walkup_song: string | null;
+  walkup_song_label?: string | null;
   avatar_color: string;
   spirit_animal?: string;
 }) {
@@ -165,6 +166,7 @@ function repToApi(r: {
     id: r.id,
     name: r.name,
     walkupSong: r.walkup_song,
+    walkupSongLabel: r.walkup_song_label ?? null,
     avatarColor: r.avatar_color,
     spiritAnimal: r.spirit_animal ?? "",
   };
@@ -176,18 +178,26 @@ app.get("/api/reps", (_req, res) => {
 });
 
 app.post("/api/reps", (req, res) => {
-  const { name, walkupSong, avatarColor, spiritAnimal } = req.body as {
-    name?: string;
-    walkupSong?: string;
-    avatarColor?: string;
-    spiritAnimal?: string;
-  };
+  const { name, walkupSong, walkupSongLabel, avatarColor, spiritAnimal } =
+    req.body as {
+      name?: string;
+      walkupSong?: string;
+      walkupSongLabel?: string | null;
+      avatarColor?: string;
+      spiritAnimal?: string;
+    };
   if (!name?.trim()) {
     res.status(400).json({ error: "name is required" });
     return;
   }
   try {
-    const r = createRep(name.trim(), walkupSong, avatarColor, spiritAnimal);
+    const r = createRep(
+      name.trim(),
+      walkupSong,
+      avatarColor,
+      spiritAnimal,
+      walkupSongLabel,
+    );
     res.json(repToApi(r));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -201,13 +211,21 @@ app.post("/api/reps", (req, res) => {
 
 app.put("/api/reps/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { name, walkupSong, avatarColor, spiritAnimal } = req.body as {
-    name?: string;
-    walkupSong?: string | null;
-    avatarColor?: string;
-    spiritAnimal?: string | null;
-  };
-  const r = updateRep(id, { name, walkupSong, avatarColor, spiritAnimal });
+  const { name, walkupSong, walkupSongLabel, avatarColor, spiritAnimal } =
+    req.body as {
+      name?: string;
+      walkupSong?: string | null;
+      walkupSongLabel?: string | null;
+      avatarColor?: string;
+      spiritAnimal?: string | null;
+    };
+  const r = updateRep(id, {
+    name,
+    walkupSong,
+    walkupSongLabel,
+    avatarColor,
+    spiritAnimal,
+  });
   if (!r) {
     res.status(404).json({ error: "not_found" });
     return;

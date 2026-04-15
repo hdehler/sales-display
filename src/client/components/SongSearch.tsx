@@ -22,6 +22,8 @@ interface SongSearchProps {
   value: string;
   onChange: (choice: SongChoice) => void;
   label?: string;
+  /** Persisted display line for Deezer URLs (Artist — Title); keeps label when scrubbing start offset */
+  walkupLabel?: string | null;
 }
 
 function parseOffset(url: string): number {
@@ -44,7 +46,10 @@ function detectTab(value: string): Tab {
 
 type WalkupKind = "none" | "jingle" | "upload" | "deezer" | "unknown";
 
-function getWalkupDisplay(value: string): {
+function getWalkupDisplay(
+  value: string,
+  walkupLabel?: string | null,
+): {
   kind: WalkupKind;
   title: string;
   subtitle: string;
@@ -78,6 +83,15 @@ function getWalkupDisplay(value: string): {
     };
   }
   if (value.startsWith("http")) {
+    const line = walkupLabel?.trim();
+    if (line) {
+      return {
+        kind: "deezer",
+        title: line,
+        subtitle: "Deezer preview · adjust start offset below if needed.",
+        badge: "Deezer",
+      };
+    }
     return {
       kind: "deezer",
       title: "Deezer preview",
@@ -96,8 +110,12 @@ function getWalkupDisplay(value: string): {
 /** One-line label for rep lists / summaries (no emoji). */
 export function walkupSongDisplayLine(
   value: string | null | undefined,
+  storedLabel?: string | null,
 ): string {
-  const d = getWalkupDisplay(value || "");
+  const v = value || "";
+  const line = storedLabel?.trim();
+  if (v.startsWith("http") && line) return line;
+  const d = getWalkupDisplay(v, line);
   if (d.kind === "none") return "No walk-up song";
   if (d.kind === "jingle") return d.title;
   if (d.kind === "upload") return d.title;
@@ -105,7 +123,7 @@ export function walkupSongDisplayLine(
   return d.title;
 }
 
-export function SongSearch({ value, onChange, label }: SongSearchProps) {
+export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchProps) {
   const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -121,7 +139,7 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
   const currentOffset = isUrlValue ? parseOffset(value) : 0;
   const maxOffset = isUrlValue ? Math.max(0, audioDuration - 20) : 10;
 
-  const walkup = getWalkupDisplay(value);
+  const walkup = getWalkupDisplay(value, walkupLabel);
 
   useEffect(() => {
     fetchUploads();
@@ -237,10 +255,15 @@ export function SongSearch({ value, onChange, label }: SongSearchProps) {
     if (!isUrlValue) return;
     const base = stripOffset(value);
     const newVal = seconds > 0 ? `${base}#t=${seconds}` : base;
+    const w = getWalkupDisplay(value, walkupLabel);
+    const outLabel =
+      value.startsWith("http") && walkupLabel?.trim()
+        ? walkupLabel.trim()
+        : w.title;
     onChange({
       type: value.startsWith("/sounds/") ? "upload" : "deezer",
       value: newVal,
-      label: walkup.title,
+      label: outLabel,
     });
   }
 
