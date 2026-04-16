@@ -68,9 +68,11 @@ interface RecentOrdersProps {
   sales: Sale[];
   /** Single-line rows, no product line — for side column */
   compact?: boolean;
+  /** Uppercase rail on the right (e.g. month tag or `LIVE · 20`) */
+  headingRight?: string;
 }
 
-export function RecentOrders({ sales, compact }: RecentOrdersProps) {
+export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps) {
   const rows = buildRows(sales);
 
   if (rows.length === 0) {
@@ -86,12 +88,12 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
   if (compact) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border shrink-0">
-          <h2 className="text-xs font-semibold text-text-primary tracking-tight">
+        <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border shrink-0 min-w-0">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-primary truncate">
             Recent orders
           </h2>
-          <span className="text-xs text-text-muted tabular-nums font-medium">
-            {rows.length}
+          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
+            {headingRight ?? `${rows.length} SHOWN`}
           </span>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0">
@@ -140,12 +142,12 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-end justify-between gap-4 pb-4 mb-1 border-b border-border shrink-0">
-        <h2 className="font-display text-xl sm:text-2xl font-normal text-text-primary tracking-tight">
+      <div className="flex items-center justify-between gap-3 pb-3 mb-1 border-b border-border shrink-0 min-w-0">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-text-primary truncate">
           Recent orders
         </h2>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted tabular-nums pb-0.5">
-          {rows.length} shown
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
+          {headingRight ?? `${rows.length} SHOWN`}
         </span>
       </div>
 

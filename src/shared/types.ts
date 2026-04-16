@@ -51,12 +51,10 @@ export interface DashboardData {
   recentSales: Sale[];
   /** Top accounts by order count this month (customer field). */
   leaderboard: LeaderboardEntry[];
-  /** Top reps by order count this calendar quarter (`timestamp >= quarter start`). */
-  repLeaderboardQuarter: LeaderboardEntry[];
-  /** New buying partners + order counts, calendar month. */
-  hunterLeaderboardMonth: HunterLeaderboardEntry[];
-  /** Same as month board but calendar quarter window. */
-  hunterLeaderboardQuarter: HunterLeaderboardEntry[];
+  /** Top reps by order count this month (non-empty `rep` on stored sales). */
+  repLeaderboard: LeaderboardEntry[];
+  /** Reps ranked by new buying partners (Slide), then by sales count — same month window as other boards. */
+  hunterLeaderboard: HunterLeaderboardEntry[];
   /** Order counts (no $ — Slide has no price in Slack) */
   todayCount: number;
   weekCount: number;

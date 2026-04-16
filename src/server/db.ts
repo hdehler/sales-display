@@ -192,8 +192,9 @@ export function getLeaderboard(): LeaderboardEntry[] {
     .all(start) as LeaderboardEntry[];
 }
 
-/** Rep order counts since `startIso` (calendar month or quarter start). */
-function getRepLeaderboardSince(startIso: string): LeaderboardEntry[] {
+/** Rep names from stored sales (BigQuery-enriched Slide + manual Slack formats). */
+export function getRepLeaderboard(): LeaderboardEntry[] {
+  const start = monthStart();
   return db
     .prepare(
       `SELECT rep as name, COUNT(*) as count
@@ -203,14 +204,15 @@ function getRepLeaderboardSince(startIso: string): LeaderboardEntry[] {
        ORDER BY count DESC
        LIMIT 10`,
     )
-    .all(startIso) as LeaderboardEntry[];
+    .all(start) as LeaderboardEntry[];
 }
 
 /**
- * New buying partners (Slide Total Orders = 0) + order counts per rep since `startIso`.
- * Rep is `rep` or `claimed_by` → Team name when `rep` is empty.
+ * Hunters: Slide orders where Order History shows Total Orders = 0 count as a new buying partner
+ * for the attributed rep (`rep` or, if empty, `claimed_by` → Team name).
  */
-function getHunterLeaderboardSince(startIso: string): HunterLeaderboardEntry[] {
+export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
+  const start = monthStart();
   const rows = db
     .prepare(
       `WITH per_sale AS (
@@ -237,7 +239,7 @@ function getHunterLeaderboardSince(startIso: string): HunterLeaderboardEntry[] {
        ORDER BY newBuyingPartners DESC, sales DESC
        LIMIT 10`,
     )
-    .all(startIso) as {
+    .all(start) as {
       name: string;
       sales: number;
       newBuyingPartners: number;
@@ -305,15 +307,11 @@ export function getDashboardData(): DashboardData {
   const week = getPeriodTotal("week");
   const month = getPeriodTotal("month");
 
-  const monthS = monthStart();
-  const quarterS = quarterStart();
-
   return {
     recentSales: getRecentSales(),
     leaderboard: getLeaderboard(),
-    repLeaderboardQuarter: getRepLeaderboardSince(quarterS),
-    hunterLeaderboardMonth: getHunterLeaderboardSince(monthS),
-    hunterLeaderboardQuarter: getHunterLeaderboardSince(quarterS),
+    repLeaderboard: getRepLeaderboard(),
+    hunterLeaderboard: getHunterLeaderboard(),
     todayCount: today.count,
     weekCount: week.count,
     monthCount: month.count,
@@ -525,11 +523,4 @@ function periodStart(period: "day" | "week" | "month"): string {
 function monthStart(): string {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-}
-
-/** First instant of the current calendar quarter (Jan / Apr / Jul / Oct 1). */
-function quarterStart(): string {
-  const now = new Date();
-  const q0Month = Math.floor(now.getMonth() / 3) * 3;
-  return new Date(now.getFullYear(), q0Month, 1).toISOString();
 }
