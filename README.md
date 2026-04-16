@@ -211,6 +211,8 @@ You should see `[Plugs] python-kasa ready …` and `kasaPythonFallbackHosts` pop
 
 **Not recommended:** `pip3 install --break-system-packages` or `pip3 install --user` — the venv keeps OS Python clean.
 
+If you **only** use python-kasa (port 9999 always refused), set **`KASA_SKIP_LEGACY_TPLINK=true`** to skip the noisy tplink TCP probe on each boot.
+
 ### 3. Verify after restart
 
 1. Watch server logs for `[Plugs] Connected to …` or `[Plugs] Discovered: …`.

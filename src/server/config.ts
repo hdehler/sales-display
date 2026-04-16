@@ -60,6 +60,10 @@ export const config = {
       .split(",")
       .filter(Boolean),
     autoDiscover: process.env.KASA_AUTO_DISCOVER !== "false",
+    /** Skip tplink port-9999 attempt (no TCP spam). Use with python-kasa-only plugs. */
+    skipLegacyTplink:
+      process.env.KASA_SKIP_LEGACY_TPLINK === "true" ||
+      process.env.KASA_SKIP_LEGACY_TPLINK === "1",
   },
 
   /**

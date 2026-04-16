@@ -25,6 +25,13 @@ export async function initPlugs(): Promise<void> {
   }
 
   for (const host of config.plugs.hosts) {
+    if (config.plugs.skipLegacyTplink) {
+      pythonKasaHosts.add(host);
+      console.log(
+        `[Plugs] KASA_SKIP_LEGACY_TPLINK=true — python-kasa only for ${host} (no port 9999 probe).`,
+      );
+      continue;
+    }
     try {
       const device = await client.getDevice({ host });
       const info = await device.getSysInfo();
@@ -124,11 +131,13 @@ export function getPlugsStatus(): {
   kasaPythonBin: string;
   homeAssistantCelebrationWebhookConfigured: boolean;
   homeAssistantPlugsOnly: boolean;
+  kasaSkipLegacyTplink: boolean;
 } {
   const tplinkHosts = [...discoveredPlugs.keys()];
   const pythonHosts = [...pythonKasaHosts];
   return {
     kasaAutoDiscover: config.plugs.autoDiscover,
+    kasaSkipLegacyTplink: config.plugs.skipLegacyTplink,
     kasaHostsConfigured: config.plugs.hosts,
     kasaDiscoveredHosts: getDiscoveredPlugs(),
     kasaDiscoveredCount: tplinkHosts.length + pythonHosts.length,
