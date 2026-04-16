@@ -1,5 +1,4 @@
 import { config } from "./config.js";
-import { notifyHomeAssistantCelebrationWebhook } from "./homeAssistantCelebration.js";
 import { setAllPlugs } from "./plugs.js";
 import {
   getTodaySaleCount,
@@ -253,10 +252,7 @@ export async function triggerCelebration(
 ): Promise<void> {
   queue.push(event);
   if (!processing) {
-    void processQueue().catch((err) => {
-      console.error("[Celebration] processQueue failed:", err);
-      processing = false;
-    });
+    processQueue();
   }
 }
 
@@ -274,30 +270,19 @@ async function processQueue(): Promise<void> {
     : `${event.sale.rep} $${event.sale.amount}`;
   console.log(`[Celebration] Starting: ${event.type} — ${packInfo}`);
 
-  // Plugs / HA first so Socket.IO (or any UI callback) cannot block hardware.
-  try {
-    await notifyHomeAssistantCelebrationWebhook("start", event.duration);
-    if (!config.homeAssistant.plugsViaHomeAssistantOnly) {
-      await setAllPlugs(true);
-    }
-  } catch {
-    console.warn("[Celebration] Failed to activate plugs / HA webhook");
-  }
+  onCelebration?.(event);
 
   try {
-    onCelebration?.(event);
-  } catch (err) {
-    console.warn("[Celebration] onCelebration callback failed:", err);
+    await setAllPlugs(true);
+  } catch {
+    console.warn("[Celebration] Failed to activate plugs");
   }
 
   activeTimeout = setTimeout(async () => {
     try {
-      await notifyHomeAssistantCelebrationWebhook("end", event.duration);
-      if (!config.homeAssistant.plugsViaHomeAssistantOnly) {
-        await setAllPlugs(false);
-      }
+      await setAllPlugs(false);
     } catch {
-      console.warn("[Celebration] Failed to deactivate plugs / HA webhook");
+      console.warn("[Celebration] Failed to deactivate plugs");
     }
     console.log("[Celebration] Ended");
     setTimeout(() => processQueue(), 2000);

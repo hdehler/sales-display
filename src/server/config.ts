@@ -60,23 +60,6 @@ export const config = {
       .split(",")
       .filter(Boolean),
     autoDiscover: process.env.KASA_AUTO_DISCOVER !== "false",
-    /** Skip tplink port-9999 attempt (no TCP spam). Use with python-kasa-only plugs. */
-    skipLegacyTplink:
-      process.env.KASA_SKIP_LEGACY_TPLINK === "true" ||
-      process.env.KASA_SKIP_LEGACY_TPLINK === "1",
-  },
-
-  /**
-   * Optional Home Assistant: POST JSON to a webhook when celebrations start/end.
-   * Use when plugs are not reachable from this server or HA owns automation.
-   */
-  homeAssistant: {
-    celebrationWebhookUrl: (
-      process.env.HOME_ASSISTANT_CELEBRATION_WEBHOOK_URL || ""
-    ).trim(),
-    plugsViaHomeAssistantOnly:
-      process.env.HOME_ASSISTANT_PLUGS_ONLY === "true" ||
-      process.env.HOME_ASSISTANT_PLUGS_ONLY === "1",
   },
 
   celebration: {
