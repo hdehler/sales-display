@@ -88,6 +88,9 @@ export async function initPlugs(): Promise<void> {
 export async function setAllPlugs(state: boolean): Promise<void> {
   const label = state ? "ON" : "OFF";
   const total = discoveredPlugs.size + pythonKasaHosts.size;
+  console.log(
+    `[Plugs] setAllPlugs(${label}) — tplink:${discoveredPlugs.size} python-kasa:${pythonKasaHosts.size} total:${total}`,
+  );
   if (total === 0) {
     console.warn(
       `[Plugs] No Kasa devices in memory — cannot turn ${label}. Set KASA_PLUG_HOSTS in .env and/or ensure discovery sees the plug (same LAN as this server). GET /api/plugs/status`,
