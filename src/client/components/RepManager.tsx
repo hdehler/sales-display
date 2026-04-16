@@ -173,7 +173,9 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           key={c}
                           onClick={() => setNewColor(c)}
                           className={`w-9 h-9 rounded-full border-2 transition-all ${
-                            newColor === c ? "border-stone-900 scale-110" : "border-transparent"
+                            newColor === c
+                              ? "ring-2 ring-white/90 ring-offset-2 ring-offset-surface-raised scale-110 border-transparent"
+                              : "border-transparent"
                           }`}
                           style={{ backgroundColor: c }}
                         />
@@ -230,7 +232,9 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                               key={c}
                               onClick={() => setEditColor(c)}
                               className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                editColor === c ? "border-stone-900 scale-110" : "border-transparent"
+                                editColor === c
+                                  ? "ring-2 ring-white/90 ring-offset-2 ring-offset-surface-raised scale-110 border-transparent"
+                                  : "border-transparent"
                               }`}
                               style={{ backgroundColor: c }}
                             />

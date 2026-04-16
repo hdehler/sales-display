@@ -35,14 +35,14 @@ export default function App() {
           className="absolute top-1/3 left-1/2 w-[60vw] h-[60vw] rounded-full animate-glow-sway"
           style={{
             background:
-              "radial-gradient(circle, rgba(166,95,12,0.09) 0%, transparent 70%)",
+              "radial-gradient(circle, rgba(212,162,74,0.07) 0%, transparent 68%)",
           }}
         />
       </div>
 
       {/* Grain texture */}
       <div
-        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.035] animate-grain"
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.045] animate-grain"
         aria-hidden="true"
         style={{
           backgroundImage:
@@ -56,12 +56,12 @@ export default function App() {
         {dashboard ? (
           <Dashboard data={dashboard} onOpenTeam={() => setTeamOpen(true)} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="font-display text-4xl mb-3 text-text-primary">
+          <div className="flex items-center justify-center h-full px-6">
+            <div className="text-center max-w-md">
+              <div className="font-display text-3xl sm:text-4xl font-normal mb-3 text-text-primary tracking-tight">
                 Sales Dashboard
               </div>
-              <div className="text-text-secondary text-lg">
+              <div className="text-text-secondary text-sm font-medium uppercase tracking-[0.2em]">
                 {connected ? "Loading data…" : "Connecting to server…"}
               </div>
             </div>

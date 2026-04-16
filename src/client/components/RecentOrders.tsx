@@ -19,6 +19,7 @@ interface OrderRow {
   count: number;
   time: string;
   rep: string;
+  newBuyingPartner?: boolean;
 }
 
 function buildRows(sales: Sale[]): OrderRow[] {
@@ -35,6 +36,8 @@ function buildRows(sales: Sale[]): OrderRow[] {
         if (t0 - new Date(n.timestamp).getTime() > PACK_WINDOW_MS) break;
         j++;
       }
+      const pack = sales.slice(i, j);
+      const newBuyingPartner = pack.some((x) => x.meta?.newBuyingPartner);
       rows.push({
         key: `${s.timestamp}-${i}`,
         account: s.customer,
@@ -42,6 +45,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         count: j - i,
         time: s.timestamp,
         rep: s.rep?.trim() || "",
+        newBuyingPartner: newBuyingPartner || undefined,
       });
       i = j;
     } else {
@@ -52,6 +56,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         count: 1,
         time: s.timestamp,
         rep: s.rep?.trim() || "",
+        newBuyingPartner: s.meta?.newBuyingPartner || undefined,
       });
       i++;
     }
@@ -64,64 +69,79 @@ export function RecentOrders({ sales }: { sales: Sale[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted text-lg">
-        Waiting for orders…
+      <div className="flex flex-col items-center justify-center flex-1 min-h-[12rem] text-center px-4">
+        <p className="text-text-muted text-sm font-medium uppercase tracking-wider mb-2">
+          Feed
+        </p>
+        <p className="text-text-secondary text-base max-w-sm leading-relaxed">
+          Waiting for orders…
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-text-primary">Recent Orders</h2>
-        <span className="text-xs font-semibold uppercase tracking-widest text-text-muted">
-          {rows.length} orders
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-end justify-between gap-4 pb-4 mb-1 border-b border-border shrink-0">
+        <h2 className="font-display text-xl sm:text-2xl font-normal text-text-primary tracking-tight">
+          Recent orders
+        </h2>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted tabular-nums pb-0.5">
+          {rows.length} shown
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0 pt-3 space-y-2 pr-1 -mr-1">
         {rows.map((row, i) => (
-          <div
+          <article
             key={row.key}
-            className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-surface-raised border border-border hover:border-border-bright shadow-sm hover:shadow transition-colors animate-fade-up"
+            className="group flex items-center gap-4 rounded-xl border border-border px-4 py-3.5 bg-surface-hover/15 hover:bg-surface-hover/35 hover:border-border-bright transition-colors animate-fade-up"
             style={{ animationDelay: `${i * 40}ms` }}
           >
-            {/* Count badge */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center">
-              <span className="text-accent font-bold text-lg tabular-nums">
+            <div
+              className="flex-shrink-0 w-11 h-11 rounded-xl bg-accent/12 border border-accent/20 flex items-center justify-center"
+              aria-hidden
+            >
+              <span className="text-accent font-bold text-lg tabular-nums leading-none">
                 {row.count}
               </span>
             </div>
 
-            {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-text-primary text-base truncate">
+              <div className="flex items-center gap-2 flex-wrap gap-y-1">
+                <h3 className="font-semibold text-text-primary text-[15px] sm:text-base truncate">
                   {row.account}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                {row.product && (
-                  <span className="text-sm text-text-secondary truncate">
-                    {row.product}
+                </h3>
+                {row.newBuyingPartner ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-accent/12 text-accent border border-accent/25 shrink-0">
+                    New partner
                   </span>
-                )}
-                {row.rep && (
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2 mt-1 min-w-0 text-sm">
+                {row.product ? (
+                  <span className="text-text-secondary truncate">{row.product}</span>
+                ) : null}
+                {row.rep ? (
                   <>
-                    {row.product && (
-                      <span className="text-text-muted">·</span>
-                    )}
-                    <span className="text-sm text-accent/80">{row.rep}</span>
+                    {row.product ? (
+                      <span className="text-text-muted shrink-0" aria-hidden>
+                        ·
+                      </span>
+                    ) : null}
+                    <span className="text-accent/90 font-medium truncate">{row.rep}</span>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
 
-            {/* Time */}
-            <span className="text-xs text-text-muted flex-shrink-0 tabular-nums">
+            <time
+              className="text-[11px] text-text-muted flex-shrink-0 tabular-nums font-medium uppercase tracking-wide"
+              dateTime={row.time}
+            >
               {timeAgo(row.time)}
-            </span>
-          </div>
+            </time>
+          </article>
         ))}
       </div>
     </div>

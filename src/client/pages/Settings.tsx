@@ -81,28 +81,31 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-surface text-text-primary">
-      <div className="max-w-4xl mx-auto px-8 py-10">
+      <div className="max-w-4xl mx-auto px-6 sm:px-8 py-8 sm:py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-display text-4xl text-text-primary">Settings</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-8 pb-8 border-b border-border">
+          <h1 className="font-display text-3xl sm:text-4xl font-normal text-text-primary tracking-tight">
+            Settings
+          </h1>
           <a
             href="/"
-            className="text-base text-accent hover:text-accent/80 transition-colors font-medium"
+            className="text-sm font-semibold text-accent hover:text-accent/85 transition-colors uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface rounded-lg px-2 py-1 -mr-2"
           >
             ← Dashboard
           </a>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-border mb-8">
+        <div className="flex gap-1 border-b border-border mb-8 -mt-2">
           {TABS.map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => setTab(t.id)}
-              className={`px-6 py-3 text-base font-semibold transition-all border-b-2 -mb-px ${
+              className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px rounded-t-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                 tab === t.id
-                  ? "border-accent text-accent"
-                  : "border-transparent text-text-muted hover:text-text-secondary"
+                  ? "border-accent text-accent bg-surface-raised/40"
+                  : "border-transparent text-text-muted hover:text-text-secondary hover:bg-surface-hover/30"
               }`}
             >
               {t.label}
@@ -126,9 +129,9 @@ export default function Settings() {
 
             {/* Save bar — only for General tab */}
             {tab === "general" && (
-              <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface/95 backdrop-blur-sm">
-                <div className="max-w-4xl mx-auto px-8 py-4 flex items-center justify-between">
-                  <div className="text-sm text-text-muted">
+              <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-surface-raised/90 backdrop-blur-md">
+                <div className="max-w-4xl mx-auto px-6 sm:px-8 py-4 flex items-center justify-between gap-4">
+                  <div className="text-sm text-text-muted min-w-0">
                     {saved
                       ? "✓ Saved"
                       : dirty
@@ -136,12 +139,13 @@ export default function Settings() {
                         : "All changes saved"}
                   </div>
                   <button
+                    type="button"
                     onClick={saveAll}
                     disabled={!dirty || saving}
-                    className={`px-8 py-2.5 rounded-lg font-semibold text-base transition-all ${
+                    className={`shrink-0 px-7 py-2.5 rounded-xl font-semibold text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised ${
                       dirty
                         ? "bg-accent text-on-accent hover:bg-accent/90"
-                        : "bg-text-muted/20 text-text-muted cursor-not-allowed"
+                        : "bg-text-muted/15 text-text-muted cursor-not-allowed"
                     }`}
                   >
                     {saving ? "Saving…" : "Save changes"}

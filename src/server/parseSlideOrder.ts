@@ -262,6 +262,22 @@ function parseSequentialSlidePlaintext(raw: string): Record<string, string> | nu
   return out;
 }
 
+/**
+ * Parse "Total Orders" from Slide Order History (plain or mrkdwn).
+ * Returns null if no recognizable Total Orders line (caller should not infer new partner).
+ */
+export function parseTotalOrdersFromOrderHistory(
+  orderHistory: string | undefined,
+): number | null {
+  if (!orderHistory?.trim()) return null;
+  const text = orderHistory.replace(/\*+/g, "").replace(/\r\n/g, "\n");
+  const re = /total\s+orders?\s*[:\s\-–—]*\s*(\d+)/i;
+  const m = text.match(re);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 function buildSaleFromSlideFields(
   fields: Record<string, string>,
   slackTs?: string,
@@ -284,6 +300,11 @@ function buildSaleFromSlideFields(
     purchasedAt: fields["Purchased At"]?.trim(),
     earliestShipDate: fields["Earliest Ship Date"]?.trim(),
   };
+
+  const totalOrders = parseTotalOrdersFromOrderHistory(meta.orderHistory);
+  if (totalOrders !== null) {
+    meta.newBuyingPartner = totalOrders === 0;
+  }
 
   const customer = fields.Account?.trim() || "Unknown account";
   const rawLines = Object.entries(fields)

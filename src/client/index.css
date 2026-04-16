@@ -5,22 +5,21 @@
 @theme {
   --font-display: "DM Serif Display", Georgia, serif;
   --font-body: "Instrument Sans", system-ui, sans-serif;
-  /* Warm light surfaces — strong body/label contrast (WCAG-friendly) */
-  --color-surface: #f0ece6;
-  --color-surface-raised: #fffcf8;
-  --color-surface-hover: #e4dfd6;
-  --color-border: rgba(24, 20, 16, 0.09);
-  --color-border-bright: rgba(24, 20, 16, 0.14);
-  --color-accent: #a65f0c;
-  --color-accent-soft: rgba(166, 95, 12, 0.12);
-  --color-text-primary: #14110e;
-  --color-text-secondary: #454039;
-  --color-text-muted: #6b655c;
-  /* Solid fills that use `bg-accent` / `bg-emerald` */
-  --color-on-accent: #fffbf5;
+  /* Warm charcoal dashboard — readable neutrals, one amber accent */
+  --color-surface: #0a0b0f;
+  --color-surface-raised: #12141c;
+  --color-surface-hover: #1a1d28;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-bright: rgba(255, 255, 255, 0.11);
+  --color-accent: #d4a24a;
+  --color-accent-soft: rgba(212, 162, 74, 0.14);
+  --color-text-primary: #f2f0ec;
+  --color-text-secondary: #b4afa6;
+  --color-text-muted: #7d786f;
+  --color-on-accent: #141009;
   --color-on-emerald: #ffffff;
-  --color-emerald: #047857;
-  --color-red-soft: #dc2626;
+  --color-emerald: #3ecf9b;
+  --color-red-soft: #f87171;
 }
 
 @layer base {
@@ -30,6 +29,11 @@
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(212, 162, 74, 0.28);
+    color: var(--color-text-primary);
   }
 }
 

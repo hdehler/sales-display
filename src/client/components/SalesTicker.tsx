@@ -21,7 +21,7 @@ function TickerItems({ sales }: { sales: Sale[] }) {
           {sale.rep?.trim() && (
             <>
               <span className="text-text-muted">·</span>
-              <span className="text-accent/80">{sale.rep}</span>
+              <span className="text-accent/90 font-medium">{sale.rep}</span>
             </>
           )}
         </span>
@@ -33,15 +33,15 @@ function TickerItems({ sales }: { sales: Sale[] }) {
 export function SalesTicker({ sales }: { sales: Sale[] }) {
   if (sales.length === 0) {
     return (
-      <div className="px-8 py-3 border-b border-border text-text-muted text-sm">
+      <div className="px-8 py-3 border-b border-border bg-surface-raised/60 text-text-muted text-xs font-medium uppercase tracking-wider">
         No recent orders
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden border-y border-border bg-surface-raised/80">
-      <div className="flex animate-marquee whitespace-nowrap py-3 w-max">
+    <div className="overflow-hidden border-b border-border bg-surface-raised/50 shrink-0">
+      <div className="flex animate-marquee whitespace-nowrap py-3.5 w-max [mask-image:linear-gradient(90deg,transparent,black_4%,black_96%,transparent)]">
         <TickerItems sales={sales} />
         <TickerItems sales={sales} />
       </div>

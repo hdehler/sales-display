@@ -6,8 +6,17 @@ export interface SlideOrderMeta {
   hardware?: string;
   service?: string;
   orderHistory?: string;
+  /** Set when Order History text includes Total Orders and the count is 0 (first-time buyer for that account). */
+  newBuyingPartner?: boolean;
   purchasedAt?: string;
   earliestShipDate?: string;
+}
+
+/** Hunters: rep performance on order volume and net-new buying partners (Slide Total Orders = 0). */
+export interface HunterLeaderboardEntry {
+  name: string;
+  sales: number;
+  newBuyingPartners: number;
 }
 
 export interface Sale {
@@ -44,6 +53,8 @@ export interface DashboardData {
   leaderboard: LeaderboardEntry[];
   /** Top reps by order count this month (non-empty `rep` on stored sales). */
   repLeaderboard: LeaderboardEntry[];
+  /** Reps ranked by new buying partners (Slide), then by sales count — same month window as other boards. */
+  hunterLeaderboard: HunterLeaderboardEntry[];
   /** Order counts (no $ — Slide has no price in Slack) */
   todayCount: number;
   weekCount: number;

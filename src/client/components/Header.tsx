@@ -13,40 +13,49 @@ export function Header({ onOpenTeam }: HeaderProps) {
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-8 py-5">
-      <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold tracking-tight text-text-primary">
+    <header className="shrink-0 flex items-center justify-between px-8 py-4 border-b border-border bg-surface-raised/40 backdrop-blur-md">
+      <div className="flex items-center gap-5 min-w-0">
+        <h1 className="font-display text-2xl sm:text-3xl font-normal tracking-tight text-text-primary truncate">
           Sales Feed
         </h1>
-        <div className="flex items-center gap-2 ml-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald" />
+        <div
+          className="flex items-center gap-2 pl-5 border-l border-border shrink-0"
+          aria-live="polite"
+        >
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald opacity-60" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald shadow-[0_0_12px_rgba(62,207,155,0.45)]" />
           </span>
-          <span className="text-sm font-semibold uppercase tracking-widest text-emerald">
+          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald">
             Live
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <span className="text-base text-text-secondary">
-          {time.toLocaleDateString(undefined, {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
-        <span className="text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
+      <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+        <div className="hidden sm:flex flex-col items-end text-right">
+          <span className="text-xs font-medium uppercase tracking-wider text-text-muted">
+            {time.toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+          <span className="text-lg font-semibold tabular-nums text-text-primary tracking-tight">
+            {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
+          </span>
+        </div>
+        <span className="sm:hidden text-base font-semibold tabular-nums text-text-primary">
           {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
         </span>
 
-        <div className="w-px h-7 bg-border-bright ml-1" />
+        <div className="w-px h-9 bg-border self-center hidden sm:block" aria-hidden />
 
         {onOpenTeam && (
           <button
+            type="button"
             onClick={onOpenTeam}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-xs font-semibold uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -59,7 +68,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
         )}
         <a
           href="/settings"
-          className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-xs font-semibold uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

@@ -7,6 +7,7 @@ import type {
   DashboardData,
   LeaderboardEntry,
   DailyTotal,
+  HunterLeaderboardEntry,
 } from "../shared/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -206,6 +207,50 @@ export function getRepLeaderboard(): LeaderboardEntry[] {
     .all(start) as LeaderboardEntry[];
 }
 
+/**
+ * Hunters: Slide orders where Order History shows Total Orders = 0 count as a new buying partner
+ * for the attributed rep (`rep` or, if empty, `claimed_by` → Team name).
+ */
+export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
+  const start = monthStart();
+  const rows = db
+    .prepare(
+      `WITH per_sale AS (
+         SELECT
+           COALESCE(
+             NULLIF(TRIM(rep), ''),
+             (SELECT r.name FROM reps r WHERE r.id = sales.claimed_by)
+           ) AS rep_name,
+           meta_json
+         FROM sales
+         WHERE timestamp >= ?
+       )
+       SELECT rep_name AS name,
+              COUNT(*) AS sales,
+              SUM(
+                CASE
+                  WHEN json_extract(meta_json, '$.newBuyingPartner') = 1 THEN 1
+                  ELSE 0
+                END
+              ) AS newBuyingPartners
+       FROM per_sale
+       WHERE rep_name IS NOT NULL AND TRIM(rep_name) != ''
+       GROUP BY rep_name
+       ORDER BY newBuyingPartners DESC, sales DESC
+       LIMIT 10`,
+    )
+    .all(start) as {
+      name: string;
+      sales: number;
+      newBuyingPartners: number;
+    }[];
+  return rows.map((r) => ({
+    name: r.name,
+    sales: Number(r.sales),
+    newBuyingPartners: Number(r.newBuyingPartners),
+  }));
+}
+
 export function getPeriodTotal(period: "day" | "week" | "month"): {
   total: number;
   count: number;
@@ -266,6 +311,7 @@ export function getDashboardData(): DashboardData {
     recentSales: getRecentSales(),
     leaderboard: getLeaderboard(),
     repLeaderboard: getRepLeaderboard(),
+    hunterLeaderboard: getHunterLeaderboard(),
     todayCount: today.count,
     weekCount: week.count,
     monthCount: month.count,

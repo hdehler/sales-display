@@ -77,8 +77,8 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
             <div
               className="flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl pointer-events-auto max-w-[min(100%,28rem)]"
               style={{
-                borderColor: `${activeRep.avatarColor}55`,
-                background: `linear-gradient(135deg, ${activeRep.avatarColor}18, rgba(255,252,248,0.94))`,
+                borderColor: `${activeRep.avatarColor}50`,
+                background: `linear-gradient(135deg, ${activeRep.avatarColor}22, rgba(14,16,22,0.94))`,
               }}
             >
               <div
@@ -122,7 +122,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                   setActiveRep(null);
                   if (timerRef.current) clearTimeout(timerRef.current);
                 }}
-                className="shrink-0 w-12 h-12 rounded-full bg-stone-900/10 hover:bg-stone-900/15 flex items-center justify-center text-text-muted hover:text-text-primary transition-all active:scale-90"
+                className="shrink-0 w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-text-muted hover:text-text-primary transition-all active:scale-90"
                 aria-label="Stop"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
