@@ -6,6 +6,9 @@ import {
 
 export type { CatalogSongHit };
 
+/** Query `provider` on `/api/songs/search` — `auto` matches production behavior. */
+export type SearchCatalogMode = "auto" | "spotify" | "deezer";
+
 async function searchDeezerCatalog(q: string): Promise<CatalogSongHit[]> {
   const url = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=12`;
   const r = await fetch(url);
@@ -30,17 +33,58 @@ async function searchDeezerCatalog(q: string): Promise<CatalogSongHit[]> {
   }));
 }
 
+function parseCatalogMode(raw: unknown): SearchCatalogMode {
+  const s = String(raw || "auto").toLowerCase();
+  if (s === "spotify" || s === "deezer") return s;
+  return "auto";
+}
+
+export { parseCatalogMode };
+
 /**
- * Spotify first when `SPOTIFY_CLIENT_ID` + `SPOTIFY_CLIENT_SECRET` are set and
- * at least one track has a preview; otherwise Deezer (unchanged behavior).
+ * - `auto`: Spotify first when configured + previews exist; else Deezer.
+ * - `spotify`: Spotify only (empty + hint if not configured / no previews).
+ * - `deezer`: Deezer only.
  */
-export async function searchSongCatalog(q: string): Promise<{
+export async function searchSongCatalog(
+  q: string,
+  mode: SearchCatalogMode = "auto",
+): Promise<{
   data: CatalogSongHit[];
-  source: "spotify" | "deezer";
+  source: "spotify" | "deezer" | null;
+  hint?: string;
 }> {
   const trimmed = q.trim();
-  if (!trimmed) return { data: [], source: "deezer" };
+  if (!trimmed) return { data: [], source: null };
 
+  if (mode === "deezer") {
+    const deezer = await searchDeezerCatalog(trimmed);
+    return { data: deezer, source: "deezer" };
+  }
+
+  if (mode === "spotify") {
+    if (!isSpotifyConfigured()) {
+      return {
+        data: [],
+        source: "spotify",
+        hint: "spotify_not_configured",
+      };
+    }
+    try {
+      const spotify = await searchSpotifyTracksWithPreviews(trimmed);
+      return {
+        data: spotify,
+        source: "spotify",
+        hint:
+          spotify.length === 0 ? "spotify_no_previews" : undefined,
+      };
+    } catch (e) {
+      console.error("[Spotify] Search failed (spotify-only mode):", e);
+      throw e;
+    }
+  }
+
+  // auto
   if (isSpotifyConfigured()) {
     try {
       const spotify = await searchSpotifyTracksWithPreviews(trimmed);

@@ -23,7 +23,7 @@ import {
   setCelebrationCallback,
   buildWalkupCelebration,
 } from "./celebration.js";
-import { searchSongCatalog } from "./songSearch.js";
+import { searchSongCatalog, parseCatalogMode } from "./songSearch.js";
 import {
   insertSaleIfNew,
   getDashboardData,
@@ -252,8 +252,9 @@ app.get("/api/songs/search", async (req, res) => {
     return;
   }
   try {
-    const { data, source } = await searchSongCatalog(q);
-    res.json({ data, source });
+    const mode = parseCatalogMode(req.query.provider);
+    const { data, source, hint } = await searchSongCatalog(q, mode);
+    res.json({ data, source, hint });
   } catch (e) {
     console.error("[songs/search] Failed:", e);
     res.status(502).json({ error: "song_search_failed" });
