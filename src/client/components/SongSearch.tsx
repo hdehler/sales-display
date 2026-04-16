@@ -4,13 +4,13 @@ import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "upload" | "none";
-  /** Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
+  /** Catalog preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
   value: string;
   label: string;
 }
 
 interface SearchResult {
-  id: number;
+  id: string;
   title: string;
   artist: string;
   album: string;
@@ -22,7 +22,7 @@ interface SongSearchProps {
   value: string;
   onChange: (choice: SongChoice) => void;
   label?: string;
-  /** Persisted display line for Deezer URLs (Artist — Title); keeps label when scrubbing start offset */
+  /** Persisted display line for preview URLs (Artist — Title); keeps label when scrubbing start offset */
   walkupLabel?: string | null;
 }
 
@@ -88,15 +88,15 @@ function getWalkupDisplay(
       return {
         kind: "deezer",
         title: line,
-        subtitle: "Deezer preview · adjust start offset below if needed.",
-        badge: "Deezer",
+        subtitle: "Preview clip · adjust start offset below if needed.",
+        badge: "Preview",
       };
     }
     return {
       kind: "deezer",
-      title: "Deezer preview",
+      title: "Song preview",
       subtitle: "Searched track — adjust start offset below if needed.",
-      badge: "Deezer",
+      badge: "Preview",
     };
   }
   return {
@@ -119,7 +119,7 @@ export function walkupSongDisplayLine(
   if (d.kind === "none") return "No walk-up song";
   if (d.kind === "jingle") return d.title;
   if (d.kind === "upload") return d.title;
-  if (d.kind === "deezer") return "Deezer track";
+  if (d.kind === "deezer") return "Song preview";
   return d.title;
 }
 
@@ -127,6 +127,9 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
   const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchSource, setSearchSource] = useState<"apple" | "deezer" | null>(
+    null,
+  );
   const [searching, setSearching] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [uploads, setUploads] = useState<string[]>([]);
@@ -176,15 +179,21 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
+      setSearchSource(null);
       return;
     }
     setSearching(true);
     try {
       const r = await fetch(`/api/songs/search?q=${encodeURIComponent(q)}`);
-      const json = (await r.json()) as { data: SearchResult[] };
+      const json = (await r.json()) as {
+        data: SearchResult[];
+        source?: "apple" | "deezer" | null;
+      };
       setResults(json.data || []);
+      setSearchSource(json.source ?? null);
     } catch {
       setResults([]);
+      setSearchSource(null);
     }
     setSearching(false);
   }, []);
@@ -217,7 +226,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
     setTimeout(() => setPlayingId(null), 20_000);
   }
 
-  function selectDeezer(result: SearchResult) {
+  function selectCatalogHit(result: SearchResult) {
     stopPreview();
     onChange({
       type: "deezer",
@@ -374,7 +383,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           </div>
         </div>
 
-        {/* Start offset scrubber — for Deezer and uploaded audio */}
+        {/* Start offset scrubber — for catalog previews and uploaded audio */}
         {value.trim() && isUrlValue && (
           <div className="mt-3 pt-3 border-t border-border/80">
             <div className="flex items-center justify-between mb-1.5">
@@ -468,18 +477,32 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           {searching && (
             <div className="text-xs text-text-muted py-2">Searching…</div>
           )}
+          {!searching && searchSource && query.trim() && (
+            <div className="text-[10px] text-text-muted mb-1.5">
+              {searchSource === "apple"
+                ? "Results from Apple Music"
+                : "Results from Deezer"}
+            </div>
+          )}
           <div className="max-h-52 overflow-y-auto space-y-1">
             {results.map((r) => (
               <div
                 key={r.id}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer group"
-                onClick={() => selectDeezer(r)}
+                onClick={() => selectCatalogHit(r)}
               >
-                <img
-                  src={r.cover}
-                  alt=""
-                  className="w-8 h-8 rounded flex-shrink-0"
-                />
+                {r.cover ? (
+                  <img
+                    src={r.cover}
+                    alt=""
+                    className="w-8 h-8 rounded flex-shrink-0 object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-8 h-8 rounded flex-shrink-0 bg-surface-hover border border-border"
+                    aria-hidden
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium text-text-primary truncate">
                     {r.title}
@@ -491,15 +514,15 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    preview(`deezer-${r.id}`, r.previewUrl);
+                    preview(`hit-${r.id}`, r.previewUrl);
                   }}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-                    playingId === `deezer-${r.id}`
+                    playingId === `hit-${r.id}`
                       ? "bg-accent text-on-accent"
                       : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                   }`}
                 >
-                  {playingId === `deezer-${r.id}` ? "■" : "▶"}
+                  {playingId === `hit-${r.id}` ? "■" : "▶"}
                 </button>
               </div>
             ))}

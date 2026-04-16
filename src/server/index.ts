@@ -23,6 +23,7 @@ import {
   setCelebrationCallback,
   buildWalkupCelebration,
 } from "./celebration.js";
+import { searchSongCatalog } from "./songSearch.js";
 import {
   insertSaleIfNew,
   getDashboardData,
@@ -242,40 +243,20 @@ app.delete("/api/reps/:id", (req, res) => {
   }
 });
 
-// ── Deezer song search proxy (avoids CORS) ───────────────
+// ── Song search (Apple Music when configured, else Deezer) ─
 
 app.get("/api/songs/search", async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) {
-    res.json({ data: [] });
+    res.json({ data: [], source: null });
     return;
   }
   try {
-    const url = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=12`;
-    const r = await fetch(url);
-    const json = (await r.json()) as {
-      data?: {
-        id: number;
-        title: string;
-        artist: { name: string };
-        album: { title: string; cover_small: string };
-        preview: string;
-        duration: number;
-      }[];
-    };
-    const results = (json.data || []).map((t) => ({
-      id: t.id,
-      title: t.title,
-      artist: t.artist.name,
-      album: t.album.title,
-      cover: t.album.cover_small,
-      previewUrl: t.preview,
-      duration: t.duration,
-    }));
-    res.json({ data: results });
+    const { data, source } = await searchSongCatalog(q);
+    res.json({ data, source });
   } catch (e) {
-    console.error("[Deezer] Search failed:", e);
-    res.status(502).json({ error: "deezer_search_failed" });
+    console.error("[songs/search] Failed:", e);
+    res.status(502).json({ error: "song_search_failed" });
   }
 });
 
