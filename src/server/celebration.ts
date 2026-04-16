@@ -253,7 +253,10 @@ export async function triggerCelebration(
 ): Promise<void> {
   queue.push(event);
   if (!processing) {
-    processQueue();
+    void processQueue().catch((err) => {
+      console.error("[Celebration] processQueue failed:", err);
+      processing = false;
+    });
   }
 }
 
@@ -271,8 +274,7 @@ async function processQueue(): Promise<void> {
     : `${event.sale.rep} $${event.sale.amount}`;
   console.log(`[Celebration] Starting: ${event.type} — ${packInfo}`);
 
-  onCelebration?.(event);
-
+  // Plugs / HA first so Socket.IO (or any UI callback) cannot block hardware.
   try {
     await notifyHomeAssistantCelebrationWebhook("start", event.duration);
     if (!config.homeAssistant.plugsViaHomeAssistantOnly) {
@@ -280,6 +282,12 @@ async function processQueue(): Promise<void> {
     }
   } catch {
     console.warn("[Celebration] Failed to activate plugs / HA webhook");
+  }
+
+  try {
+    onCelebration?.(event);
+  } catch (err) {
+    console.warn("[Celebration] onCelebration callback failed:", err);
   }
 
   activeTimeout = setTimeout(async () => {
