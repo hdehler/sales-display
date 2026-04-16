@@ -3,6 +3,9 @@ import { parseMessageToSale } from "./parseSlackMessage.js";
 import { enrichSaleWithAccountOwnerFromDwh } from "./bigqueryAccountOwner.js";
 import type { Sale } from "../shared/types.js";
 
+/** Slack allows up to 1000 per `conversations.history` page. */
+const HISTORY_PAGE_LIMIT = 1000;
+
 export interface BackfillOptions {
   maxMessages: number;
   /** Pause between API pages (ms) to respect rate limits */
@@ -16,12 +19,21 @@ export interface BackfillOptions {
   latest?: string;
   /**
    * `conversations.history` omits thread replies. When true (default), also call
-   * `conversations.replies` for each message with `reply_count > 0` so orders posted only
-   * in threads are imported.
+   * `conversations.replies`. For **date-range** backfills (`oldest` set), we fetch replies for
+   * every channel parent, not only when `reply_count > 0` (Slack sometimes omits that field).
    */
   includeThreadReplies?: boolean;
   /** Pause between `conversations.replies` pages (ms). */
   threadReplyPageDelayMs?: number;
+  /** Count parse hits/misses and duplicate skips. */
+  collectStats?: boolean;
+}
+
+export interface BackfillStats {
+  parseCandidates: number;
+  parsedAsSale: number;
+  parseMisses: number;
+  duplicateSkipped: number;
 }
 
 export interface BackfillResult {
@@ -31,6 +43,7 @@ export interface BackfillResult {
   /** Top-level channel messages counted (excludes thread-only scan tally if you need raw split, use scanned) */
   channelMessagesScanned: number;
   threadMessagesScanned: number;
+  stats?: BackfillStats;
 }
 
 /**
@@ -58,20 +71,36 @@ export async function runSlackHistoryBackfill(
   /** In date-range mode, fetch every page in the window; otherwise respect maxMessages (e.g. startup backfill). */
   const messageCap = dateBounded ? Number.MAX_SAFE_INTEGER : Math.max(1, options.maxMessages);
   const includeThreadReplies = options.includeThreadReplies !== false;
+  /** Date-range imports: always check threads — not only when reply_count &gt; 0 */
+  const fetchAllThreadParents = dateBounded && includeThreadReplies;
   const threadReplyPageDelayMs = Math.max(
     0,
     options.threadReplyPageDelayMs ?? options.pageDelayMs,
   );
+  const collectStats = options.collectStats === true;
+  const stats: BackfillStats = {
+    parseCandidates: 0,
+    parsedAsSale: 0,
+    parseMisses: 0,
+    duplicateSkipped: 0,
+  };
 
   async function tryInsertFromMessage(msg: Record<string, unknown>): Promise<void> {
     if (msg.type !== "message") return;
     if (msg.subtype === "message_deleted") return;
 
+    if (collectStats) stats.parseCandidates += 1;
     const sale = parseMessageToSale(msg);
-    if (!sale) return;
+    if (!sale) {
+      if (collectStats) stats.parseMisses += 1;
+      return;
+    }
+    if (collectStats) stats.parsedAsSale += 1;
 
     const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
-    if (onInsert(enriched)) inserted += 1;
+    const wasNew = onInsert(enriched);
+    if (wasNew) inserted += 1;
+    else if (collectStats) stats.duplicateSkipped += 1;
   }
 
   async function fetchThreadReplies(parentTs: string): Promise<void> {
@@ -80,7 +109,7 @@ export async function runSlackHistoryBackfill(
       const rep = await client.conversations.replies({
         channel: channelId,
         ts: parentTs,
-        limit: 200,
+        limit: 1000,
         cursor: replyCursor,
         include_all_metadata: true,
       });
@@ -112,7 +141,7 @@ export async function runSlackHistoryBackfill(
   }
 
   while (scanned < messageCap) {
-    const pageSize = Math.min(200, messageCap - scanned);
+    const pageSize = Math.min(HISTORY_PAGE_LIMIT, messageCap - scanned);
     if (pageSize <= 0) break;
 
     const res = await client.conversations.history({
@@ -146,7 +175,9 @@ export async function runSlackHistoryBackfill(
       if (includeThreadReplies && typeof msg.ts === "string") {
         const rc = msg.reply_count;
         const n = typeof rc === "number" ? rc : 0;
-        if (n > 0) await fetchThreadReplies(msg.ts);
+        const shouldFetchThread =
+          fetchAllThreadParents || n > 0;
+        if (shouldFetchThread) await fetchThreadReplies(msg.ts);
       }
     }
 
@@ -162,5 +193,6 @@ export async function runSlackHistoryBackfill(
     pages,
     channelMessagesScanned,
     threadMessagesScanned,
+    ...(collectStats ? { stats } : {}),
   };
 }

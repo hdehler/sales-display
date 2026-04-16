@@ -128,15 +128,22 @@ async function main(): Promise<void> {
       pageDelayMs: config.slack.backfillPageDelayMs,
       oldest,
       latest,
+      collectStats: true,
     },
     (sale) => insertSaleIfNew(sale) !== null,
   );
   console.log("Result:", {
     ...result,
     note: dateBounded
-      ? "Date range: all pages in window + thread replies (no message cap)."
+      ? "Date range: full channel pagination (1000/msg page) + thread fetch per parent; no message cap."
       : "No date range: capped by maxMessages (thread replies count toward cap).",
   });
+  if (result.stats) {
+    const s = result.stats;
+    console.log(
+      `Parse: ${s.parsedAsSale} sale(s) matched from ${s.parseCandidates} message(s); ${s.parseMisses} unparsed; ${s.duplicateSkipped} already in DB (slack_ts)`,
+    );
+  }
 }
 
 main().catch((e) => {
