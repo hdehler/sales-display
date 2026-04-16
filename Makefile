@@ -1,7 +1,7 @@
 # Sales display — shortcuts for common commands
 # Usage: make help | make start | make dev | …
 
-.PHONY: help run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
+.PHONY: help run install install-kasa build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
 
 .DEFAULT_GOAL := help
 
@@ -23,6 +23,7 @@ help:
 	@echo "  make run              build if needed, then API + Electron (needs :3000 free)"
 	@echo ""
 	@echo "  make install          Install npm dependencies"
+	@echo "  make install-kasa     venv + python-kasa (Pi / PEP 668 — see README)"
 	@echo "  make build            Build the production client (Vite → dist/client)"
 	@echo "  make setup            install + build (same as npm run setup)"
 	@echo "  make start            API only (http://localhost:3000) — use with PM2 on Pi"
@@ -48,6 +49,12 @@ run:
 
 install:
 	npm install
+
+# Local venv — required on Raspberry Pi OS where `pip3 install` is blocked (PEP 668).
+install-kasa:
+	test -d .venv-kasa || python3 -m venv .venv-kasa
+	.venv-kasa/bin/pip install -U pip && .venv-kasa/bin/pip install -r requirements-kasa.txt
+	@echo "Set in .env: KASA_PYTHON_BIN=$$(pwd)/.venv-kasa/bin/python"
 
 build:
 	npm run build

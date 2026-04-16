@@ -198,14 +198,18 @@ The Node server turns **all discovered Kasa plugs ON** when a celebration starts
 
 The Node driver first tries TP-Link’s **legacy** local API (TCP **9999**). Many newer devices only speak **KLAP** or similar — you’ll see `ECONNREFUSED` on 9999 in the logs. In that case this app **automatically falls back** to **[python-kasa](https://github.com/python-kasa/python-kasa)** (same protocols Home Assistant uses).
 
-On the Raspberry Pi (once per machine):
+On **Raspberry Pi OS** (and many Debian-based systems), system-wide `pip install` is **blocked** (PEP 668). Use a **project venv** instead:
 
 ```bash
-pip3 install -r requirements-kasa.txt
-# or: pip3 install python-kasa
+cd ~/sales-display
+make install-kasa
 ```
 
-Restart the API. You should see `[Plugs] python-kasa ready …` and `kasaPythonFallbackHosts` populated in `GET /api/plugs/status`. Optional: set `KASA_PYTHON_BIN=/usr/bin/python3` if `python3` is not on `PATH`.
+Then set **`KASA_PYTHON_BIN`** in `.env` to the printed path (typically `…/sales-display/.venv-kasa/bin/python`). Restart the API.
+
+You should see `[Plugs] python-kasa ready …` and `kasaPythonFallbackHosts` populated in `GET /api/plugs/status`.
+
+**Not recommended:** `pip3 install --break-system-packages` or `pip3 install --user` — the venv keeps OS Python clean.
 
 ### 3. Verify after restart
 
