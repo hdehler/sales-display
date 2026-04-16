@@ -37,6 +37,7 @@ import {
   getSetting,
   setSetting,
 } from "./db.js";
+import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 import { readdirSync, mkdirSync, writeFileSync } from "fs";
 import multer from "multer";
@@ -146,6 +147,25 @@ app.get("/api/slack/channel", async (_req, res) => {
 /** Same payload as `dashboard:update` — lets the Pi UI load even if Socket.IO is flaky. */
 app.get("/api/dashboard", (_req, res) => {
   res.json(getDashboardData());
+});
+
+/**
+ * Re-query BigQuery for Slide rows still stored as Unknown and update `rep` when the DWH
+ * now has a HubSpot owner (late assignment). Same logic as the periodic job.
+ */
+app.post("/api/reconcile-unknown-reps", async (_req, res) => {
+  try {
+    const r = await reconcileUnknownSlideRepsFromDwh();
+    if (r.rowsUpdated > 0) {
+      broadcastDashboard();
+    }
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 });
 
 // ── JSON body parser ──────────────────────────────────────
@@ -545,6 +565,30 @@ async function start(): Promise<void> {
       );
     } else {
       console.warn(`[BigQuery] Probe failed — Slide rep enrichment disabled: ${bq.error}`);
+    }
+
+    const reconcileMs = config.bigqueryAccountOwner.reconcileUnknownRepMs;
+    if (Number.isFinite(reconcileMs) && reconcileMs > 0) {
+      const tick = async (): Promise<void> => {
+        try {
+          const r = await reconcileUnknownSlideRepsFromDwh();
+          if (r.rowsUpdated > 0) {
+            console.log(
+              `[BigQuery] Reconciled Unknown → rep: ${r.rowsUpdated} sale(s), ${r.accountsChecked} account(s) checked`,
+            );
+            broadcastDashboard();
+          }
+        } catch (e) {
+          console.warn(
+            "[BigQuery] reconcileUnknownSlideReps failed:",
+            e instanceof Error ? e.message : e,
+          );
+        }
+      };
+      setInterval(tick, reconcileMs);
+      console.log(
+        `[BigQuery] Unknown-rep reconcile every ${reconcileMs}ms (set BIGQUERY_RECONCILE_UNKNOWN_MS=0 to disable)`,
+      );
     }
   }
 

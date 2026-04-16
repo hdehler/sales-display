@@ -413,7 +413,7 @@ async function runBackfillJob(client: WebClient): Promise<void> {
       (sale) => onHistorySale?.(sale) ?? false,
     );
     console.log(
-      `[Backfill] Done: scanned=${result.scanned} inserted=${result.inserted} pages=${result.pages}`,
+      `[Backfill] Done: scanned=${result.scanned} (channel=${result.channelMessagesScanned} thread=${result.threadMessagesScanned}) inserted=${result.inserted} pages=${result.pages}`,
     );
     onBackfillComplete?.();
   } catch (err) {

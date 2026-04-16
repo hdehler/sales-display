@@ -29,7 +29,7 @@ help:
 	@echo "  make dev              Dev mode: hot-reload server + Vite (browser)"
 	@echo "  make desktop          Electron (Linux SSH: auto DISPLAY=:0 if unset)"
 	@echo "  make desktop-pi       alias for make desktop"
-	@echo "  make slack-backfill   Import Slack channel history (optional: N=800)"
+	@echo "  make slack-backfill   Import Slack history (N=500 default). For a month use npm run slack-backfill -- YYYY-MM-DD YYYY-MM-DD"
 	@echo "  make stats            curl /api/stats (server must be running)"
 	@echo "  make clean            Remove dist/client"
 	@echo ""
@@ -65,7 +65,8 @@ desktop:
 
 desktop-pi: desktop
 
-# Default 500 messages; override: make slack-backfill N=800
+# Default: newest 500 channel messages only. For a date range (full pagination + threads), use:
+#   npm run slack-backfill -- 2026-04-01 2026-04-16
 slack-backfill:
 	npm run slack-backfill -- $(or $(N),500)
 

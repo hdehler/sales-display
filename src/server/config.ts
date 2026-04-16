@@ -96,6 +96,14 @@ export const config = {
       process.env.BIGQUERY_LOOKUP_CACHE_MAX || "512",
       10,
     ),
+    /**
+     * Re-fetch HubSpot owner for Slide rows still stored as Unknown (late DWH assignment).
+     * 0 = disabled. Example: 900000 = every 15 minutes.
+     */
+    reconcileUnknownRepMs: parseInt(
+      process.env.BIGQUERY_RECONCILE_UNKNOWN_MS || "0",
+      10,
+    ),
   },
 
   messagePatterns: [

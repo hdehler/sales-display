@@ -7,8 +7,10 @@
  *   npx tsx src/server/slack-backfill-cli.ts <from-YYYY-MM-DD> <to-YYYY-MM-DD>
  *
  * Date range is UTC midnight boundaries: `from` inclusive, `to` inclusive (end of that day).
+ * Within that window, **all** channel messages are paginated (no 15k cap) and **thread replies**
+ * are fetched so orders posted only in threads are not skipped.
  * Example (April 1–16, 2026):
- *   npx tsx src/server/slack-backfill-cli.ts 15000 2026-04-01 2026-04-16
+ *   npx tsx src/server/slack-backfill-cli.ts 2026-04-01 2026-04-16
  */
 import { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
@@ -106,6 +108,11 @@ async function main(): Promise<void> {
   }
 
   const { maxMessages, oldest, latest, label } = parseCliArgs();
+  const dateBounded =
+    oldest != null &&
+    oldest !== "" &&
+    latest != null &&
+    latest !== "";
   const client = new WebClient(config.slack.botToken);
 
   console.log(`Backfilling: ${label}`);
@@ -124,7 +131,12 @@ async function main(): Promise<void> {
     },
     (sale) => insertSaleIfNew(sale) !== null,
   );
-  console.log("Result:", result);
+  console.log("Result:", {
+    ...result,
+    note: dateBounded
+      ? "Date range: all pages in window + thread replies (no message cap)."
+      : "No date range: capped by maxMessages (thread replies count toward cap).",
+  });
 }
 
 main().catch((e) => {

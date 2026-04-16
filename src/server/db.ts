@@ -9,6 +9,7 @@ import type {
   DailyTotal,
   HunterLeaderboardEntry,
 } from "../shared/types.js";
+import { UNKNOWN_REP } from "../shared/rep.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, "../../data/sales.db");
@@ -151,6 +152,46 @@ export function insertSaleIfNew(sale: Sale): Sale | null {
 export function deleteAllSales(): number {
   const result = db.prepare(`DELETE FROM sales`).run();
   return result.changes;
+}
+
+/** Slide orders with no resolved rep — candidates for BigQuery reconciliation. */
+export interface SlideUnknownRepRow {
+  id: number;
+  customer: string;
+}
+
+/**
+ * Slide sales where `rep` is still empty/Unknown and the sale was not manually claimed.
+ * When HubSpot owner appears late in the DWH, reconciliation can set `rep` to the owner name.
+ */
+export function listSlideSalesWithUnknownRep(): SlideUnknownRepRow[] {
+  return db
+    .prepare(
+      `SELECT id, customer FROM sales
+       WHERE meta_json IS NOT NULL
+         AND json_extract(meta_json, '$.source') = 'slide_cloud'
+         AND claimed_by IS NULL
+         AND (TRIM(rep) = '' OR LOWER(TRIM(rep)) = LOWER(?))`,
+    )
+    .all(UNKNOWN_REP) as SlideUnknownRepRow[];
+}
+
+const SQLITE_MAX_VARS = 450;
+
+/** Set `rep` for many sale ids (batched for SQLite parameter limits). */
+export function updateSalesRepForIds(ids: number[], rep: string): number {
+  if (ids.length === 0) return 0;
+  let total = 0;
+  for (let i = 0; i < ids.length; i += SQLITE_MAX_VARS - 1) {
+    const chunk = ids.slice(i, i + SQLITE_MAX_VARS - 1);
+    const ph = chunk.map(() => "?").join(",");
+    const stmt = db.prepare(
+      `UPDATE sales SET rep = ? WHERE id IN (${ph})`,
+    );
+    const r = stmt.run(rep, ...chunk);
+    total += r.changes;
+  }
+  return total;
 }
 
 function rowToSale(row: Record<string, unknown>): Sale {
