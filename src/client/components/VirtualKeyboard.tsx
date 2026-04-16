@@ -151,7 +151,7 @@ export function VirtualKeyboard() {
 
   const btnBase =
     "flex items-center justify-center rounded-lg font-medium transition-all active:scale-95 select-none touch-manipulation";
-  const charBtn = `${btnBase} bg-surface border border-border text-text-primary text-lg h-12 min-w-[2.4rem]`;
+  const charBtn = `${btnBase} bg-surface-hover border border-border text-text-primary text-lg h-12 min-w-[2.4rem]`;
   const specialBtn = `${btnBase} bg-surface-hover border border-border text-text-secondary text-sm h-12 px-4`;
 
   return (

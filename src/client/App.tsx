@@ -35,14 +35,14 @@ export default function App() {
           className="absolute top-1/3 left-1/2 w-[60vw] h-[60vw] rounded-full animate-glow-sway"
           style={{
             background:
-              "radial-gradient(circle, rgba(12,136,255,0.09) 0%, transparent 68%)",
+              "radial-gradient(circle, rgba(12,136,255,0.12) 0%, transparent 68%)",
           }}
         />
       </div>
 
       {/* Grain texture */}
       <div
-        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.028] animate-grain"
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.042] animate-grain"
         aria-hidden="true"
         style={{
           backgroundImage:

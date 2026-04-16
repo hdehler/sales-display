@@ -133,7 +133,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-black/25"
+            className="fixed inset-0 z-40 bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
