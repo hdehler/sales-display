@@ -9,19 +9,10 @@ import { SpiritAnimalPicker } from "./SpiritAnimalPicker";
 import { TwemojiImg } from "./TwemojiImg";
 import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice, walkupSongDisplayLine } from "./SongSearch";
-
-const AVATAR_COLORS = [
-  "#0c88ff",
-  "#2663b8",
-  "#2fb140",
-  "#d50b0b",
-  "#ffce00",
-  "#777777",
-  "#666666",
-  "#3da0ff",
-  "#1a4a90",
-  "#5ad66e",
-];
+import {
+  AvatarColorPicker,
+  DEFAULT_AVATAR_COLOR,
+} from "./AvatarColorPicker";
 
 interface RepManagerProps {
   open: boolean;
@@ -32,7 +23,7 @@ interface RepManagerProps {
 export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
   const [reps, setReps] = useState<Rep[]>([]);
   const [newName, setNewName] = useState("");
-  const [newColor, setNewColor] = useState(AVATAR_COLORS[0]);
+  const [newColor, setNewColor] = useState(DEFAULT_AVATAR_COLOR);
   const [newSong, setNewSong] = useState("");
   const [newWalkupLabel, setNewWalkupLabel] = useState("");
   const [newSpiritAnimal, setNewSpiritAnimal] = useState("");
@@ -173,23 +164,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                     className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
                     onKeyDown={(e) => e.key === "Enter" && addRep()}
                   />
-                  <div>
-                    <div className="text-sm text-text-secondary mb-2">Color</div>
-                    <div className="flex gap-2.5">
-                      {AVATAR_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          onClick={() => setNewColor(c)}
-                          className={`w-9 h-9 rounded-full border-2 transition-all ${
-                            newColor === c
-                              ? "ring-2 ring-white/90 ring-offset-2 ring-offset-surface-raised scale-110 border-transparent"
-                              : "border-transparent"
-                          }`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  <AvatarColorPicker value={newColor} onChange={setNewColor} />
                   <SongSearch
                     value={newSong}
                     onChange={handleNewSong}
@@ -234,20 +209,10 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           onChange={(e) => setEditName(e.target.value)}
                           className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
                         />
-                        <div className="flex gap-2.5">
-                          {AVATAR_COLORS.map((c) => (
-                            <button
-                              key={c}
-                              onClick={() => setEditColor(c)}
-                              className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                editColor === c
-                                  ? "ring-2 ring-white/90 ring-offset-2 ring-offset-surface-raised scale-110 border-transparent"
-                                  : "border-transparent"
-                              }`}
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </div>
+                        <AvatarColorPicker
+                          value={editColor}
+                          onChange={setEditColor}
+                        />
                         <SongSearch
                           value={editSong}
                           onChange={handleEditSong}
