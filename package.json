@@ -11,7 +11,8 @@
     "start:all": "concurrently -k -n api,ui -c blue,magenta \"npm run start\" \"sh -c 'sleep 5 && exec npm run desktop'\"",
     "setup": "npm install && npm run build",
     "desktop": "sh scripts/run-electron.sh",
-    "slack-backfill": "tsx src/server/slack-backfill-cli.ts"
+    "slack-backfill": "tsx src/server/slack-backfill-cli.ts",
+    "clear-sales": "tsx src/server/clear-sales-cli.ts"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^7.9.4",

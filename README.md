@@ -139,6 +139,15 @@ The **`channels:history`** scope is required so the app can read **past** messag
 
 The live Socket listener only sees **new** messages. To import **existing** Slide / plain-text orders from the channel:
 
+**Wipe orders before a full re-import** (keeps reps, settings, and song mappings):
+
+```bash
+cd ~/sales-display
+npm run clear-sales -- --yes
+```
+
+Then run the backfill below. Without clearing first, existing `slack_ts` rows block duplicate inserts.
+
 **Option A — on each server start** (good for a fresh Pi):
 
 ```env
@@ -152,10 +161,21 @@ Restart: `pm2 restart sales-display`. Watch logs for `[Backfill] Done: scanned=�
 
 ```bash
 cd ~/sales-display
+# Newest-first, cap at N messages (default 500 if omitted)
 npx tsx src/server/slack-backfill-cli.ts 800
 ```
 
-(800 = max messages to scan; optional, default 500 in code path.)
+**Date range (UTC calendar days, inclusive):** imports only messages in that window (still capped by max messages).
+
+```bash
+# April 1–16, 2026 — up to 15,000 messages (default cap when using two date args)
+npx tsx src/server/slack-backfill-cli.ts 2026-04-01 2026-04-16
+
+# Same range with an explicit cap
+npx tsx src/server/slack-backfill-cli.ts 20000 2026-04-01 2026-04-16
+```
+
+(First form: `max` optional, default 500 for a single numeric arg; two `YYYY-MM-DD` args default to 15,000 max messages.)
 
 Backfill **does not** fire celebrations — it only fills SQLite. New live messages still behave as before.
 

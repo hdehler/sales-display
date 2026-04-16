@@ -7,6 +7,13 @@ export interface BackfillOptions {
   maxMessages: number;
   /** Pause between API pages (ms) to respect rate limits */
   pageDelayMs: number;
+  /**
+   * Slack `ts` strings (Unix seconds.microseconds). When set, passed to
+   * `conversations.history` so only messages in [oldest, latest) are fetched (Slack semantics).
+   */
+  oldest?: string;
+  /** Upper bound exclusive in practice: use start of day after your last inclusive day. */
+  latest?: string;
 }
 
 export interface BackfillResult {
@@ -39,6 +46,12 @@ export async function runSlackHistoryBackfill(
       limit: pageSize,
       cursor,
       include_all_metadata: true,
+      ...(options.oldest != null && options.oldest !== ""
+        ? { oldest: options.oldest }
+        : {}),
+      ...(options.latest != null && options.latest !== ""
+        ? { latest: options.latest }
+        : {}),
     });
 
     if (!res.ok) {

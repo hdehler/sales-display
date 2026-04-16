@@ -144,6 +144,15 @@ export function insertSaleIfNew(sale: Sale): Sale | null {
   }
 }
 
+/**
+ * Delete every row in `sales` (all orders, Slack `slack_ts` dedupe keys, walk-up `claimed_by`).
+ * Does not touch `reps`, `song_mappings`, or `app_settings`.
+ */
+export function deleteAllSales(): number {
+  const result = db.prepare(`DELETE FROM sales`).run();
+  return result.changes;
+}
+
 function rowToSale(row: Record<string, unknown>): Sale {
   let meta: Sale["meta"];
   const mj = row.meta_json;
