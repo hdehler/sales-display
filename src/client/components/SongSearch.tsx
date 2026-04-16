@@ -4,7 +4,7 @@ import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "upload" | "none";
-  /** Spotify/Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
+  /** iTunes/Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
   value: string;
   label: string;
 }
@@ -39,13 +39,15 @@ type Tab = "search" | "jingles" | "uploads";
 
 const CATALOG_MODE_STORAGE_KEY = "sales-display-song-catalog-mode";
 
-type CatalogMode = "auto" | "spotify" | "deezer";
+type CatalogMode = "auto" | "itunes" | "deezer";
 
 function readStoredCatalogMode(): CatalogMode {
   if (typeof sessionStorage === "undefined") return "auto";
   try {
     const v = sessionStorage.getItem(CATALOG_MODE_STORAGE_KEY);
-    if (v === "spotify" || v === "deezer" || v === "auto") return v;
+    if (v === "itunes" || v === "deezer" || v === "auto") return v;
+    // Migrate old Spotify preference to auto.
+    if (v === "spotify") return "auto";
   } catch {
     /* private mode */
   }
@@ -143,7 +145,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
   const [query, setQuery] = useState("");
   const [catalogMode, setCatalogMode] = useState<CatalogMode>(readStoredCatalogMode);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchSource, setSearchSource] = useState<"spotify" | "deezer" | null>(
+  const [searchSource, setSearchSource] = useState<"itunes" | "deezer" | null>(
     null,
   );
   const [searchHint, setSearchHint] = useState<string | null>(null);
@@ -217,25 +219,23 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
       );
       const json = (await r.json()) as {
         data: SearchResult[];
-        source?: "spotify" | "deezer" | null;
+        source?: "itunes" | "deezer" | null;
         hint?: string;
       };
       setResults(json.data || []);
       setSearchSource(json.source ?? null);
       const h = json.hint;
       setSearchHint(
-        h === "spotify_not_configured"
-          ? "Spotify not configured — set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env."
-          : h === "spotify_no_previews"
-            ? "Spotify returned no tracks with a preview for this query."
-            : null,
+        h === "itunes_no_previews"
+          ? "iTunes returned no tracks with a preview for this query."
+          : null,
       );
     } catch {
       setResults([]);
       setSearchSource(null);
       setSearchHint(
-        catalogMode === "spotify"
-          ? "Spotify search failed (check server logs)."
+        catalogMode === "itunes"
+          ? "iTunes search failed (check server logs)."
           : null,
       );
     }
@@ -429,7 +429,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           </div>
         </div>
 
-        {/* Start offset scrubber — for Spotify/Deezer previews and uploads */}
+        {/* Start offset scrubber — for iTunes/Deezer previews and uploads */}
         {value.trim() && isUrlValue && (
           <div className="mt-3 pt-3 border-t border-border/80">
             <div className="flex items-center justify-between mb-1.5">
@@ -531,7 +531,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
             {(
               [
                 ["auto", "Auto"],
-                ["spotify", "Spotify"],
+                ["itunes", "iTunes"],
                 ["deezer", "Deezer"],
               ] as const
             ).map(([mode, label]) => (
@@ -554,8 +554,8 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           )}
           {!searching && searchSource && query.trim() && (
             <div className="text-[10px] text-text-muted mb-1.5">
-              {searchSource === "spotify"
-                ? "Results from Spotify (tracks with a preview only)"
+              {searchSource === "itunes"
+                ? "Results from iTunes (tracks with a preview only)"
                 : "Results from Deezer"}
             </div>
           )}

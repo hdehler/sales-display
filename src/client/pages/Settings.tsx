@@ -581,19 +581,12 @@ function SoundsTab() {
         </h3>
         <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm text-text-secondary leading-relaxed">
           Search for real songs when assigning walk-up songs (Team drawer) or
-          model celebration songs (Model Songs tab). If{" "}
-          <code className="text-text-primary font-mono text-xs">
-            SPOTIFY_CLIENT_ID
-          </code>{" "}
-          and{" "}
-          <code className="text-text-primary font-mono text-xs">
-            SPOTIFY_CLIENT_SECRET
-          </code>{" "}
-          are set in <code className="text-text-primary font-mono text-xs">.env</code>, the app
-          uses Spotify search and only lists tracks that still have a 30-second
-          preview URL. If Spotify is not configured, or no previews are returned,
-          search falls back to Deezer. Use the start-offset slider to pick the best
-          part of the clip.
+          model celebration songs (Model Songs tab). Results come from the{" "}
+          <span className="text-text-primary font-medium">iTunes Search API</span>{" "}
+          by default — no keys required, just a 30-second preview for each track.
+          If iTunes returns nothing for a query, the app falls back to{" "}
+          <span className="text-text-primary font-medium">Deezer</span>. Use the
+          start-offset slider to pick the best part of the clip.
         </div>
       </section>
 

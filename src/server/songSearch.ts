@@ -1,13 +1,86 @@
-import {
-  isSpotifyConfigured,
-  searchSpotifyTracksWithPreviews,
-  type CatalogSongHit,
-} from "./spotify.js";
-
-export type { CatalogSongHit };
+/** Unified hit for `/api/songs/search` (same shape regardless of source). */
+export type CatalogSongHit = {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  cover: string;
+  previewUrl: string;
+  duration: number;
+};
 
 /** Query `provider` on `/api/songs/search` — `auto` matches production behavior. */
-export type SearchCatalogMode = "auto" | "spotify" | "deezer";
+export type SearchCatalogMode = "auto" | "itunes" | "deezer";
+
+function parseCatalogMode(raw: unknown): SearchCatalogMode {
+  const s = String(raw || "auto").toLowerCase();
+  if (s === "itunes" || s === "deezer") return s;
+  return "auto";
+}
+
+export { parseCatalogMode };
+
+// ── iTunes ───────────────────────────────────────────────────
+// Public, no keys required. Returns a 30s preview URL for most tracks.
+// @see https://performance-partners.apple.com/search-api
+
+type ITunesResult = {
+  trackId?: number;
+  trackName?: string;
+  artistName?: string;
+  collectionName?: string;
+  artworkUrl100?: string;
+  artworkUrl60?: string;
+  previewUrl?: string;
+  trackTimeMillis?: number;
+  kind?: string;
+};
+
+type ITunesResponse = {
+  resultCount: number;
+  results: ITunesResult[];
+};
+
+/** Upgrade iTunes artwork URL to a crisp 200px square. */
+function upsizeArtwork(url: string | undefined): string {
+  if (!url) return "";
+  return url.replace(/\/\d+x\d+bb\.(jpg|png)$/i, "/200x200bb.$1");
+}
+
+async function searchITunesCatalog(q: string): Promise<CatalogSongHit[]> {
+  const params = new URLSearchParams({
+    term: q,
+    media: "music",
+    entity: "song",
+    limit: "20",
+    country: (process.env.ITUNES_COUNTRY || "US").trim().toUpperCase() || "US",
+  });
+  const url = `https://itunes.apple.com/search?${params.toString()}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    throw new Error(`iTunes search ${r.status}: ${body.slice(0, 200)}`);
+  }
+  const json = (await r.json()) as ITunesResponse;
+  const out: CatalogSongHit[] = [];
+  for (const t of json.results || []) {
+    if (!t.previewUrl) continue;
+    if (!t.trackId || !t.trackName) continue;
+    out.push({
+      id: String(t.trackId),
+      title: t.trackName,
+      artist: t.artistName || "Unknown",
+      album: t.collectionName || "",
+      cover: upsizeArtwork(t.artworkUrl100 || t.artworkUrl60),
+      previewUrl: t.previewUrl,
+      duration: Math.round((t.trackTimeMillis ?? 30_000) / 1000),
+    });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
+// ── Deezer (fallback) ────────────────────────────────────────
 
 async function searchDeezerCatalog(q: string): Promise<CatalogSongHit[]> {
   const url = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=12`;
@@ -33,17 +106,9 @@ async function searchDeezerCatalog(q: string): Promise<CatalogSongHit[]> {
   }));
 }
 
-function parseCatalogMode(raw: unknown): SearchCatalogMode {
-  const s = String(raw || "auto").toLowerCase();
-  if (s === "spotify" || s === "deezer") return s;
-  return "auto";
-}
-
-export { parseCatalogMode };
-
 /**
- * - `auto`: Spotify first when configured + previews exist; else Deezer.
- * - `spotify`: Spotify only (empty + hint if not configured / no previews).
+ * - `auto`: iTunes first; fall back to Deezer if iTunes returns 0 / errors.
+ * - `itunes`: iTunes only (empty + hint if nothing has a preview).
  * - `deezer`: Deezer only.
  */
 export async function searchSongCatalog(
@@ -51,7 +116,7 @@ export async function searchSongCatalog(
   mode: SearchCatalogMode = "auto",
 ): Promise<{
   data: CatalogSongHit[];
-  source: "spotify" | "deezer" | null;
+  source: "itunes" | "deezer" | null;
   hint?: string;
 }> {
   const trimmed = q.trim();
@@ -62,38 +127,28 @@ export async function searchSongCatalog(
     return { data: deezer, source: "deezer" };
   }
 
-  if (mode === "spotify") {
-    if (!isSpotifyConfigured()) {
-      return {
-        data: [],
-        source: "spotify",
-        hint: "spotify_not_configured",
-      };
-    }
+  if (mode === "itunes") {
     try {
-      const spotify = await searchSpotifyTracksWithPreviews(trimmed);
+      const hits = await searchITunesCatalog(trimmed);
       return {
-        data: spotify,
-        source: "spotify",
-        hint:
-          spotify.length === 0 ? "spotify_no_previews" : undefined,
+        data: hits,
+        source: "itunes",
+        hint: hits.length === 0 ? "itunes_no_previews" : undefined,
       };
     } catch (e) {
-      console.error("[Spotify] Search failed (spotify-only mode):", e);
+      console.error("[iTunes] Search failed (itunes-only mode):", e);
       throw e;
     }
   }
 
   // auto
-  if (isSpotifyConfigured()) {
-    try {
-      const spotify = await searchSpotifyTracksWithPreviews(trimmed);
-      if (spotify.length > 0) {
-        return { data: spotify, source: "spotify" };
-      }
-    } catch (e) {
-      console.error("[Spotify] Search failed, falling back to Deezer:", e);
+  try {
+    const hits = await searchITunesCatalog(trimmed);
+    if (hits.length > 0) {
+      return { data: hits, source: "itunes" };
     }
+  } catch (e) {
+    console.error("[iTunes] Search failed, falling back to Deezer:", e);
   }
 
   const deezer = await searchDeezerCatalog(trimmed);
