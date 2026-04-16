@@ -1,26 +1,6 @@
 import type { Sale } from "../../shared/types";
 import { UNKNOWN_REP } from "../../shared/rep";
-
-/** Small sprout — new buying partner (Slide Total Orders = 0). */
-function NewPartnerSprout({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 22v-7" />
-      <path d="M9.5 9.5C8 7 5 6.5 3 8c2.5 1 4.5 3 5 8" />
-      <path d="M14.5 9.5C16 7 19 6.5 21 8c-2.5 1-4.5 3-5 8" />
-    </svg>
-  );
-}
+import { Sprout } from "lucide-react";
 
 function displayRep(s: Sale): string {
   if (s.meta?.source === "slide_cloud") return s.rep?.trim() || UNKNOWN_REP;
@@ -144,11 +124,12 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
                   {row.account}
                 </span>
                 {row.newBuyingPartner ? (
-                  <span
-                    className="inline-flex shrink-0 text-emerald-600 dark:text-emerald-400"
-                    title="New partner"
-                  >
-                    <NewPartnerSprout className="h-3.5 w-3.5" />
+                  <span className="inline-flex shrink-0" title="New partner">
+                    <Sprout
+                      className="new-partner-icon h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
                     <span className="sr-only">New partner</span>
                   </span>
                 ) : null}
@@ -205,7 +186,11 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
                 </h3>
                 {row.newBuyingPartner ? (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 shrink-0 text-[10px] font-semibold uppercase tracking-wide">
-                    <NewPartnerSprout className="h-3 w-3 shrink-0" />
+                    <Sprout
+                      className="new-partner-icon h-3 w-3 text-current"
+                      strokeWidth={2}
+                      aria-hidden
+                    />
                     New partner
                   </span>
                 ) : null}

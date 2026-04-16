@@ -129,6 +129,13 @@
   animation: fade-up .5s ease-out both;
 }
 
+/* Lucide `Sprout` — new buying partner (Slide first-time account); pair with text-* on the icon */
+@layer components {
+  .new-partner-icon {
+    @apply shrink-0;
+  }
+}
+
 /* ── Celebration shimmer ────────────────────────── */
 @keyframes shimmer {
   0% { background-position: -200% center; }
