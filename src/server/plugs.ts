@@ -135,9 +135,13 @@ export function getPlugsStatus(): {
   homeAssistantCelebrationWebhookConfigured: boolean;
   homeAssistantPlugsOnly: boolean;
   kasaSkipLegacyTplink: boolean;
+  /** True when KASA_USERNAME and KASA_PASSWORD are set (needed for many KLAP plugs). */
+  kasaCloudCredentialsConfigured: boolean;
 } {
   const tplinkHosts = [...discoveredPlugs.keys()];
   const pythonHosts = [...pythonKasaHosts];
+  const u = (process.env.KASA_USERNAME || "").trim();
+  const p = (process.env.KASA_PASSWORD || "").trim();
   return {
     kasaAutoDiscover: config.plugs.autoDiscover,
     kasaSkipLegacyTplink: config.plugs.skipLegacyTplink,
@@ -151,5 +155,6 @@ export function getPlugsStatus(): {
       config.homeAssistant.celebrationWebhookUrl,
     ),
     homeAssistantPlugsOnly: config.homeAssistant.plugsViaHomeAssistantOnly,
+    kasaCloudCredentialsConfigured: Boolean(u && p),
   };
 }
