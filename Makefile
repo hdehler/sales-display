@@ -88,4 +88,4 @@ pm2-logs:
 	pm2 logs sales-display --lines 80
 
 deploy:
- 	cd ~/sales-display && git pull && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all
+	cd ~/sales-display && git pull && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all
