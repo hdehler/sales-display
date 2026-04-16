@@ -15,7 +15,6 @@ import {
   setHistorySaleHandler,
   setBackfillCompleteHandler,
 } from "./slack.js";
-import { initPlugs } from "./plugs.js";
 import {
   shouldCelebrate,
   shouldCelebrateSlidePack,
@@ -530,8 +529,6 @@ async function start(): Promise<void> {
   server.listen(config.port, () => {
     console.log(`[Server] Running on http://localhost:${config.port}`);
   });
-
-  await initPlugs();
 
   try {
     await initSlack();

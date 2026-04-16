@@ -1,14 +1,12 @@
 # Sales Celebration Display
 
-A Raspberry Pi 5-powered sales dashboard that listens for sales events from Slack, displays a live leaderboard on a touchscreen, and triggers disco lights via TP-Link Kasa smart plugs for celebration moments.
+A Raspberry Pi 5-powered sales dashboard that listens for sales events from Slack, displays a live leaderboard on a touchscreen, and runs full-screen celebrations with sound on the display.
 
 ## Hardware
 
 - **Raspberry Pi 5** (any RAM size)
 - **XBONFIRE EM101** 10.1" touchscreen (1920x1200, HDMI + USB, plug-and-play)
 - **Speakers** (3.5mm or USB — the XBONFIRE has built-in speakers as a backup)
-- **TP-Link Kasa smart plug** (any model: HS100, HS103, HS105, KP115, etc.)
-- **Disco lights** plugged into the Kasa smart plug
 - **Micro SD card** (32GB+ recommended)
 
 ## Quick Start (Development on Mac/PC)
@@ -159,7 +157,7 @@ npx tsx src/server/slack-backfill-cli.ts 800
 
 (800 = max messages to scan; optional, default 500 in code path.)
 
-Backfill **does not** fire celebrations or disco — it only fills SQLite. New live messages still behave as before.
+Backfill **does not** fire celebrations — it only fills SQLite. New live messages still behave as before.
 
 ## Desktop app on the Pi (not a generic browser)
 
@@ -174,18 +172,9 @@ The UI is still built with web tech, but it runs in a **dedicated Electron windo
 
 **Dev on Mac:** `npm start` in one terminal, `npm run desktop` in another.
 
-## Kasa Smart Plug Setup
-
-1. Download the **Kasa** app on your phone
-2. Add your smart plug(s) following the app instructions
-3. Connect the plug to the **same WiFi network** as the Raspberry Pi
-4. Plug your disco lights into the Kasa smart plug
-5. The app auto-discovers plugs on the network — no configuration needed
-6. (Optional) If auto-discovery doesn't work, find the plug's IP address in the Kasa app and set `KASA_PLUG_HOSTS` in `.env`
-
 ## Celebration Triggers
 
-Configure which sales trigger the disco lights in `.env`:
+Configure which sales trigger celebrations in `.env`:
 
 - `CELEBRATION_TRIGGER_PRODUCTS` — comma-separated keywords. If a sale's product name contains any of these, it triggers a celebration. Example: `enterprise,premium,annual`
 - `MILESTONE_INTERVAL` — triggers a celebration every N sales per day. Example: `10` means the 10th, 20th, 30th sale, etc.
@@ -206,7 +195,6 @@ src/
     slack.ts          — Slack Bot listener
     parseSlackMessage.ts — parse live + history messages
     slackHistoryBackfill.ts — conversations.history importer
-    plugs.ts          — Kasa smart plug control
     celebration.ts    — celebration orchestration and queue
   client/
     App.tsx           — main React app

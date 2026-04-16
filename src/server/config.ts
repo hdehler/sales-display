@@ -55,13 +55,6 @@ export const config = {
       process.env.SLACK_LOG_POLL === "true",
   },
 
-  plugs: {
-    hosts: (process.env.KASA_PLUG_HOSTS || "")
-      .split(",")
-      .filter(Boolean),
-    autoDiscover: process.env.KASA_AUTO_DISCOVER !== "false",
-  },
-
   celebration: {
     defaultDuration: parseInt(process.env.CELEBRATION_DURATION || "30", 10),
     triggerProducts: (process.env.CELEBRATION_TRIGGER_PRODUCTS || "")

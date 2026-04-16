@@ -1,5 +1,4 @@
 import { config } from "./config.js";
-import { setAllPlugs } from "./plugs.js";
 import {
   getTodaySaleCount,
   getSongForModel,
@@ -252,7 +251,10 @@ export async function triggerCelebration(
 ): Promise<void> {
   queue.push(event);
   if (!processing) {
-    processQueue();
+    void processQueue().catch((err) => {
+      console.error("[Celebration] processQueue failed:", err);
+      processing = false;
+    });
   }
 }
 
@@ -270,20 +272,13 @@ async function processQueue(): Promise<void> {
     : `${event.sale.rep} $${event.sale.amount}`;
   console.log(`[Celebration] Starting: ${event.type} — ${packInfo}`);
 
-  onCelebration?.(event);
-
   try {
-    await setAllPlugs(true);
-  } catch {
-    console.warn("[Celebration] Failed to activate plugs");
+    onCelebration?.(event);
+  } catch (err) {
+    console.warn("[Celebration] onCelebration callback failed:", err);
   }
 
-  activeTimeout = setTimeout(async () => {
-    try {
-      await setAllPlugs(false);
-    } catch {
-      console.warn("[Celebration] Failed to deactivate plugs");
-    }
+  activeTimeout = setTimeout(() => {
     console.log("[Celebration] Ended");
     setTimeout(() => processQueue(), 2000);
   }, event.duration * 1000);
@@ -325,5 +320,4 @@ export function cancelCelebration(): void {
   }
   queue.length = 0;
   processing = false;
-  setAllPlugs(false).catch(() => {});
 }
