@@ -90,12 +90,13 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col gap-3">
-            <div className={`${panel} p-3 sm:p-4 flex-[2] min-h-0`}>
+            {/* Smaller share — fewer new-partner rows than order volume */}
+            <div className={`${panel} p-3 sm:p-4 flex-1 min-h-0`}>
               <ContainerHeading
                 title="New buying partners"
                 right={monthTag}
               />
-              <div className="overflow-auto min-h-0 flex-1 -mx-0.5 px-0.5">
+              <div className="overflow-auto min-h-0 flex-1 -mx-0.5 px-0.5 overscroll-contain">
                 {data.hunterLeaderboard.length === 0 ? (
                   <p className="text-sm text-text-secondary leading-snug">
                     No Slide orders with parsed Total Orders this month.
@@ -165,14 +166,15 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               </div>
             </div>
 
-            <div className={`${panel} p-3 sm:p-4 flex-1 min-h-0 flex flex-col`}>
+            {/* Larger: full rep order list */}
+            <div className={`${panel} p-3 sm:p-4 flex-[2] min-h-0 flex flex-col`}>
               <ContainerHeading title="Orders" right={monthTag} />
               {data.repLeaderboard.length === 0 ? (
                 <p className="text-sm text-text-secondary leading-snug">
                   No rep-attributed orders this month.
                 </p>
               ) : (
-                <ol className="space-y-0 overflow-y-auto min-h-0 flex-1 divide-y divide-border/40 -mx-0.5 px-0.5 text-sm">
+                <ol className="space-y-0 overflow-y-auto min-h-0 flex-1 divide-y divide-border/40 -mx-0.5 px-0.5 text-sm overscroll-contain">
                   {data.repLeaderboard.map((row, i) => (
                     <li
                       key={row.name}

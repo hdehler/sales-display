@@ -96,7 +96,7 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
             {headingRight ?? `${rows.length} SHOWN`}
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0">
+        <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0 overscroll-contain">
           {rows.map((row) => (
             <div
               key={row.key}
