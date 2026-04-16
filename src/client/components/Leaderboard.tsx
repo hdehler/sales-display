@@ -12,7 +12,7 @@ export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
   const maxCount = entries[0]?.count || 1;
 
   return (
-    <div className="rounded-2xl border border-border bg-surface-raised/60 p-5 flex flex-col h-full">
+    <div className="rounded-2xl border border-border bg-surface-raised p-5 flex flex-col h-full shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg text-text-primary">Top Accounts</h2>
         <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted">
@@ -37,7 +37,7 @@ export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
                 <div className="flex items-center gap-3 mb-1.5">
                   {i < 3 ? (
                     <span
-                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold bg-gradient-to-br ${RANK_ACCENTS[i]} text-surface`}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold bg-gradient-to-br ${RANK_ACCENTS[i]} text-stone-950`}
                     >
                       {i + 1}
                     </span>

@@ -338,7 +338,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           <div className="min-w-0 flex-1">
             <div
               className={`text-base font-semibold leading-tight ${
-                value.trim() ? "text-white" : "text-text-secondary"
+                value.trim() ? "text-text-primary" : "text-text-secondary"
               }`}
             >
               {walkup.title}
@@ -355,7 +355,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                   onClick={previewCurrentSelection}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-xs transition-colors ${
                     playingId === "walkup-card"
-                      ? "bg-accent text-surface"
+                      ? "bg-accent text-on-accent"
                       : "bg-accent/20 text-accent hover:bg-accent/35"
                   }`}
                   title="Preview"
@@ -393,7 +393,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                   onClick={previewFromOffset}
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] transition-colors ${
                     playingId === "offset-preview"
-                      ? "bg-accent text-surface"
+                      ? "bg-accent text-on-accent"
                       : "bg-accent/20 text-accent hover:bg-accent/30"
                   }`}
                 >
@@ -428,7 +428,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           onClick={() => setTab("search")}
           className={`flex-1 px-2 py-1 rounded transition-all font-medium ${
             tab === "search"
-              ? "bg-accent text-surface"
+              ? "bg-accent text-on-accent"
               : "text-text-muted hover:text-text-secondary"
           }`}
         >
@@ -438,7 +438,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           onClick={() => setTab("uploads")}
           className={`flex-1 px-2 py-1 rounded transition-all font-medium ${
             tab === "uploads"
-              ? "bg-accent text-surface"
+              ? "bg-accent text-on-accent"
               : "text-text-muted hover:text-text-secondary"
           }`}
         >
@@ -448,7 +448,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           onClick={() => setTab("jingles")}
           className={`flex-1 px-2 py-1 rounded transition-all font-medium ${
             tab === "jingles"
-              ? "bg-accent text-surface"
+              ? "bg-accent text-on-accent"
               : "text-text-muted hover:text-text-secondary"
           }`}
         >
@@ -495,7 +495,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                   }}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
                     playingId === `deezer-${r.id}`
-                      ? "bg-accent text-surface"
+                      ? "bg-accent text-on-accent"
                       : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                   }`}
                 >
@@ -551,7 +551,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                     }}
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
                       playingId === `upload-${u}`
-                        ? "bg-accent text-surface"
+                        ? "bg-accent text-on-accent"
                         : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                     }`}
                   >
@@ -586,7 +586,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                 }}
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
                   playingId === j.id
-                    ? "bg-accent text-surface"
+                    ? "bg-accent text-on-accent"
                     : "bg-text-muted/20 text-text-muted hover:bg-accent/30 hover:text-accent"
                 }`}
               >

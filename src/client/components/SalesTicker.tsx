@@ -9,7 +9,7 @@ function TickerItems({ sales }: { sales: Sale[] }) {
           className="mx-6 inline-flex items-center gap-2 text-sm flex-shrink-0"
         >
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-          <span className="font-semibold text-white">{sale.customer}</span>
+          <span className="font-semibold text-text-primary">{sale.customer}</span>
           {sale.product && (
             <>
               <span className="text-text-muted">—</span>
@@ -40,7 +40,7 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
   }
 
   return (
-    <div className="overflow-hidden border-y border-border bg-surface-raised/40">
+    <div className="overflow-hidden border-y border-border bg-surface-raised/80">
       <div className="flex animate-marquee whitespace-nowrap py-3 w-max">
         <TickerItems sales={sales} />
         <TickerItems sales={sales} />

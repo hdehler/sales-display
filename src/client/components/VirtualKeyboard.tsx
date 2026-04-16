@@ -151,7 +151,7 @@ export function VirtualKeyboard() {
 
   const btnBase =
     "flex items-center justify-center rounded-lg font-medium transition-all active:scale-95 select-none touch-manipulation";
-  const charBtn = `${btnBase} bg-surface-raised border border-border text-white text-lg h-12 min-w-[2.4rem]`;
+  const charBtn = `${btnBase} bg-surface-raised border border-border text-text-primary text-lg h-12 min-w-[2.4rem]`;
   const specialBtn = `${btnBase} bg-surface-hover border border-border text-text-secondary text-sm h-12 px-4`;
 
   return (
@@ -200,7 +200,7 @@ export function VirtualKeyboard() {
             {/* Row 4 — shift + letters + backspace */}
             <div className="flex gap-1.5 justify-center">
               <button
-                className={`${specialBtn} ${shifted ? "!bg-accent !text-surface !border-accent" : ""}`}
+                className={`${specialBtn} ${shifted ? "!bg-accent !text-on-accent !border-accent" : ""}`}
                 onClick={() => setShifted(!shifted)}
                 style={{ flex: 1.5 }}
               >
@@ -228,7 +228,7 @@ export function VirtualKeyboard() {
                 -
               </button>
               <button
-                className={`${btnBase} bg-surface-raised border border-border text-white text-base h-12`}
+                className={`${btnBase} bg-surface-raised border border-border text-text-primary text-base h-12`}
                 onClick={space}
                 style={{ flex: 5 }}
               >

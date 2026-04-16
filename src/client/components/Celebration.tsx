@@ -178,7 +178,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
             </motion.div>
 
             <motion.h1
-              className="font-display text-6xl md:text-8xl text-text-primary leading-[1] mb-4"
+              className="font-display text-6xl md:text-8xl text-white leading-[1] mb-4"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
@@ -198,7 +198,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
             </motion.div>
 
             <motion.div
-              className="text-2xl md:text-3xl font-display text-text-secondary mb-3"
+              className="text-2xl md:text-3xl font-display text-zinc-300 mb-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35 }}
@@ -259,7 +259,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
                 )}
 
                 <motion.h1
-                  className="font-display text-5xl md:text-8xl text-text-primary leading-[1.05] mb-3 md:mb-4"
+                  className="font-display text-5xl md:text-8xl text-white leading-[1.05] mb-3 md:mb-4"
                   initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.12, duration: 0.55 }}
@@ -290,7 +290,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
             ) : (
               <>
                 <motion.h1
-                  className="font-display text-5xl md:text-7xl text-text-primary leading-[1.1] mb-5"
+                  className="font-display text-5xl md:text-7xl text-white leading-[1.1] mb-5"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15, duration: 0.5 }}

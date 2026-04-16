@@ -15,7 +15,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
   return (
     <header className="flex items-center justify-between px-8 py-5">
       <div className="flex items-center gap-4">
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary">
           Sales Feed
         </h1>
         <div className="flex items-center gap-2 ml-2">
@@ -37,7 +37,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
             day: "numeric",
           })}
         </span>
-        <span className="text-2xl font-semibold tabular-nums text-white tracking-tight">
+        <span className="text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
           {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
         </span>
 
@@ -46,7 +46,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
         {onOpenTeam && (
           <button
             onClick={onOpenTeam}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-white hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
+            className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -59,7 +59,7 @@ export function Header({ onOpenTeam }: HeaderProps) {
         )}
         <a
           href="/settings"
-          className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-white hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
+          className="flex items-center gap-2.5 px-5 py-3 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-all text-sm font-semibold uppercase tracking-wider"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

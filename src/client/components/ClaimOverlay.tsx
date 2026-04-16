@@ -127,7 +127,7 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
                   >
                     {rep.name.charAt(0).toUpperCase()}
                   </span>
-                  <span className="text-base font-semibold text-white">
+                  <span className="text-base font-semibold text-text-primary">
                     {rep.name}
                   </span>
                 </motion.button>

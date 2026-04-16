@@ -73,7 +73,7 @@ export function RecentOrders({ sales }: { sales: Sale[] }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white">Recent Orders</h2>
+        <h2 className="text-lg font-bold text-text-primary">Recent Orders</h2>
         <span className="text-xs font-semibold uppercase tracking-widest text-text-muted">
           {rows.length} orders
         </span>
@@ -83,7 +83,7 @@ export function RecentOrders({ sales }: { sales: Sale[] }) {
         {rows.map((row, i) => (
           <div
             key={row.key}
-            className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-surface-raised/70 border border-border hover:border-border-bright transition-colors animate-fade-up"
+            className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-surface-raised border border-border hover:border-border-bright shadow-sm hover:shadow transition-colors animate-fade-up"
             style={{ animationDelay: `${i * 40}ms` }}
           >
             {/* Count badge */}
@@ -96,7 +96,7 @@ export function RecentOrders({ sales }: { sales: Sale[] }) {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-white text-base truncate">
+                <span className="font-semibold text-text-primary text-base truncate">
                   {row.account}
                 </span>
               </div>

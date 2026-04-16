@@ -125,14 +125,14 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-black/50"
+            className="fixed inset-0 z-40 bg-stone-900/35"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
           <motion.div
-            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-surface border-l border-border overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-surface-raised border-l border-border shadow-2xl overflow-y-auto"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -140,12 +140,12 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
           >
             <div className="p-8">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="font-display text-3xl text-white">
+                <h2 className="font-display text-3xl text-text-primary">
                   Sales Team
                 </h2>
                 <button
                   onClick={onClose}
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-text-muted hover:text-white hover:bg-surface-hover transition-all text-2xl"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-all text-2xl"
                 >
                   ✕
                 </button>
@@ -162,7 +162,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="Name"
-                    className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
+                    className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
                     onKeyDown={(e) => e.key === "Enter" && addRep()}
                   />
                   <div>
@@ -173,7 +173,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           key={c}
                           onClick={() => setNewColor(c)}
                           className={`w-9 h-9 rounded-full border-2 transition-all ${
-                            newColor === c ? "border-white scale-110" : "border-transparent"
+                            newColor === c ? "border-stone-900 scale-110" : "border-transparent"
                           }`}
                           style={{ backgroundColor: c }}
                         />
@@ -202,7 +202,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                   <button
                     onClick={addRep}
                     disabled={!newName.trim()}
-                    className="w-full px-5 py-3.5 rounded-xl bg-accent text-surface font-semibold text-base hover:bg-accent/90 transition-colors disabled:opacity-40"
+                    className="w-full px-5 py-3.5 rounded-xl bg-accent text-on-accent font-semibold text-base hover:bg-accent/90 transition-colors disabled:opacity-40"
                   >
                     Add to team
                   </button>
@@ -222,7 +222,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                          className="w-full px-4 py-3 rounded-xl bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
                         />
                         <div className="flex gap-2.5">
                           {AVATAR_COLORS.map((c) => (
@@ -230,7 +230,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                               key={c}
                               onClick={() => setEditColor(c)}
                               className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                editColor === c ? "border-white scale-110" : "border-transparent"
+                                editColor === c ? "border-stone-900 scale-110" : "border-transparent"
                               }`}
                               style={{ backgroundColor: c }}
                             />
@@ -254,7 +254,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                         <div className="flex gap-3">
                           <button
                             onClick={() => saveEdit(rep.id)}
-                            className="px-6 py-3 rounded-xl bg-emerald text-surface text-base font-semibold"
+                            className="px-6 py-3 rounded-xl bg-emerald text-on-emerald text-base font-semibold"
                           >
                             Save
                           </button>
@@ -275,7 +275,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                           {rep.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white text-base">
+                          <div className="font-semibold text-text-primary text-base">
                             {rep.name}
                           </div>
                           <div className="text-sm text-text-secondary truncate mt-0.5">
@@ -310,7 +310,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
                         )}
                         <button
                           onClick={() => startEdit(rep)}
-                          className="px-4 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-white hover:bg-surface-hover transition-all"
+                          className="px-4 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-all"
                         >
                           Edit
                         </button>

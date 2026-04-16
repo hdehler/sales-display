@@ -18,36 +18,36 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
         {/* Left — big stats hero */}
         <div className="col-span-4 flex flex-col gap-5 min-h-0">
           {/* Orders today — the big number */}
-          <div className="flex-shrink-0 rounded-2xl border border-border-bright bg-surface-raised p-8">
+          <div className="flex-shrink-0 rounded-2xl border border-border-bright bg-surface-raised p-8 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
               Orders Today
             </div>
-            <div className="text-8xl font-bold tabular-nums text-white leading-none">
+            <div className="text-8xl font-bold tabular-nums text-text-primary leading-none">
               {data.todayCount}
             </div>
           </div>
 
           {/* Week + month */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border bg-surface-raised/60 p-5">
+            <div className="rounded-xl border border-border bg-surface-raised p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-2">
                 This Week
               </div>
-              <div className="text-4xl font-bold tabular-nums text-white">
+              <div className="text-4xl font-bold tabular-nums text-text-primary">
                 {data.weekCount}
               </div>
             </div>
-            <div className="rounded-xl border border-border bg-surface-raised/60 p-5">
+            <div className="rounded-xl border border-border bg-surface-raised p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-2">
                 This Month
               </div>
-              <div className="text-4xl font-bold tabular-nums text-white">
+              <div className="text-4xl font-bold tabular-nums text-text-primary">
                 {data.monthCount}
               </div>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 rounded-2xl border border-border bg-surface-raised/60 p-5 flex flex-col">
+          <div className="flex-1 min-h-0 rounded-2xl border border-border bg-surface-raised p-5 flex flex-col shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-3">
               Top reps · month
             </div>
@@ -67,7 +67,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                       <span className="text-text-muted font-mono w-5 shrink-0">
                         {i + 1}.
                       </span>
-                      <span className="font-medium text-white truncate">
+                      <span className="font-medium text-text-primary truncate">
                         {row.name}
                       </span>
                     </span>

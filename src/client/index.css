@@ -5,18 +5,22 @@
 @theme {
   --font-display: "DM Serif Display", Georgia, serif;
   --font-body: "Instrument Sans", system-ui, sans-serif;
-  --color-surface: #08090d;
-  --color-surface-raised: #111318;
-  --color-surface-hover: #191c24;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-bright: rgba(255, 255, 255, 0.14);
-  --color-accent: #e2a336;
-  --color-accent-soft: rgba(226, 163, 54, 0.15);
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #a8a4a0;
-  --color-text-muted: #5c5956;
-  --color-emerald: #34d399;
-  --color-red-soft: #ef4444;
+  /* Warm light surfaces — strong body/label contrast (WCAG-friendly) */
+  --color-surface: #f0ece6;
+  --color-surface-raised: #fffcf8;
+  --color-surface-hover: #e4dfd6;
+  --color-border: rgba(24, 20, 16, 0.09);
+  --color-border-bright: rgba(24, 20, 16, 0.14);
+  --color-accent: #a65f0c;
+  --color-accent-soft: rgba(166, 95, 12, 0.12);
+  --color-text-primary: #14110e;
+  --color-text-secondary: #454039;
+  --color-text-muted: #6b655c;
+  /* Solid fills that use `bg-accent` / `bg-emerald` */
+  --color-on-accent: #fffbf5;
+  --color-on-emerald: #ffffff;
+  --color-emerald: #047857;
+  --color-red-soft: #dc2626;
 }
 
 @layer base {

@@ -84,7 +84,7 @@ export default function Settings() {
       <div className="max-w-4xl mx-auto px-8 py-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="font-display text-4xl text-white">Settings</h1>
+          <h1 className="font-display text-4xl text-text-primary">Settings</h1>
           <a
             href="/"
             className="text-base text-accent hover:text-accent/80 transition-colors font-medium"
@@ -140,7 +140,7 @@ export default function Settings() {
                     disabled={!dirty || saving}
                     className={`px-8 py-2.5 rounded-lg font-semibold text-base transition-all ${
                       dirty
-                        ? "bg-accent text-surface hover:bg-accent/90"
+                        ? "bg-accent text-on-accent hover:bg-accent/90"
                         : "bg-text-muted/20 text-text-muted cursor-not-allowed"
                     }`}
                   >
@@ -182,7 +182,7 @@ function GeneralTab({
         <div className="space-y-5 rounded-2xl border border-border bg-surface-raised p-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-base font-semibold text-white">
+              <div className="text-base font-semibold text-text-primary">
                 Celebrate all Slide orders
               </div>
               <div className="text-sm text-text-secondary mt-0.5">
@@ -223,7 +223,7 @@ function GeneralTab({
                 onChange={(e) =>
                   onUpdate({ celebrationDuration: e.target.value })
                 }
-                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
               />
             </div>
             <div>
@@ -237,7 +237,7 @@ function GeneralTab({
                 onChange={(e) =>
                   onUpdate({ milestoneInterval: e.target.value })
                 }
-                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -256,7 +256,7 @@ function GeneralTab({
           </p>
           <div className="flex items-center justify-between gap-4 pt-1 pb-2 border-b border-border">
             <div>
-              <div className="text-base font-semibold text-white">
+              <div className="text-base font-semibold text-text-primary">
                 Big order song overrides rep walk-up
               </div>
               <div className="text-sm text-text-secondary mt-0.5">
@@ -303,7 +303,7 @@ function GeneralTab({
               onChange={(e) =>
                 onUpdate({ bigOrderThreshold: e.target.value })
               }
-              className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+              className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
             />
           </div>
           <SongSearch
@@ -404,7 +404,7 @@ function ModelsTab({
             value={newMatch}
             onChange={(e) => setNewMatch(e.target.value)}
             placeholder="e.g. Slide Z1"
-            className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
+            className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent placeholder:text-text-muted"
           />
         </div>
         <SongSearch
@@ -418,7 +418,7 @@ function ModelsTab({
         <button
           onClick={addMapping}
           disabled={!newMatch.trim() || !newSongValue}
-          className="w-full px-5 py-3 rounded-lg bg-accent text-surface font-semibold text-base hover:bg-accent/90 disabled:opacity-40 transition-colors"
+          className="w-full px-5 py-3 rounded-lg bg-accent text-on-accent font-semibold text-base hover:bg-accent/90 disabled:opacity-40 transition-colors"
         >
           Add mapping
         </button>
@@ -441,7 +441,7 @@ function ModelsTab({
                     type="text"
                     value={editMatch}
                     onChange={(e) => setEditMatch(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-white text-base focus:outline-none focus:border-accent"
+                    className="w-full px-4 py-3 rounded-lg bg-surface border border-border text-text-primary text-base focus:outline-none focus:border-accent"
                   />
                 </div>
                 <SongSearch
@@ -456,7 +456,7 @@ function ModelsTab({
                   <button
                     onClick={() => saveEdit(m.id)}
                     disabled={!editMatch.trim() || !editSongValue}
-                    className="px-6 py-2.5 rounded-lg bg-accent text-surface text-base font-semibold disabled:opacity-40"
+                    className="px-6 py-2.5 rounded-lg bg-accent text-on-accent text-base font-semibold disabled:opacity-40"
                   >
                     Save
                   </button>
@@ -471,7 +471,7 @@ function ModelsTab({
             ) : (
               <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white text-base">
+                  <div className="font-semibold text-text-primary text-base">
                     {m.matchValue}
                   </div>
                   <div className="text-sm text-text-secondary truncate mt-0.5">
@@ -486,7 +486,7 @@ function ModelsTab({
                 </button>
                 <button
                   onClick={() => startEdit(m)}
-                  className="text-sm font-medium text-text-secondary hover:text-white transition-colors"
+                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
                 >
                   Edit
                 </button>
@@ -547,13 +547,13 @@ function SoundsTab() {
               className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-left text-sm transition-all ${
                 previewingId === j.id
                   ? "bg-accent/15 border border-accent/30 text-accent"
-                  : "bg-surface-raised border border-border text-text-secondary hover:text-white"
+                  : "bg-surface-raised border border-border text-text-secondary hover:text-text-primary"
               }`}
             >
               <span
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                   previewingId === j.id
-                    ? "bg-accent text-surface"
+                    ? "bg-accent text-on-accent"
                     : "bg-text-muted/20 text-text-muted"
                 }`}
               >

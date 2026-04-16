@@ -77,8 +77,8 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
             <div
               className="flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl pointer-events-auto max-w-[min(100%,28rem)]"
               style={{
-                borderColor: `${activeRep.avatarColor}40`,
-                background: `linear-gradient(135deg, ${activeRep.avatarColor}15, rgba(12,14,19,0.9))`,
+                borderColor: `${activeRep.avatarColor}55`,
+                background: `linear-gradient(135deg, ${activeRep.avatarColor}18, rgba(255,252,248,0.94))`,
               }}
             >
               <div
@@ -88,7 +88,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                 {activeRep.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-display text-2xl text-white leading-tight truncate">
+                <div className="font-display text-2xl text-text-primary leading-tight truncate">
                   {activeRep.name}
                 </div>
                 <div className="text-sm text-text-secondary mt-0.5 truncate">
@@ -122,7 +122,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                   setActiveRep(null);
                   if (timerRef.current) clearTimeout(timerRef.current);
                 }}
-                className="shrink-0 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all active:scale-90"
+                className="shrink-0 w-12 h-12 rounded-full bg-stone-900/10 hover:bg-stone-900/15 flex items-center justify-center text-text-muted hover:text-text-primary transition-all active:scale-90"
                 aria-label="Stop"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -160,7 +160,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
             <button
               type="button"
               aria-label="Close"
-              className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
               onClick={() => setModalOpen(false)}
             />
             <motion.div
@@ -177,7 +177,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                 <div>
                   <h2
                     id="walkup-modal-title"
-                    className="font-display text-xl text-white leading-tight"
+                    className="font-display text-xl text-text-primary leading-tight"
                   >
                     Who&apos;s playing?
                   </h2>
@@ -188,7 +188,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-text-muted hover:text-white hover:bg-surface-hover transition-colors text-lg shrink-0"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors text-lg shrink-0"
                   aria-label="Close"
                 >
                   ✕
@@ -233,7 +233,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                           {rep.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-white truncate">
+                          <div className="font-semibold text-text-primary truncate">
                             {rep.name}
                           </div>
                           <div className="text-xs text-text-muted truncate">
@@ -246,7 +246,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                         <span
                           className={`text-xs font-semibold uppercase tracking-wide shrink-0 px-2 py-1 rounded-md ${
                             playing
-                              ? "bg-accent text-surface"
+                              ? "bg-accent text-on-accent"
                               : "bg-surface text-text-secondary"
                           }`}
                         >
