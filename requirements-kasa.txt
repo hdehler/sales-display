@@ -1,3 +1,4 @@
 # Optional: Kasa / Tapo plugs that do not expose legacy port 9999 (KLAP-only, etc.)
 # Install on the Pi: pip3 install -r requirements-kasa.txt
 python-kasa>=0.6.0
+python-dotenv>=1.0.0

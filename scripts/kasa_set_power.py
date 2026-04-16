@@ -5,16 +5,67 @@ Used when Node tplink-smarthome-api cannot connect (e.g. port 9999 refused).
 
 Install: pip3 install python-kasa
 
-KLAP devices need the same email + password as the Kasa mobile app:
-  export KASA_USERNAME='you@email.com'
-  export KASA_PASSWORD='your-tplink-password'
-Or set them in .env (loaded by the Node server — subprocess inherits them).
+KLAP devices need the same email + password as the Kasa mobile app.
+Put KASA_USERNAME and KASA_PASSWORD in the project root .env — this script loads
+that file automatically (same as the Node server). You can also export them in the shell.
 """
 from __future__ import annotations
 
 import asyncio
 import os
 import sys
+from pathlib import Path
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _load_project_dotenv() -> None:
+    """Populate os.environ from repo .env so manual runs match `npm start` / PM2."""
+    env_path = _project_root() / ".env"
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        if env_path.is_file():
+            print(
+                "[kasa_set_power] Install python-dotenv in this venv to load .env automatically: "
+                "  .venv-kasa/bin/pip install -r requirements-kasa.txt",
+                file=sys.stderr,
+            )
+        return
+    if env_path.is_file():
+        load_dotenv(env_path)
+        print(f"[kasa_set_power] Loaded environment from {env_path}", file=sys.stderr)
+    else:
+        print(
+            f"[kasa_set_power] No {env_path} — using shell env only",
+            file=sys.stderr,
+        )
+
+
+def _mask_username(u: str) -> str:
+    if "@" not in u:
+        return (u[:2] + "***") if len(u) > 2 else "***"
+    local, _, domain = u.partition("@")
+    if len(local) <= 1:
+        return f"*@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
+def _log_kasa_login_status() -> None:
+    c = _tp_link_credentials()
+    if c:
+        print(
+            f"[kasa_set_power] Kasa cloud login: configured (user {_mask_username(c['username'])})",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "[kasa_set_power] Kasa cloud login: NOT configured — "
+            "set KASA_USERNAME and KASA_PASSWORD in .env (or export in shell)",
+            file=sys.stderr,
+        )
 
 
 def _tp_link_credentials() -> dict[str, str] | None:
@@ -130,6 +181,8 @@ def main() -> None:
     if len(sys.argv) != 3:
         print("Usage: kasa_set_power.py <host> <on|off>", file=sys.stderr)
         sys.exit(2)
+    _load_project_dotenv()
+    _log_kasa_login_status()
     host = sys.argv[1].strip()
     arg = sys.argv[2].strip().lower()
     on = arg in ("1", "on", "true", "yes")
@@ -139,10 +192,19 @@ def main() -> None:
         msg = str(e)
         print(msg, file=sys.stderr)
         if "challenge" in msg.lower() or "e-mail" in msg.lower():
-            print(
-                "Hint: set KASA_USERNAME and KASA_PASSWORD to your Kasa app email and password.",
-                file=sys.stderr,
-            )
+            had = _tp_link_credentials() is not None
+            if had:
+                print(
+                    "Hint: password or account mismatch — use the exact Kasa app login "
+                    "(case-sensitive). Or upgrade:  .venv-kasa/bin/pip install -U 'python-kasa>=0.7'",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    "Hint: add KASA_USERNAME + KASA_PASSWORD to .env, run "
+                    "`make install-kasa` so python-dotenv is installed, then retry.",
+                    file=sys.stderr,
+                )
         sys.exit(1)
 
 
