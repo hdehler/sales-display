@@ -47,6 +47,33 @@ function upsizeArtwork(url: string | undefined): string {
   return url.replace(/\/\d+x\d+bb\.(jpg|png)$/i, "/200x200bb.$1");
 }
 
+/**
+ * iTunes' edge servers return `404 [newNullResponse]` when the client sends
+ * Node's default `User-Agent: node` (or no UA). Always set a real UA + Accept.
+ */
+const ITUNES_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+  Accept: "application/json, text/javascript, */*; q=0.01",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+async function fetchITunes(url: string): Promise<Response> {
+  // Single retry — iTunes intermittently 404s with `[newNullResponse]` even
+  // on valid requests; a second attempt almost always succeeds.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await fetch(url, { headers: ITUNES_HEADERS });
+    if (r.ok) return r;
+    if (attempt === 0 && r.status === 404) {
+      await new Promise((res) => setTimeout(res, 150));
+      continue;
+    }
+    return r;
+  }
+  // unreachable
+  throw new Error("iTunes fetch loop exited");
+}
+
 async function searchITunesCatalog(q: string): Promise<CatalogSongHit[]> {
   const params = new URLSearchParams({
     term: q,
@@ -56,7 +83,7 @@ async function searchITunesCatalog(q: string): Promise<CatalogSongHit[]> {
     country: (process.env.ITUNES_COUNTRY || "US").trim().toUpperCase() || "US",
   });
   const url = `https://itunes.apple.com/search?${params.toString()}`;
-  const r = await fetch(url);
+  const r = await fetchITunes(url);
   if (!r.ok) {
     const body = await r.text().catch(() => "");
     throw new Error(`iTunes search ${r.status}: ${body.slice(0, 200)}`);
