@@ -19,8 +19,10 @@ export function isSpotifyConfigured(): boolean {
   return Boolean(id && secret);
 }
 
-function market(): string {
-  return (process.env.SPOTIFY_MARKET || "US").trim().toUpperCase() || "US";
+/** ISO 3166-1 alpha-2; Spotify rejects bad values on some endpoints. */
+function marketCode(): string {
+  const raw = (process.env.SPOTIFY_MARKET || "US").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(raw) ? raw : "US";
 }
 
 async function fetchClientCredentialsToken(): Promise<{
@@ -86,38 +88,75 @@ type SpotifySearchResponse = {
   };
 };
 
+function searchUrl(q: string, offset: number): string {
+  const params = new URLSearchParams({
+    q,
+    type: "track",
+    /** Some app / API modes reject `limit=20` with 400 "Invalid limit"; 10 is safe. */
+    limit: "10",
+    offset: String(offset),
+    market: marketCode(),
+  });
+  return `https://api.spotify.com/v1/search?${params.toString()}`;
+}
+
+async function fetchSearchPage(
+  q: string,
+  access: string,
+  offset: number,
+): Promise<Response> {
+  return fetch(searchUrl(q, offset), {
+    headers: { Authorization: `Bearer ${access}` },
+  });
+}
+
 /**
  * Search catalog tracks that have a non-null preview_url.
- * Many Spotify tracks have no preview; those are skipped (up to `limit` API hits).
+ * Many Spotify tracks have no preview; those are skipped.
+ * Fetches two pages (10 + 10) so we still have enough candidates after filtering.
  * @see https://developer.spotify.com/documentation/web-api/reference/search
  */
 export async function searchSpotifyTracksWithPreviews(
   q: string,
 ): Promise<CatalogSongHit[]> {
-  const token = await getAccessToken();
-  const m = market();
-  const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=20&market=${encodeURIComponent(m)}`;
-
-  const fetchOnce = async (access: string) => {
-    return fetch(url, {
-      headers: { Authorization: `Bearer ${access}` },
-    });
+  const load = async (access: string) => {
+    const r0 = await fetchSearchPage(q, access, 0);
+    if (r0.status === 401) {
+      return { unauthorized: true as const, items: [] as SpotifyTrack[] };
+    }
+    if (!r0.ok) {
+      const body = await r0.text().catch(() => "");
+      throw new Error(`Spotify search ${r0.status}: ${body.slice(0, 200)}`);
+    }
+    const j0 = (await r0.json()) as SpotifySearchResponse;
+    const first = j0.tracks?.items || [];
+    const r1 = await fetchSearchPage(q, access, 10);
+    let second: SpotifyTrack[] = [];
+    if (r1.ok) {
+      const j1 = (await r1.json()) as SpotifySearchResponse;
+      second = j1.tracks?.items || [];
+    }
+    const seen = new Set<string>();
+    const merged: SpotifyTrack[] = [];
+    for (const t of [...first, ...second]) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      merged.push(t);
+    }
+    return { unauthorized: false as const, items: merged };
   };
 
-  let r = await fetchOnce(token);
-  if (r.status === 401) {
+  let access = await getAccessToken();
+  let { unauthorized, items } = await load(access);
+  if (unauthorized) {
     clearSpotifyTokenCache();
-    const t2 = await getAccessToken();
-    r = await fetchOnce(t2);
+    access = await getAccessToken();
+    ({ unauthorized, items } = await load(access));
+  }
+  if (unauthorized) {
+    throw new Error("Spotify search 401 after token refresh");
   }
 
-  if (!r.ok) {
-    const body = await r.text().catch(() => "");
-    throw new Error(`Spotify search ${r.status}: ${body.slice(0, 200)}`);
-  }
-
-  const json = (await r.json()) as SpotifySearchResponse;
-  const items = json.tracks?.items || [];
   const out: CatalogSongHit[] = [];
 
   for (const t of items) {
