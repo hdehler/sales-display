@@ -1,6 +1,7 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { config, isBigQueryAccountOwnerConfigured } from "./config.js";
 import type { Sale } from "../shared/types.js";
+import { UNKNOWN_REP } from "../shared/rep.js";
 
 let bigqueryClient: BigQuery | null = null;
 
@@ -155,16 +156,25 @@ export async function lookupRepForAccount(
   }
 }
 
-/** For Slide Cloud orders, fill `rep` from DWH when configured. */
+/**
+ * For Slide Cloud orders: resolve `rep` from DWH when configured; otherwise leave parsed value.
+ * When still blank after lookup (no BQ row, BQ off, or lookup error), store `UNKNOWN_REP` so
+ * counts, leaderboards, and celebrations treat the sale as attributed to “Unknown”.
+ */
 export async function enrichSaleWithAccountOwnerFromDwh(
   sale: Sale,
 ): Promise<Sale> {
   if (sale.meta?.source !== "slide_cloud") return sale;
-  if (!isBigQueryAccountOwnerConfigured()) return sale;
 
-  const rep = await lookupRepForAccount(sale.customer);
-  if (!rep) return sale;
-  return { ...sale, rep };
+  let next: Sale = sale;
+  if (isBigQueryAccountOwnerConfigured()) {
+    const rep = await lookupRepForAccount(sale.customer);
+    if (rep) next = { ...sale, rep };
+  }
+
+  const trimmed = next.rep?.trim() ?? "";
+  if (!trimmed) return { ...next, rep: UNKNOWN_REP };
+  return next;
 }
 
 export interface BigQueryProbeResult {

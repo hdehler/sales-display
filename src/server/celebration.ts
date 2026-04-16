@@ -9,6 +9,7 @@ import {
   getSetting,
 } from "./db.js";
 import type { Sale, CelebrationEvent } from "../shared/types.js";
+import { UNKNOWN_REP, isUnresolvedRepName } from "../shared/rep.js";
 
 type CelebrationCallback = (event: CelebrationEvent) => void;
 
@@ -66,8 +67,7 @@ function attachSlideRepHero(
   first: Sale,
   opts?: { skipRepWalkup?: boolean },
 ): CelebrationEvent {
-  const nm = first.rep?.trim();
-  if (!nm) return event;
+  const nm = first.rep?.trim() || UNKNOWN_REP;
 
   if (opts?.skipRepWalkup) {
     const row = getRepByDisplayName(nm);
@@ -83,7 +83,10 @@ function attachSlideRepHero(
     }
     return {
       ...event,
-      repHero: { name: nm },
+      repHero:
+        nm === UNKNOWN_REP
+          ? { name: nm, avatarColor: "#64748b" }
+          : { name: nm },
     };
   }
 
@@ -103,7 +106,10 @@ function attachSlideRepHero(
   }
   return {
     ...event,
-    repHero: { name: nm },
+    repHero:
+      nm === UNKNOWN_REP
+        ? { name: nm, avatarColor: "#64748b" }
+        : { name: nm },
   };
 }
 
@@ -158,7 +164,9 @@ export function shouldCelebrateSlidePack(
   const slidePack = { account, count: sales.length, sales };
   const { songUrl, jingleId } = resolveSong(first.product);
 
-  const repSuffix = first.rep?.trim() ? ` — ${first.rep.trim()}` : "";
+  const rawRep = first.rep?.trim() ?? "";
+  const repSuffix =
+    rawRep && !isUnresolvedRepName(rawRep) ? ` — ${rawRep}` : "";
 
   const packMessage =
     sales.length === 1

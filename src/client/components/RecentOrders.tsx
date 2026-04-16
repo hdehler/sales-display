@@ -1,4 +1,10 @@
 import type { Sale } from "../../shared/types";
+import { UNKNOWN_REP } from "../../shared/rep";
+
+function displayRep(s: Sale): string {
+  if (s.meta?.source === "slide_cloud") return s.rep?.trim() || UNKNOWN_REP;
+  return s.rep?.trim() || "";
+}
 
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime();
@@ -44,7 +50,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         product: s.product || "",
         count: j - i,
         time: s.timestamp,
-        rep: s.rep?.trim() || "",
+        rep: displayRep(s),
         newBuyingPartner: newBuyingPartner || undefined,
       });
       i = j;
@@ -55,7 +61,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         product: s.product || "",
         count: 1,
         time: s.timestamp,
-        rep: s.rep?.trim() || "",
+        rep: displayRep(s),
         newBuyingPartner: s.meta?.newBuyingPartner || undefined,
       });
       i++;

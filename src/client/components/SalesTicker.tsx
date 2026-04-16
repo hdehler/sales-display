@@ -1,9 +1,15 @@
 import type { Sale } from "../../shared/types";
+import { UNKNOWN_REP } from "../../shared/rep";
 
 function TickerItems({ sales }: { sales: Sale[] }) {
   return (
     <>
-      {sales.map((sale, i) => (
+      {sales.map((sale, i) => {
+        const repLabel =
+          sale.meta?.source === "slide_cloud"
+            ? sale.rep?.trim() || UNKNOWN_REP
+            : sale.rep?.trim() || "";
+        return (
         <span
           key={`t-${i}`}
           className="mx-5 inline-flex items-center gap-1.5 text-xs flex-shrink-0"
@@ -18,14 +24,15 @@ function TickerItems({ sales }: { sales: Sale[] }) {
               </span>
             </>
           )}
-          {sale.rep?.trim() && (
+          {repLabel && (
             <>
               <span className="text-text-muted">·</span>
-              <span className="text-accent/90 font-medium">{sale.rep}</span>
+              <span className="text-accent/90 font-medium">{repLabel}</span>
             </>
           )}
         </span>
-      ))}
+        );
+      })}
     </>
   );
 }

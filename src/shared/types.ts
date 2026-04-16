@@ -24,6 +24,7 @@ export interface Sale {
   /**
    * Salesperson name from Slack text patterns, or from BigQuery (Slide account → HubSpot owner)
    * when `meta.source === "slide_cloud"` and DWH lookup succeeds.
+   * Slide orders with no attributed owner use the shared sentinel `Unknown` (see `shared/rep.ts`).
    */
   rep: string;
   customer: string;

@@ -1,15 +1,16 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import type { Rep, CelebrationEvent } from "../../shared/types";
+import { isUnresolvedRepName } from "../../shared/rep";
 
 const CLAIM_WINDOW_MS = 30_000;
 
 /** Show manual claim only when we could not resolve a rep (e.g. Slide + no DWH owner). */
 function needsRepClaimFromCelebration(event: CelebrationEvent): boolean {
   if (event.slidePack?.sales?.length) {
-    return event.slidePack.sales.some((s) => !s.rep?.trim());
+    return event.slidePack.sales.some((s) => isUnresolvedRepName(s.rep));
   }
-  return !event.sale?.rep?.trim();
+  return isUnresolvedRepName(event.sale?.rep);
 }
 
 interface ClaimOverlayProps {
