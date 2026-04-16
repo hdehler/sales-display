@@ -243,7 +243,7 @@ app.delete("/api/reps/:id", (req, res) => {
   }
 });
 
-// ── Song search (Apple Music when configured, else Deezer) ─
+// ── Song search: Spotify (if configured) else Deezer proxy ─
 
 app.get("/api/songs/search", async (req, res) => {
   const q = String(req.query.q || "").trim();

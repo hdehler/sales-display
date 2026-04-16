@@ -581,14 +581,19 @@ function SoundsTab() {
         </h3>
         <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm text-text-secondary leading-relaxed">
           Search for real songs when assigning walk-up songs (Team drawer) or
-          model celebration songs (Model Songs tab). When{" "}
+          model celebration songs (Model Songs tab). If{" "}
           <code className="text-text-primary font-mono text-xs">
-            APPLE_MUSIC_*
+            SPOTIFY_CLIENT_ID
           </code>{" "}
-          keys are set in <code className="text-text-primary font-mono text-xs">.env</code>, results
-          use the Apple Music catalog and preview audio. Otherwise the app uses
-          Deezer search. Use the start-offset slider to pick the best part of the
-          clip.
+          and{" "}
+          <code className="text-text-primary font-mono text-xs">
+            SPOTIFY_CLIENT_SECRET
+          </code>{" "}
+          are set in <code className="text-text-primary font-mono text-xs">.env</code>, the app
+          uses Spotify search and only lists tracks that still have a 30-second
+          preview URL. If Spotify is not configured, or no previews are returned,
+          search falls back to Deezer. Use the start-offset slider to pick the best
+          part of the clip.
         </div>
       </section>
 
@@ -610,7 +615,7 @@ function SoundsTab() {
 function getSongLabel(song: string): string {
   const jingle = JINGLES.find((j) => j.id === song);
   if (jingle) return jingle.name;
-  if (song.startsWith("http")) return "Catalog preview";
+  if (song.startsWith("http")) return "Preview clip";
   if (song.startsWith("/sounds/")) return song.split("/").pop() || song;
   return song;
 }

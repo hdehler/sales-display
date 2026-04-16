@@ -1,8 +1,8 @@
 import {
-  isAppleMusicConfigured,
-  searchAppleMusicCatalog,
+  isSpotifyConfigured,
+  searchSpotifyTracksWithPreviews,
   type CatalogSongHit,
-} from "./appleMusic.js";
+} from "./spotify.js";
 
 export type { CatalogSongHit };
 
@@ -31,24 +31,24 @@ async function searchDeezerCatalog(q: string): Promise<CatalogSongHit[]> {
 }
 
 /**
- * When Apple Music env is set, search Apple first; if it errors or returns
- * nothing, fall back to Deezer (same as before when Apple is off).
+ * Spotify first when `SPOTIFY_CLIENT_ID` + `SPOTIFY_CLIENT_SECRET` are set and
+ * at least one track has a preview; otherwise Deezer (unchanged behavior).
  */
 export async function searchSongCatalog(q: string): Promise<{
   data: CatalogSongHit[];
-  source: "apple" | "deezer";
+  source: "spotify" | "deezer";
 }> {
   const trimmed = q.trim();
   if (!trimmed) return { data: [], source: "deezer" };
 
-  if (isAppleMusicConfigured()) {
+  if (isSpotifyConfigured()) {
     try {
-      const apple = await searchAppleMusicCatalog(trimmed);
-      if (apple.length > 0) {
-        return { data: apple, source: "apple" };
+      const spotify = await searchSpotifyTracksWithPreviews(trimmed);
+      if (spotify.length > 0) {
+        return { data: spotify, source: "spotify" };
       }
     } catch (e) {
-      console.error("[Apple Music] Search failed, falling back to Deezer:", e);
+      console.error("[Spotify] Search failed, falling back to Deezer:", e);
     }
   }
 

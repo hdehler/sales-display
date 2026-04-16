@@ -4,7 +4,7 @@ import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "upload" | "none";
-  /** Catalog preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
+  /** Spotify/Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
   value: string;
   label: string;
 }
@@ -127,7 +127,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
   const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchSource, setSearchSource] = useState<"apple" | "deezer" | null>(
+  const [searchSource, setSearchSource] = useState<"spotify" | "deezer" | null>(
     null,
   );
   const [searching, setSearching] = useState(false);
@@ -187,7 +187,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
       const r = await fetch(`/api/songs/search?q=${encodeURIComponent(q)}`);
       const json = (await r.json()) as {
         data: SearchResult[];
-        source?: "apple" | "deezer" | null;
+        source?: "spotify" | "deezer" | null;
       };
       setResults(json.data || []);
       setSearchSource(json.source ?? null);
@@ -202,6 +202,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim()) {
       setResults([]);
+      setSearchSource(null);
       return;
     }
     debounceRef.current = setTimeout(() => search(query), 350);
@@ -226,7 +227,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
     setTimeout(() => setPlayingId(null), 20_000);
   }
 
-  function selectCatalogHit(result: SearchResult) {
+  function selectDeezer(result: SearchResult) {
     stopPreview();
     onChange({
       type: "deezer",
@@ -383,7 +384,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           </div>
         </div>
 
-        {/* Start offset scrubber — for catalog previews and uploaded audio */}
+        {/* Start offset scrubber — for Spotify/Deezer previews and uploads */}
         {value.trim() && isUrlValue && (
           <div className="mt-3 pt-3 border-t border-border/80">
             <div className="flex items-center justify-between mb-1.5">
@@ -479,17 +480,19 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           )}
           {!searching && searchSource && query.trim() && (
             <div className="text-[10px] text-text-muted mb-1.5">
-              {searchSource === "apple"
-                ? "Results from Apple Music"
+              {searchSource === "spotify"
+                ? "Results from Spotify (tracks with a preview only)"
                 : "Results from Deezer"}
             </div>
           )}
           <div className="max-h-52 overflow-y-auto space-y-1">
-            {results.map((r) => (
+            {results.map((r) => {
+              const rowKey = `${searchSource ?? "deezer"}-${r.id}`;
+              return (
               <div
-                key={r.id}
+                key={rowKey}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer group"
-                onClick={() => selectCatalogHit(r)}
+                onClick={() => selectDeezer(r)}
               >
                 {r.cover ? (
                   <img
@@ -514,18 +517,19 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    preview(`hit-${r.id}`, r.previewUrl);
+                    preview(rowKey, r.previewUrl);
                   }}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-                    playingId === `hit-${r.id}`
+                    playingId === rowKey
                       ? "bg-accent text-on-accent"
                       : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                   }`}
                 >
-                  {playingId === `hit-${r.id}` ? "■" : "▶"}
+                  {playingId === rowKey ? "■" : "▶"}
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       ) : tab === "uploads" ? (
