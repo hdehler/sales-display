@@ -3,11 +3,11 @@ import type { Sale } from "../../shared/types";
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
 }
 
 const PACK_WINDOW_MS = 120_000;
@@ -64,18 +64,74 @@ function buildRows(sales: Sale[]): OrderRow[] {
   return rows;
 }
 
-export function RecentOrders({ sales }: { sales: Sale[] }) {
+interface RecentOrdersProps {
+  sales: Sale[];
+  /** Single-line rows, no product line — for side column */
+  compact?: boolean;
+}
+
+export function RecentOrders({ sales, compact }: RecentOrdersProps) {
   const rows = buildRows(sales);
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 min-h-[12rem] text-center px-4">
-        <p className="text-text-muted text-sm font-medium uppercase tracking-wider mb-2">
-          Feed
+      <div className="flex flex-col items-center justify-center flex-1 min-h-[8rem] text-center px-2">
+        <p className="text-text-muted text-xs uppercase tracking-wider">
+          No activity yet
         </p>
-        <p className="text-text-secondary text-base max-w-sm leading-relaxed">
-          Waiting for orders…
-        </p>
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="flex flex-col h-full min-h-0">
+        <div className="flex items-center justify-between gap-2 pb-2 mb-1 border-b border-border shrink-0">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Latest
+          </span>
+          <span className="text-[10px] text-text-muted tabular-nums">{rows.length}</span>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0 pt-2 space-y-0.5">
+          {rows.map((row) => (
+            <div
+              key={row.key}
+              className="flex items-center gap-2 py-1.5 px-1 rounded-lg hover:bg-surface-hover/30 transition-colors min-w-0"
+            >
+              {row.count > 1 ? (
+                <span
+                  className="shrink-0 text-[10px] font-bold tabular-nums text-accent w-5 text-center"
+                  title={`${row.count} orders`}
+                >
+                  ×{row.count}
+                </span>
+              ) : (
+                <span className="shrink-0 w-5" aria-hidden />
+              )}
+              <div className="flex-1 min-w-0 flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-sm font-medium text-text-primary truncate">
+                  {row.account}
+                </span>
+                {row.newBuyingPartner ? (
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-accent shrink-0">
+                    NP
+                  </span>
+                ) : null}
+                {row.rep ? (
+                  <span className="text-xs text-text-muted truncate max-w-[40%]">
+                    · {row.rep}
+                  </span>
+                ) : null}
+              </div>
+              <time
+                className="text-[10px] text-text-muted tabular-nums shrink-0 font-medium"
+                dateTime={row.time}
+              >
+                {timeAgo(row.time)}
+              </time>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -91,7 +147,7 @@ export function RecentOrders({ sales }: { sales: Sale[] }) {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 pt-3 space-y-2 pr-1 -mr-1">
+      <div className="flex-1 overflow-y-auto min-h-0 pt-3 space-y-2">
         {rows.map((row, i) => (
           <article
             key={row.key}

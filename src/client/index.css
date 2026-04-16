@@ -35,6 +35,14 @@
     background: rgba(212, 162, 74, 0.28);
     color: var(--color-text-primary);
   }
+
+  /* Hide scrollbars while keeping scroll (keyboard / wheel / trackpad) */
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* ── Marquee ticker ─────────────────────────────── */
