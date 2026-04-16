@@ -1,7 +1,7 @@
 # Sales display — shortcuts for common commands
 # Usage: make help | make start | make dev | …
 
-.PHONY: help run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status deploy
+.PHONY: help run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
 
 .DEFAULT_GOAL := help
 
@@ -87,6 +87,5 @@ pm2-status:
 pm2-logs:
 	pm2 logs sales-display --lines 80
 
-# Pull, install deps (required when package.json changes), build, restart stack
 deploy:
-	cd ~/sales-display && git pull && npm install && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all
+	cd ~/sales-display && git pull && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all

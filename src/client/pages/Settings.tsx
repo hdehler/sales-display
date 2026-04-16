@@ -574,19 +574,15 @@ function SoundsTab() {
         </div>
       </section>
 
-      {/* Catalog search note */}
+      {/* Deezer note */}
       <section>
         <h3 className="text-base font-bold uppercase tracking-wider text-text-secondary mb-4">
-          Song search & previews
+          Deezer songs
         </h3>
         <div className="rounded-2xl border border-border bg-surface-raised p-6 text-sm text-text-secondary leading-relaxed">
           Search for real songs when assigning walk-up songs (Team drawer) or
-          model celebration songs (Model Songs tab). Results come from the{" "}
-          <span className="text-text-primary font-medium">iTunes Search API</span>{" "}
-          by default — no keys required, just a 30-second preview for each track.
-          If iTunes returns nothing for a query, the app falls back to{" "}
-          <span className="text-text-primary font-medium">Deezer</span>. Use the
-          start-offset slider to pick the best part of the clip.
+          model celebration songs (Model Songs tab). Deezer provides a 30-second
+          preview clip — use the start-offset slider to pick the best part.
         </div>
       </section>
 
@@ -608,7 +604,7 @@ function SoundsTab() {
 function getSongLabel(song: string): string {
   const jingle = JINGLES.find((j) => j.id === song);
   if (jingle) return jingle.name;
-  if (song.startsWith("http")) return "Preview clip";
+  if (song.startsWith("http")) return "Deezer song";
   if (song.startsWith("/sounds/")) return song.split("/").pop() || song;
   return song;
 }

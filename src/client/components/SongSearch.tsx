@@ -4,13 +4,13 @@ import { playSong, stopAll as stopAudio } from "../lib/audio";
 
 export interface SongChoice {
   type: "deezer" | "jingle" | "upload" | "none";
-  /** iTunes/Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
+  /** Deezer preview URL (may include #t=N offset), jingle ID, or /sounds/... path */
   value: string;
   label: string;
 }
 
 interface SearchResult {
-  id: string;
+  id: number;
   title: string;
   artist: string;
   album: string;
@@ -22,7 +22,7 @@ interface SongSearchProps {
   value: string;
   onChange: (choice: SongChoice) => void;
   label?: string;
-  /** Persisted display line for preview URLs (Artist — Title); keeps label when scrubbing start offset */
+  /** Persisted display line for Deezer URLs (Artist — Title); keeps label when scrubbing start offset */
   walkupLabel?: string | null;
 }
 
@@ -36,23 +36,6 @@ function stripOffset(url: string): string {
 }
 
 type Tab = "search" | "jingles" | "uploads";
-
-const CATALOG_MODE_STORAGE_KEY = "sales-display-song-catalog-mode";
-
-type CatalogMode = "auto" | "itunes" | "deezer";
-
-function readStoredCatalogMode(): CatalogMode {
-  if (typeof sessionStorage === "undefined") return "auto";
-  try {
-    const v = sessionStorage.getItem(CATALOG_MODE_STORAGE_KEY);
-    if (v === "itunes" || v === "deezer" || v === "auto") return v;
-    // Migrate old Spotify preference to auto.
-    if (v === "spotify") return "auto";
-  } catch {
-    /* private mode */
-  }
-  return "auto";
-}
 
 function detectTab(value: string): Tab {
   if (!value) return "search";
@@ -105,15 +88,15 @@ function getWalkupDisplay(
       return {
         kind: "deezer",
         title: line,
-        subtitle: "Preview clip · adjust start offset below if needed.",
-        badge: "Preview",
+        subtitle: "Deezer preview · adjust start offset below if needed.",
+        badge: "Deezer",
       };
     }
     return {
       kind: "deezer",
-      title: "Song preview",
+      title: "Deezer preview",
       subtitle: "Searched track — adjust start offset below if needed.",
-      badge: "Preview",
+      badge: "Deezer",
     };
   }
   return {
@@ -136,19 +119,14 @@ export function walkupSongDisplayLine(
   if (d.kind === "none") return "No walk-up song";
   if (d.kind === "jingle") return d.title;
   if (d.kind === "upload") return d.title;
-  if (d.kind === "deezer") return "Song preview";
+  if (d.kind === "deezer") return "Deezer track";
   return d.title;
 }
 
 export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchProps) {
   const [tab, setTab] = useState<Tab>(detectTab(value));
   const [query, setQuery] = useState("");
-  const [catalogMode, setCatalogMode] = useState<CatalogMode>(readStoredCatalogMode);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchSource, setSearchSource] = useState<"itunes" | "deezer" | null>(
-    null,
-  );
-  const [searchHint, setSearchHint] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [uploads, setUploads] = useState<string[]>([]);
@@ -195,68 +173,33 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
     } catch { /* offline */ }
   }
 
-  function persistCatalogMode(mode: CatalogMode) {
-    setCatalogMode(mode);
-    try {
-      sessionStorage.setItem(CATALOG_MODE_STORAGE_KEY, mode);
-    } catch {
-      /* */
-    }
-  }
-
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
-      setSearchSource(null);
-      setSearchHint(null);
       return;
     }
     setSearching(true);
-    setSearchHint(null);
     try {
-      const r = await fetch(
-        `/api/songs/search?q=${encodeURIComponent(q)}&provider=${encodeURIComponent(catalogMode)}`,
-      );
-      const json = (await r.json()) as {
-        data: SearchResult[];
-        source?: "itunes" | "deezer" | null;
-        hint?: string;
-      };
+      const r = await fetch(`/api/songs/search?q=${encodeURIComponent(q)}`);
+      const json = (await r.json()) as { data: SearchResult[] };
       setResults(json.data || []);
-      setSearchSource(json.source ?? null);
-      const h = json.hint;
-      setSearchHint(
-        h === "itunes_no_previews"
-          ? "iTunes returned no tracks with a preview for this query."
-          : h === "itunes_unavailable"
-            ? "iTunes search is temporarily unavailable — try Auto or Deezer."
-            : null,
-      );
     } catch {
       setResults([]);
-      setSearchSource(null);
-      setSearchHint(
-        catalogMode === "itunes"
-          ? "iTunes search failed (check server logs)."
-          : null,
-      );
     }
     setSearching(false);
-  }, [catalogMode]);
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim()) {
       setResults([]);
-      setSearchSource(null);
-      setSearchHint(null);
       return;
     }
     debounceRef.current = setTimeout(() => search(query), 350);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, search, catalogMode]);
+  }, [query, search]);
 
   function stopPreview() {
     stopAudio();
@@ -431,7 +374,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           </div>
         </div>
 
-        {/* Start offset scrubber — for iTunes/Deezer previews and uploads */}
+        {/* Start offset scrubber — for Deezer and uploaded audio */}
         {value.trim() && isUrlValue && (
           <div className="mt-3 pt-3 border-t border-border/80">
             <div className="flex items-center justify-between mb-1.5">
@@ -522,71 +465,21 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
             placeholder="Search artist or song…"
             className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text-primary text-sm focus:outline-none focus:border-accent mb-2"
           />
-          <div
-            className="flex flex-wrap items-center gap-1 mb-2"
-            role="group"
-            aria-label="Catalog source (testing)"
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted shrink-0">
-              Source
-            </span>
-            {(
-              [
-                ["auto", "Auto"],
-                ["itunes", "iTunes"],
-                ["deezer", "Deezer"],
-              ] as const
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => persistCatalogMode(mode)}
-                className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                  catalogMode === mode
-                    ? "bg-accent text-on-accent"
-                    : "bg-surface-hover text-text-muted hover:text-text-secondary border border-border"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           {searching && (
             <div className="text-xs text-text-muted py-2">Searching…</div>
           )}
-          {!searching && searchSource && query.trim() && (
-            <div className="text-[10px] text-text-muted mb-1.5">
-              {searchSource === "itunes"
-                ? "Results from iTunes (tracks with a preview only)"
-                : "Results from Deezer"}
-            </div>
-          )}
-          {!searching && searchHint && query.trim() && (
-            <div className="text-[10px] text-text-secondary mb-1.5 leading-snug">
-              {searchHint}
-            </div>
-          )}
           <div className="max-h-52 overflow-y-auto space-y-1">
-            {results.map((r) => {
-              const rowKey = `${searchSource ?? "deezer"}-${r.id}`;
-              return (
+            {results.map((r) => (
               <div
-                key={rowKey}
+                key={r.id}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer group"
                 onClick={() => selectDeezer(r)}
               >
-                {r.cover ? (
-                  <img
-                    src={r.cover}
-                    alt=""
-                    className="w-8 h-8 rounded flex-shrink-0 object-cover"
-                  />
-                ) : (
-                  <div
-                    className="w-8 h-8 rounded flex-shrink-0 bg-surface-hover border border-border"
-                    aria-hidden
-                  />
-                )}
+                <img
+                  src={r.cover}
+                  alt=""
+                  className="w-8 h-8 rounded flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium text-text-primary truncate">
                     {r.title}
@@ -598,19 +491,18 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    preview(rowKey, r.previewUrl);
+                    preview(`deezer-${r.id}`, r.previewUrl);
                   }}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] flex-shrink-0 transition-colors ${
-                    playingId === rowKey
+                    playingId === `deezer-${r.id}`
                       ? "bg-accent text-on-accent"
                       : "bg-text-muted/20 text-text-muted opacity-0 group-hover:opacity-100"
                   }`}
                 >
-                  {playingId === rowKey ? "■" : "▶"}
+                  {playingId === `deezer-${r.id}` ? "■" : "▶"}
                 </button>
               </div>
-            );
-            })}
+            ))}
           </div>
         </div>
       ) : tab === "uploads" ? (
