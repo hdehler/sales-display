@@ -9,7 +9,7 @@ interface DashboardProps {
 }
 
 const panel =
-  "rounded-2xl border border-border bg-surface-raised flex flex-col min-h-0";
+  "rounded-xl border border-border bg-surface-raised flex flex-col min-h-0";
 
 export function Dashboard({ data, onOpenTeam }: DashboardProps) {
   return (
@@ -17,81 +17,85 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
       <Header onOpenTeam={onOpenTeam} />
       <SalesTicker sales={data.recentSales} />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 px-5 lg:px-7 py-5 min-h-0">
-        {/* Rankings + KPIs — wide */}
-        <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
-          {/* KPI strip */}
-          <div className="rounded-2xl border border-border bg-surface-raised overflow-hidden shrink-0 grid grid-cols-3 divide-x divide-border">
-            <div className="p-4 sm:p-5 relative">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-4 lg:px-5 py-3 min-h-0">
+        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0">
+          {/* KPI strip — compact */}
+          <div className="rounded-xl border border-border bg-surface-raised overflow-hidden shrink-0 grid grid-cols-3 divide-x divide-border">
+            <div className="p-3 sm:p-3.5 relative">
               <div
-                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent"
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
                 aria-hidden
               />
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted mb-1.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                 Today
               </div>
-              <div className="font-display text-4xl sm:text-5xl font-normal tabular-nums text-text-primary leading-none tracking-tight">
+              <div className="font-display text-3xl sm:text-4xl font-normal tabular-nums text-text-primary leading-none tracking-tight">
                 {data.todayCount}
               </div>
             </div>
-            <div className="p-4 sm:p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted mb-1.5">
+            <div className="p-3 sm:p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                 Week
               </div>
-              <div className="text-2xl sm:text-3xl font-semibold tabular-nums text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
                 {data.weekCount}
               </div>
             </div>
-            <div className="p-4 sm:p-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted mb-1.5">
+            <div className="p-3 sm:p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                 Month
               </div>
-              <div className="text-2xl sm:text-3xl font-semibold tabular-nums text-text-primary tracking-tight">
+              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
                 {data.monthCount}
               </div>
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
-            {/* Partner + volume rankings — new partners first */}
-            <div className={`${panel} p-4 sm:p-6 flex-1 min-h-[12rem]`}>
-              <div className="overflow-auto min-h-0 flex-1 -mx-1 px-1">
+          {/* Leaderboards share remaining height — no fixed min-heights */}
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
+            <div className={`${panel} p-3 sm:p-4 flex-[2] min-h-0`}>
+              <h2 className="text-xs font-semibold text-text-primary tracking-tight mb-2">
+                New buying partners
+              </h2>
+              <div className="overflow-auto min-h-0 flex-1 -mx-0.5 px-0.5">
                 {data.hunterLeaderboard.length === 0 ? (
-                  <p className="text-base text-text-secondary leading-relaxed py-2">
-                    No attributed Slide orders this month yet, or no order history
-                    with Total Orders parsed.
+                  <p className="text-sm text-text-secondary leading-snug">
+                    No Slide orders with parsed Total Orders this month.
                   </p>
                 ) : (
-                  <table className="w-full border-collapse text-left">
+                  <table className="w-full border-collapse text-left text-sm">
                     <caption className="sr-only">
-                      Reps ranked by new buying partners this month, then by
-                      sales count
+                      Reps ranked by new buying partners this month, then by order
+                      count
                     </caption>
                     <thead>
                       <tr className="border-b border-border">
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-3 pr-3 w-12 text-xs font-semibold uppercase tracking-wider text-text-muted align-bottom"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 pr-2 w-8 text-xs font-semibold uppercase tracking-wider text-text-muted"
                         >
                           #
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-3 text-xs font-semibold uppercase tracking-wider text-text-muted align-bottom"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-xs font-semibold uppercase tracking-wider text-text-muted"
                         >
                           Rep
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-3 text-right text-xs font-semibold uppercase tracking-wider text-accent align-bottom tabular-nums whitespace-nowrap pl-2"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-accent tabular-nums pl-2 leading-tight"
+                          title="New buying partners"
                         >
-                          New partners
+                          New buying
+                          <br />
+                          partners
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-3 text-right text-xs font-semibold uppercase tracking-wider text-text-muted align-bottom tabular-nums whitespace-nowrap pl-3"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted tabular-nums pl-2"
                         >
-                          Sales
+                          Orders
                         </th>
                       </tr>
                     </thead>
@@ -99,20 +103,20 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                       {data.hunterLeaderboard.map((row, i) => (
                         <tr
                           key={row.name}
-                          className="border-b border-border/50 last:border-0 hover:bg-surface-hover/35 transition-colors"
+                          className="border-b border-border/40 last:border-0 hover:bg-surface-hover/30 transition-colors"
                         >
-                          <td className="py-3.5 pr-3 text-text-muted font-mono text-base tabular-nums align-middle">
+                          <td className="py-2 pr-2 text-text-muted font-mono text-xs tabular-nums align-middle">
                             {i + 1}.
                           </td>
-                          <td className="py-3.5 font-medium text-text-primary text-lg sm:text-xl truncate max-w-[min(14rem,50vw)] align-middle">
+                          <td className="py-2 font-medium text-text-primary truncate max-w-[min(11rem,42vw)] align-middle">
                             {row.name}
                           </td>
-                          <td className="py-3.5 pl-2 text-right tabular-nums align-middle">
-                            <span className="text-2xl sm:text-3xl font-semibold text-accent leading-none">
+                          <td className="py-2 pl-2 text-right tabular-nums align-middle">
+                            <span className="text-base font-semibold text-accent tabular-nums">
                               {row.newBuyingPartners}
                             </span>
                           </td>
-                          <td className="py-3.5 pl-3 text-right tabular-nums text-text-secondary text-lg sm:text-xl font-medium align-middle">
+                          <td className="py-2 pl-2 text-right tabular-nums text-text-secondary font-medium align-middle">
                             {row.sales}
                           </td>
                         </tr>
@@ -123,31 +127,30 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               </div>
             </div>
 
-            {/* Order volume only — secondary, smaller */}
-            <div className={`${panel} p-4 sm:p-5 shrink-0 max-h-[40%] min-h-0 flex flex-col`}>
-              <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted mb-3">
-                By order volume
+            <div className={`${panel} p-3 sm:p-4 flex-1 min-h-0 flex flex-col`}>
+              <h2 className="text-xs font-semibold text-text-primary tracking-tight mb-2">
+                Orders
               </h2>
               {data.repLeaderboard.length === 0 ? (
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm text-text-secondary leading-snug">
                   No rep-attributed orders this month.
                 </p>
               ) : (
-                <ol className="space-y-0 overflow-y-auto min-h-0 flex-1 divide-y divide-border/50 -mx-1 px-1">
+                <ol className="space-y-0 overflow-y-auto min-h-0 flex-1 divide-y divide-border/40 -mx-0.5 px-0.5 text-sm">
                   {data.repLeaderboard.map((row, i) => (
                     <li
                       key={row.name}
-                      className="flex items-center justify-between gap-4 py-3 first:pt-0 text-base sm:text-lg hover:bg-surface-hover/25 -mx-2 px-2 rounded-lg transition-colors"
+                      className="flex items-center justify-between gap-3 py-2 first:pt-0 hover:bg-surface-hover/25 -mx-1 px-1 rounded-md transition-colors"
                     >
-                      <span className="flex items-center gap-4 min-w-0">
-                        <span className="text-text-muted font-mono text-sm tabular-nums w-8 shrink-0 text-right">
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-text-muted font-mono text-xs tabular-nums w-5 shrink-0 text-right">
                           {i + 1}
                         </span>
                         <span className="font-medium text-text-primary truncate">
                           {row.name}
                         </span>
                       </span>
-                      <span className="text-accent font-semibold tabular-nums text-lg shrink-0">
+                      <span className="text-accent font-semibold tabular-nums shrink-0">
                         {row.count}
                       </span>
                     </li>
@@ -158,8 +161,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
           </div>
         </div>
 
-        {/* Activity — narrow, minimal */}
-        <div className={`lg:col-span-4 min-h-0 ${panel} p-3 sm:p-4`}>
+        <div className={`lg:col-span-4 min-h-0 ${panel} p-2.5 sm:p-3`}>
           <RecentOrders sales={data.recentSales} compact />
         </div>
       </div>

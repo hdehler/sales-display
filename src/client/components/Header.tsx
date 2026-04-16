@@ -13,13 +13,13 @@ export function Header({ onOpenTeam }: HeaderProps) {
   }, []);
 
   return (
-    <header className="shrink-0 flex items-center justify-between px-8 py-4 border-b border-border bg-surface-raised/40 backdrop-blur-md">
-      <div className="flex items-center gap-5 min-w-0">
-        <h1 className="font-display text-2xl sm:text-3xl font-normal tracking-tight text-text-primary truncate">
+    <header className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-border bg-surface-raised/40 backdrop-blur-md">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        <h1 className="font-display text-xl sm:text-2xl font-normal tracking-tight text-text-primary truncate">
           Sales Feed
         </h1>
         <div
-          className="flex items-center gap-2 pl-5 border-l border-border shrink-0"
+          className="flex items-center gap-1.5 pl-3 sm:pl-4 border-l border-border shrink-0"
           aria-live="polite"
         >
           <span className="relative flex h-2.5 w-2.5">
@@ -32,8 +32,8 @@ export function Header({ onOpenTeam }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-5 shrink-0">
-        <div className="hidden sm:flex flex-col items-end text-right">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="hidden sm:flex flex-col items-end text-right leading-tight">
           <span className="text-xs font-medium uppercase tracking-wider text-text-muted">
             {time.toLocaleDateString(undefined, {
               weekday: "short",
@@ -41,23 +41,23 @@ export function Header({ onOpenTeam }: HeaderProps) {
               day: "numeric",
             })}
           </span>
-          <span className="text-lg font-semibold tabular-nums text-text-primary tracking-tight">
+          <span className="text-base font-semibold tabular-nums text-text-primary">
             {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
           </span>
         </div>
-        <span className="sm:hidden text-base font-semibold tabular-nums text-text-primary">
+        <span className="sm:hidden text-sm font-semibold tabular-nums text-text-primary">
           {time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true })}
         </span>
 
-        <div className="w-px h-9 bg-border self-center hidden sm:block" aria-hidden />
+        <div className="w-px h-7 bg-border self-center hidden sm:block" aria-hidden />
 
         {onOpenTeam && (
           <button
             type="button"
             onClick={onOpenTeam}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-xs font-semibold uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-[11px] font-semibold uppercase tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -68,9 +68,9 @@ export function Header({ onOpenTeam }: HeaderProps) {
         )}
         <a
           href="/settings"
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-xs font-semibold uppercase tracking-wider focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border-bright text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-[11px] font-semibold uppercase tracking-wide focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>

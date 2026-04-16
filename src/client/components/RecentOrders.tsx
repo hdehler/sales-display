@@ -75,7 +75,7 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center flex-1 min-h-[8rem] text-center px-2">
+      <div className="flex flex-col items-center justify-center flex-1 min-h-0 py-8 text-center px-2">
         <p className="text-text-muted text-xs uppercase tracking-wider">
           No activity yet
         </p>
@@ -86,21 +86,23 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
   if (compact) {
     return (
       <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center justify-between gap-2 pb-2 mb-1 border-b border-border shrink-0">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-            Latest
+        <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border shrink-0">
+          <h2 className="text-xs font-semibold text-text-primary tracking-tight">
+            Recent orders
+          </h2>
+          <span className="text-xs text-text-muted tabular-nums font-medium">
+            {rows.length}
           </span>
-          <span className="text-[10px] text-text-muted tabular-nums">{rows.length}</span>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 pt-2 space-y-0.5">
+        <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0">
           {rows.map((row) => (
             <div
               key={row.key}
-              className="flex items-center gap-2 py-1.5 px-1 rounded-lg hover:bg-surface-hover/30 transition-colors min-w-0"
+              className="flex items-center gap-1.5 py-1 px-0.5 rounded-md hover:bg-surface-hover/30 transition-colors min-w-0"
             >
               {row.count > 1 ? (
                 <span
-                  className="shrink-0 text-[10px] font-bold tabular-nums text-accent w-5 text-center"
+                  className="shrink-0 text-xs font-bold tabular-nums text-accent w-5 text-center"
                   title={`${row.count} orders`}
                 >
                   ×{row.count}
@@ -109,11 +111,11 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
                 <span className="shrink-0 w-5" aria-hidden />
               )}
               <div className="flex-1 min-w-0 flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-sm font-medium text-text-primary truncate">
+                <span className="text-xs font-medium text-text-primary truncate">
                   {row.account}
                 </span>
                 {row.newBuyingPartner ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wide text-accent shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-accent shrink-0">
                     NP
                   </span>
                 ) : null}
@@ -124,7 +126,7 @@ export function RecentOrders({ sales, compact }: RecentOrdersProps) {
                 ) : null}
               </div>
               <time
-                className="text-[10px] text-text-muted tabular-nums shrink-0 font-medium"
+                className="text-xs text-text-muted tabular-nums shrink-0 font-medium"
                 dateTime={row.time}
               >
                 {timeAgo(row.time)}
