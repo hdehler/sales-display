@@ -228,7 +228,9 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
       setSearchHint(
         h === "itunes_no_previews"
           ? "iTunes returned no tracks with a preview for this query."
-          : null,
+          : h === "itunes_unavailable"
+            ? "iTunes search is temporarily unavailable — try Auto or Deezer."
+            : null,
       );
     } catch {
       setResults([]);

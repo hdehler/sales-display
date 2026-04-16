@@ -48,8 +48,13 @@ function upsizeArtwork(url: string | undefined): string {
 }
 
 /**
- * iTunes' edge servers return `404 [newNullResponse]` when the client sends
- * Node's default `User-Agent: node` (or no UA). Always set a real UA + Accept.
+ * iTunes' edge servers periodically return `404 [newNullResponse]` — a known,
+ * long-standing routing flakiness on Apple's side. Mitigations that help:
+ *   1. Real browser User-Agent + Accept headers (Node's defaults get 404'd).
+ *   2. Percent-encode the query manually; `URLSearchParams` encodes spaces
+ *      as `+` which some Apple edges reject.
+ *   3. Only the minimum set of params (`term`, `entity`, `limit`).
+ *   4. A few retries with exponential backoff to ride out a bad edge node.
  */
 const ITUNES_HEADERS = {
   "User-Agent":
@@ -58,32 +63,39 @@ const ITUNES_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+const ITUNES_MAX_ATTEMPTS = 4;
+
+function buildItunesUrl(q: string): string {
+  const parts = [
+    `term=${encodeURIComponent(q)}`,
+    "entity=song",
+    "limit=20",
+  ];
+  const country = (process.env.ITUNES_COUNTRY || "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(country)) {
+    parts.push(`country=${country}`);
+  }
+  return `https://itunes.apple.com/search?${parts.join("&")}`;
+}
+
 async function fetchITunes(url: string): Promise<Response> {
-  // Single retry — iTunes intermittently 404s with `[newNullResponse]` even
-  // on valid requests; a second attempt almost always succeeds.
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt < ITUNES_MAX_ATTEMPTS; attempt++) {
     const r = await fetch(url, { headers: ITUNES_HEADERS });
     if (r.ok) return r;
-    if (attempt === 0 && r.status === 404) {
-      await new Promise((res) => setTimeout(res, 150));
-      continue;
+    last = r;
+    // 404 / 5xx are the transient ones worth retrying.
+    if (r.status !== 404 && r.status < 500) return r;
+    if (attempt < ITUNES_MAX_ATTEMPTS - 1) {
+      const delay = 200 * Math.pow(2, attempt) + Math.floor(Math.random() * 100);
+      await new Promise((res) => setTimeout(res, delay));
     }
-    return r;
   }
-  // unreachable
-  throw new Error("iTunes fetch loop exited");
+  return last!;
 }
 
 async function searchITunesCatalog(q: string): Promise<CatalogSongHit[]> {
-  const params = new URLSearchParams({
-    term: q,
-    media: "music",
-    entity: "song",
-    limit: "20",
-    country: (process.env.ITUNES_COUNTRY || "US").trim().toUpperCase() || "US",
-  });
-  const url = `https://itunes.apple.com/search?${params.toString()}`;
-  const r = await fetchITunes(url);
+  const r = await fetchITunes(buildItunesUrl(q));
   if (!r.ok) {
     const body = await r.text().catch(() => "");
     throw new Error(`iTunes search ${r.status}: ${body.slice(0, 200)}`);
@@ -163,8 +175,15 @@ export async function searchSongCatalog(
         hint: hits.length === 0 ? "itunes_no_previews" : undefined,
       };
     } catch (e) {
+      // iTunes Search API is notoriously flaky (`[newNullResponse]` 404s).
+      // In itunes-only mode, degrade to empty + hint instead of a 500 so the
+      // UI can show a clear "temporarily unavailable" message.
       console.error("[iTunes] Search failed (itunes-only mode):", e);
-      throw e;
+      return {
+        data: [],
+        source: "itunes",
+        hint: "itunes_unavailable",
+      };
     }
   }
 
