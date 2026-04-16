@@ -56,3 +56,24 @@ export async function setAllPlugs(state: boolean): Promise<void> {
 export function getDiscoveredPlugs(): string[] {
   return Array.from(discoveredPlugs.keys());
 }
+
+/** For `/api/plugs/status` and ops — verify LAN discovery without reading raw logs only. */
+export function getPlugsStatus(): {
+  kasaAutoDiscover: boolean;
+  kasaHostsConfigured: string[];
+  kasaDiscoveredHosts: string[];
+  kasaDiscoveredCount: number;
+  homeAssistantCelebrationWebhookConfigured: boolean;
+  homeAssistantPlugsOnly: boolean;
+} {
+  return {
+    kasaAutoDiscover: config.plugs.autoDiscover,
+    kasaHostsConfigured: config.plugs.hosts,
+    kasaDiscoveredHosts: getDiscoveredPlugs(),
+    kasaDiscoveredCount: discoveredPlugs.size,
+    homeAssistantCelebrationWebhookConfigured: Boolean(
+      config.homeAssistant.celebrationWebhookUrl,
+    ),
+    homeAssistantPlugsOnly: config.homeAssistant.plugsViaHomeAssistantOnly,
+  };
+}

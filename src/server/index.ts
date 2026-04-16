@@ -15,7 +15,7 @@ import {
   setHistorySaleHandler,
   setBackfillCompleteHandler,
 } from "./slack.js";
-import { initPlugs } from "./plugs.js";
+import { getPlugsStatus, initPlugs } from "./plugs.js";
 import {
   shouldCelebrate,
   shouldCelebrateSlidePack,
@@ -57,6 +57,11 @@ const io = new Server(server, {
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
+});
+
+/** Kasa discovery + HA flags — verify plugs after restart without digging logs only. */
+app.get("/api/plugs/status", (_req, res) => {
+  res.json(getPlugsStatus());
 });
 
 /** BigQuery DWH probe (auth + table readable). 503 only when configured but the probe fails. */

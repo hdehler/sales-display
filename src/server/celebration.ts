@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { notifyHomeAssistantCelebrationWebhook } from "./homeAssistantCelebration.js";
 import { setAllPlugs } from "./plugs.js";
 import {
   getTodaySaleCount,
@@ -273,16 +274,22 @@ async function processQueue(): Promise<void> {
   onCelebration?.(event);
 
   try {
-    await setAllPlugs(true);
+    await notifyHomeAssistantCelebrationWebhook("start", event.duration);
+    if (!config.homeAssistant.plugsViaHomeAssistantOnly) {
+      await setAllPlugs(true);
+    }
   } catch {
-    console.warn("[Celebration] Failed to activate plugs");
+    console.warn("[Celebration] Failed to activate plugs / HA webhook");
   }
 
   activeTimeout = setTimeout(async () => {
     try {
-      await setAllPlugs(false);
+      await notifyHomeAssistantCelebrationWebhook("end", event.duration);
+      if (!config.homeAssistant.plugsViaHomeAssistantOnly) {
+        await setAllPlugs(false);
+      }
     } catch {
-      console.warn("[Celebration] Failed to deactivate plugs");
+      console.warn("[Celebration] Failed to deactivate plugs / HA webhook");
     }
     console.log("[Celebration] Ended");
     setTimeout(() => processQueue(), 2000);

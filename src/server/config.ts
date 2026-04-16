@@ -62,6 +62,19 @@ export const config = {
     autoDiscover: process.env.KASA_AUTO_DISCOVER !== "false",
   },
 
+  /**
+   * Optional Home Assistant: POST JSON to a webhook when celebrations start/end.
+   * Use when plugs are not reachable from this server or HA owns automation.
+   */
+  homeAssistant: {
+    celebrationWebhookUrl: (
+      process.env.HOME_ASSISTANT_CELEBRATION_WEBHOOK_URL || ""
+    ).trim(),
+    plugsViaHomeAssistantOnly:
+      process.env.HOME_ASSISTANT_PLUGS_ONLY === "true" ||
+      process.env.HOME_ASSISTANT_PLUGS_ONLY === "1",
+  },
+
   celebration: {
     defaultDuration: parseInt(process.env.CELEBRATION_DURATION || "30", 10),
     triggerProducts: (process.env.CELEBRATION_TRIGGER_PRODUCTS || "")

@@ -174,22 +174,75 @@ The UI is still built with web tech, but it runs in a **dedicated Electron windo
 
 **Dev on Mac:** `npm start` in one terminal, `npm run desktop` in another.
 
-## Kasa Smart Plug Setup
+## Kasa smart plugs and disco lights (Path A — built in)
 
-1. Download the **Kasa** app on your phone
-2. Add your smart plug(s) following the app instructions
-3. Connect the plug to the **same WiFi network** as the Raspberry Pi
-4. Plug your disco lights into the Kasa smart plug
-5. The app auto-discovers plugs on the network — no configuration needed
-6. (Optional) If auto-discovery doesn't work, find the plug's IP address in the Kasa app and set `KASA_PLUG_HOSTS` in `.env`
+The Node server turns **all discovered Kasa plugs ON** when a celebration starts and **OFF** when it ends (`src/server/plugs.ts` + `src/server/celebration.ts`). No Home Assistant is required for this path.
 
-## Celebration Triggers
+### 1. Physical setup
 
-Configure which sales trigger the disco lights in `.env`:
+1. Install the **Kasa** app and add your smart plug(s).
+2. Plug disco lights (or any load) into the Kasa outlet.
+3. Put plugs on the **same LAN / same subnet** as the Raspberry Pi (the process that runs `npm run start`). Guest Wi‑Fi or a separate “IoT” VLAN without routing to the Pi will block local control — fix the network or use [Home Assistant (Path B)](#home-assistant-optional-path-b) instead.
 
-- `CELEBRATION_TRIGGER_PRODUCTS` — comma-separated keywords. If a sale's product name contains any of these, it triggers a celebration. Example: `enterprise,premium,annual`
-- `MILESTONE_INTERVAL` — triggers a celebration every N sales per day. Example: `10` means the 10th, 20th, 30th sale, etc.
-- `CELEBRATION_DURATION` — how long the party lasts in seconds
+### 2. IP addresses and discovery
+
+1. By default **`KASA_AUTO_DISCOVER=true`**: the server listens for TP-Link devices on the LAN.
+2. If discovery does not find your plug, open the Kasa app → device → network / IP and set in `.env`:
+   ```bash
+   KASA_PLUG_HOSTS=192.168.1.50
+   ```
+   Use commas for multiple plugs: `192.168.1.50,192.168.1.51`.
+3. Optional: set `KASA_AUTO_DISCOVER=false` and rely only on `KASA_PLUG_HOSTS` (stable if DHCP reservations are set on the router).
+
+### 3. Verify after restart
+
+1. Watch server logs for `[Plugs] Connected to …` or `[Plugs] Discovered: …`.
+2. Or call **`GET /api/plugs/status`** (same host/port as the app), e.g. from the Pi:
+   ```bash
+   curl -s http://127.0.0.1:3000/api/plugs/status | jq .
+   ```
+   You should see `kasaDiscoveredHosts` (or confirm `kasaHostsConfigured` matches what you set).
+
+### 4. Troubleshooting
+
+- **DHCP changed the plug’s IP** — reserve the plug’s MAC in your router DHCP settings and update `KASA_PLUG_HOSTS` if needed.
+- **Firewall** — allow the Pi to reach the plug on the LAN (discovery uses UDP; control uses TCP to the device).
+- **Some Kasa models / firmware** — local control may vary; if the plug never responds, use Home Assistant below or another bridge.
+
+## Celebration triggers (when plugs toggle)
+
+Celebrations (and thus plug ON/OFF) only run when the celebration logic fires. Relevant `.env` keys:
+
+- **`CELEBRATE_SLIDE_ORDERS`** — default `true`: every parsed Slide order triggers a celebration. Set to `false` or `0` to rely on keywords + milestone only.
+- **`CELEBRATION_TRIGGER_PRODUCTS`** — comma-separated keywords; if the product name contains any of these, a celebration runs (especially when Slide-wide celebration is off).
+- **`MILESTONE_INTERVAL`** — celebrate every N sales per day (e.g. `10` → 10th, 20th, …). Set to `0` to disable.
+- **`CELEBRATION_DURATION`** — seconds plugs stay **ON** and the full-screen celebration runs.
+
+## Home Assistant (optional Path B)
+
+Use this when plugs are not reachable from the Pi, you want HA to own schedules/scenes, or local Kasa from Node is unreliable.
+
+1. Run **Home Assistant** somewhere the Pi can reach (same LAN is easiest).
+2. Add your Kasa (or other) devices in HA.
+3. Create an **automation** with trigger type **Webhook** — HA shows a full URL like `https://…/api/webhook/…`.
+4. Set in `.env`:
+   ```bash
+   HOME_ASSISTANT_CELEBRATION_WEBHOOK_URL=https://your-ha/api/webhook/your_id
+   ```
+5. On each celebration, this app **POSTs JSON**:
+   ```json
+   { "phase": "start", "durationSeconds": 30, "source": "sales-display" }
+   ```
+   and when the celebration ends:
+   ```json
+   { "phase": "end", "durationSeconds": 30, "source": "sales-display" }
+   ```
+   In HA, use **Trigger ID** or template conditions on `{{ trigger.json.phase }}` to turn switches on/off (or call `light.turn_on` / `switch.turn_off`).
+6. If **only** HA should drive the plugs (no local Kasa from this app), set:
+   ```bash
+   HOME_ASSISTANT_PLUGS_ONLY=true
+   ```
+   Otherwise the server still calls local Kasa **and** sends the webhook (useful if HA does something extra, not duplicate plug control).
 
 ## Custom Sounds
 
@@ -206,8 +259,9 @@ src/
     slack.ts          — Slack Bot listener
     parseSlackMessage.ts — parse live + history messages
     slackHistoryBackfill.ts — conversations.history importer
-    plugs.ts          — Kasa smart plug control
-    celebration.ts    — celebration orchestration and queue
+    plugs.ts                     — Kasa smart plug control
+    homeAssistantCelebration.ts  — optional HA webhook on celebration start/end
+    celebration.ts             — celebration orchestration and queue
   client/
     App.tsx           — main React app
     components/
