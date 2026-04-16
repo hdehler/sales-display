@@ -194,6 +194,19 @@ The Node server turns **all discovered Kasa plugs ON** when a celebration starts
    Use commas for multiple plugs: `192.168.1.50,192.168.1.51`.
 3. Optional: set `KASA_AUTO_DISCOVER=false` and rely only on `KASA_PLUG_HOSTS` (stable if DHCP reservations are set on the router).
 
+### Newer Kasa / Tapo plugs (no port 9999)
+
+The Node driver first tries TP-Link’s **legacy** local API (TCP **9999**). Many newer devices only speak **KLAP** or similar — you’ll see `ECONNREFUSED` on 9999 in the logs. In that case this app **automatically falls back** to **[python-kasa](https://github.com/python-kasa/python-kasa)** (same protocols Home Assistant uses).
+
+On the Raspberry Pi (once per machine):
+
+```bash
+pip3 install -r requirements-kasa.txt
+# or: pip3 install python-kasa
+```
+
+Restart the API. You should see `[Plugs] python-kasa ready …` and `kasaPythonFallbackHosts` populated in `GET /api/plugs/status`. Optional: set `KASA_PYTHON_BIN=/usr/bin/python3` if `python3` is not on `PATH`.
+
 ### 3. Verify after restart
 
 1. Watch server logs for `[Plugs] Connected to …` or `[Plugs] Discovered: …`.
@@ -207,7 +220,7 @@ The Node server turns **all discovered Kasa plugs ON** when a celebration starts
 
 - **DHCP changed the plug’s IP** — reserve the plug’s MAC in your router DHCP settings and update `KASA_PLUG_HOSTS` if needed.
 - **Firewall** — allow the Pi to reach the plug on the LAN (discovery uses UDP; control uses TCP to the device).
-- **Some Kasa models / firmware** — local control may vary; if the plug never responds, use Home Assistant below or another bridge.
+- **Some Kasa models / firmware** — if port **9999** is refused, install **python-kasa** (see above) or use Home Assistant below.
 
 ## Celebration triggers (when plugs toggle)
 
@@ -259,7 +272,8 @@ src/
     slack.ts          — Slack Bot listener
     parseSlackMessage.ts — parse live + history messages
     slackHistoryBackfill.ts — conversations.history importer
-    plugs.ts                     — Kasa smart plug control
+    plugs.ts                     — Kasa smart plug control (tplink + python-kasa fallback)
+    kasaPython.ts                — spawn python-kasa for newer plugs (no port 9999)
     homeAssistantCelebration.ts  — optional HA webhook on celebration start/end
     celebration.ts             — celebration orchestration and queue
   client/
