@@ -27,7 +27,7 @@ export function SpiritAnimalPicker({
             onClick={() => onChange(a.id)}
             className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border px-1.5 py-2 min-h-[3.75rem] transition-all outline-none focus-visible:ring-2 focus-visible:ring-accent ${
               selected
-                ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(226,163,54,0.35)]"
+                ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(12,136,255,0.35)]"
                 : "border-border/60 bg-surface-raised/50 hover:border-border-bright hover:bg-surface-hover"
             }`}
           >

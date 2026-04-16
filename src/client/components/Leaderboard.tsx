@@ -1,12 +1,12 @@
 import type { LeaderboardEntry } from "../../shared/types";
 
 const RANK_ACCENTS = [
-  "from-amber-400 to-yellow-500",
-  "from-slate-300 to-slate-400",
-  "from-amber-700 to-amber-600",
+  "from-[#0c88ff] to-[#2663b8]",
+  "from-[#7eb8ff] to-[#0c88ff]",
+  "from-[#2663b8] to-[#1a4a90]",
 ];
 
-const RANK_DOT = ["bg-amber-400", "bg-slate-300", "bg-amber-700"];
+const RANK_DOT = ["bg-[#0c88ff]", "bg-[#7eb8ff]", "bg-[#2663b8]"];
 
 export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
   const maxCount = entries[0]?.count || 1;
@@ -37,7 +37,7 @@ export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
                 <div className="flex items-center gap-3 mb-1.5">
                   {i < 3 ? (
                     <span
-                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold bg-gradient-to-br ${RANK_ACCENTS[i]} text-stone-950`}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold bg-gradient-to-br ${RANK_ACCENTS[i]} text-white`}
                     >
                       {i + 1}
                     </span>

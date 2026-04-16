@@ -45,22 +45,17 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
       <Header onOpenTeam={onOpenTeam} />
       <SalesTicker sales={data.recentSales} />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-4 lg:px-5 py-3 min-h-0">
-        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0">
-          {/* KPI strip */}
-          <div className="rounded-xl border border-border bg-surface-raised overflow-hidden shrink-0 flex flex-col">
-            <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border min-w-0">
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-primary truncate">
-                Order counts
-              </span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
-                {monthTag}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 divide-x divide-border">
-              <div className="p-3 sm:p-3.5 relative">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-4 lg:px-5 py-3 min-h-0 min-w-0">
+        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 min-w-0">
+          {/* Order counts — three separate mini cards */}
+          <div className="shrink-0 flex flex-col gap-2">
+            <ContainerHeading title="Order counts" right={monthTag} />
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div
+                className={`${panel} p-3 sm:p-3.5 relative overflow-hidden shrink-0`}
+              >
                 <div
-                  className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+                  className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent"
                   aria-hidden
                 />
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
@@ -70,7 +65,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                   {data.todayCount}
                 </div>
               </div>
-              <div className="p-3 sm:p-3.5">
+              <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                   Week
                 </div>
@@ -78,7 +73,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                   {data.weekCount}
                 </div>
               </div>
-              <div className="p-3 sm:p-3.5">
+              <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                   Month
                 </div>
@@ -96,13 +91,13 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                 title="New buying partners"
                 right={monthTag}
               />
-              <div className="overflow-auto min-h-0 flex-1 -mx-0.5 px-0.5 overscroll-contain">
+              <div className="overflow-y-auto overflow-x-hidden min-h-0 flex-1 overscroll-contain">
                 {data.hunterLeaderboard.length === 0 ? (
                   <p className="text-sm text-text-secondary leading-snug">
                     No Slide orders with parsed Total Orders this month.
                   </p>
                 ) : (
-                  <table className="w-full border-collapse text-left text-sm">
+                  <table className="w-full min-w-0 table-fixed border-collapse text-left text-sm">
                     <caption className="sr-only">
                       Reps ranked by new buying partners this month, then by order
                       count
@@ -111,19 +106,19 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                       <tr className="border-b border-border">
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 pr-2 w-8 text-xs font-semibold uppercase tracking-wider text-text-muted"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 pr-2 w-[10%] max-w-[2.5rem] text-xs font-semibold uppercase tracking-wider text-text-muted"
                         >
                           #
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-xs font-semibold uppercase tracking-wider text-text-muted"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-xs font-semibold uppercase tracking-wider text-text-muted w-[46%]"
                         >
                           Rep
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-accent tabular-nums pl-2 leading-tight"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-accent tabular-nums pl-2 leading-tight w-[22%]"
                           title="New buying partners"
                         >
                           New buying
@@ -132,7 +127,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                         </th>
                         <th
                           scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted tabular-nums pl-2"
+                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted tabular-nums pl-2 w-[22%]"
                         >
                           Orders
                         </th>
@@ -147,7 +142,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                           <td className="py-2 pr-2 text-text-muted font-mono text-xs tabular-nums align-middle">
                             {i + 1}.
                           </td>
-                          <td className="py-2 font-medium text-text-primary truncate max-w-[min(11rem,42vw)] align-middle">
+                          <td className="py-2 font-medium text-text-primary truncate align-middle min-w-0">
                             {row.name}
                           </td>
                           <td className="py-2 pl-2 text-right tabular-nums align-middle">
@@ -167,20 +162,22 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
             </div>
 
             {/* Larger: full rep order list */}
-            <div className={`${panel} p-3 sm:p-4 flex-[2] min-h-0 flex flex-col`}>
+            <div
+              className={`${panel} p-3 sm:p-4 flex-[2] min-h-0 min-w-0 flex flex-col overflow-x-hidden`}
+            >
               <ContainerHeading title="Orders" right={monthTag} />
               {data.repLeaderboard.length === 0 ? (
-                <p className="text-sm text-text-secondary leading-snug">
+                <p className="text-sm text-text-secondary leading-snug min-w-0">
                   No rep-attributed orders this month.
                 </p>
               ) : (
-                <ol className="space-y-0 overflow-y-auto min-h-0 flex-1 divide-y divide-border/40 -mx-0.5 px-0.5 text-sm overscroll-contain">
+                <ol className="min-w-0 space-y-0 overflow-y-auto overflow-x-hidden min-h-0 flex-1 divide-y divide-border/40 text-sm overscroll-contain">
                   {data.repLeaderboard.map((row, i) => (
                     <li
                       key={row.name}
-                      className="flex items-center justify-between gap-3 py-2 first:pt-0 hover:bg-surface-hover/25 -mx-1 px-1 rounded-md transition-colors"
+                      className="flex min-w-0 items-center justify-between gap-2 sm:gap-3 py-2 first:pt-0 rounded-md px-0.5 transition-colors hover:bg-surface-hover/25"
                     >
-                      <span className="flex items-center gap-2.5 min-w-0">
+                      <span className="flex min-w-0 flex-1 items-center gap-2.5">
                         <span className="text-text-muted font-mono text-xs tabular-nums w-5 shrink-0 text-right">
                           {i + 1}
                         </span>

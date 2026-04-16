@@ -151,7 +151,7 @@ export function VirtualKeyboard() {
 
   const btnBase =
     "flex items-center justify-center rounded-lg font-medium transition-all active:scale-95 select-none touch-manipulation";
-  const charBtn = `${btnBase} bg-surface-raised border border-border text-text-primary text-lg h-12 min-w-[2.4rem]`;
+  const charBtn = `${btnBase} bg-surface border border-border text-text-primary text-lg h-12 min-w-[2.4rem]`;
   const specialBtn = `${btnBase} bg-surface-hover border border-border text-text-secondary text-sm h-12 px-4`;
 
   return (
@@ -159,7 +159,7 @@ export function VirtualKeyboard() {
       {visible && (
         <motion.div
           ref={kbRef}
-          className="fixed bottom-0 left-0 right-0 z-[100] bg-[#0f1117] border-t border-border-bright shadow-2xl"
+          className="fixed bottom-0 left-0 right-0 z-[100] bg-surface-raised border-t border-border-bright shadow-2xl"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}

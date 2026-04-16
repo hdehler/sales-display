@@ -87,7 +87,7 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
         >
-          <div className="max-w-4xl mx-auto rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl p-6 shadow-2xl ring-1 ring-white/[0.04]">
+          <div className="max-w-4xl mx-auto rounded-2xl border border-border-bright bg-surface-raised/95 backdrop-blur-xl p-6 shadow-2xl ring-1 ring-black/[0.04]">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="text-sm font-bold uppercase tracking-widest text-accent mb-1">

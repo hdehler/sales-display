@@ -54,30 +54,30 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
                 dataKey="date"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#504e4a", fontSize: 10 }}
+                tick={{ fill: "#666666", fontSize: 10 }}
                 interval="preserveStartEnd"
               />
               <YAxis
                 allowDecimals={false}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#504e4a", fontSize: 10 }}
+                tick={{ fill: "#666666", fontSize: 10 }}
                 width={28}
               />
               <Tooltip
                 contentStyle={{
-                  background: "#14161d",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "#ffffff",
+                  border: "1px solid #e0e0e0",
                   borderRadius: "0.75rem",
                   fontSize: "0.8rem",
-                  color: "#f0ede8",
+                  color: "#111418",
                 }}
-                labelStyle={{ color: "#8a8680" }}
+                labelStyle={{ color: "#777777" }}
                 formatter={(value: unknown) => [
                   `${value ?? 0}`,
                   "Orders",
                 ]}
-                cursor={{ stroke: "rgba(226,163,54,0.2)" }}
+                cursor={{ stroke: "rgba(12,136,255,0.22)" }}
               />
               <Area
                 type="monotone"
@@ -89,7 +89,7 @@ export function SalesChart({ data }: { data: DailyTotal[] }) {
                 activeDot={{
                   r: 4,
                   fill: "var(--color-accent)",
-                  stroke: "#14161d",
+                  stroke: "#ffffff",
                   strokeWidth: 2,
                 }}
               />

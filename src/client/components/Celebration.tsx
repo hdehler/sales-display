@@ -9,10 +9,10 @@ import { MixedEmojiLogoRain } from "./MixedEmojiLogoRain";
 import { LogoConfetti } from "./LogoConfetti";
 
 function fireConfetti(isWalkup: boolean) {
-  const gold = ["#e2a336", "#f5c842", "#d4890f"];
+  const brand = ["#0c88ff", "#3da0ff", "#2663b8"];
   const colors = isWalkup
-    ? [...gold, "#ff6b6b", "#a855f7", "#fff"]
-    : [...gold, "#34d399", "#60a5fa"];
+    ? [...brand, "#d50b0b", "#ffce00", "#ffffff"]
+    : [...brand, "#2fb140", "#ffffff"];
 
   confetti({
     particleCount: isWalkup ? 100 : 60,
@@ -98,8 +98,8 @@ export function Celebration({ event, onStop }: CelebrationProps) {
       : [];
 
   const backdropGradient = isWalkup
-    ? "radial-gradient(ellipse at 50% 40%, rgba(168,85,247,0.18) 0%, #08090d 55%)"
-    : "radial-gradient(ellipse at 50% 40%, rgba(226,163,54,0.15) 0%, #08090d 55%)";
+    ? "radial-gradient(ellipse at 50% 40%, rgba(38,99,184,0.32) 0%, #101820 55%)"
+    : "radial-gradient(ellipse at 50% 40%, rgba(12,136,255,0.2) 0%, #101820 55%)";
 
   const showAnimalRain =
     (showSlideRepHero && Boolean(slideAnimalEmojiChar)) ||
@@ -111,7 +111,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#08090d]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#101820]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -169,8 +169,8 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black text-white shadow-2xl"
                 style={{
-                  background: `linear-gradient(135deg, ${event.rep.avatarColor || "#e2a336"}, ${event.rep.avatarColor || "#e2a336"}88)`,
-                  boxShadow: `0 0 60px ${event.rep.avatarColor || "#e2a336"}44`,
+                  background: `linear-gradient(135deg, ${event.rep.avatarColor || "#0c88ff"}, ${event.rep.avatarColor || "#0c88ff"}88)`,
+                  boxShadow: `0 0 60px ${event.rep.avatarColor || "#0c88ff"}44`,
                 }}
               >
                 {event.rep.name.charAt(0).toUpperCase()}
@@ -192,13 +192,13 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
             >
-              <span className="inline-block px-4 py-1.5 rounded-full border border-purple-400/30 bg-purple-500/10 text-purple-300 text-xs font-semibold uppercase tracking-[0.2em]">
+              <span className="inline-block px-4 py-1.5 rounded-full border border-info/35 bg-info/20 text-white text-xs font-semibold uppercase tracking-[0.2em]">
                 Closed it
               </span>
             </motion.div>
 
             <motion.div
-              className="text-2xl md:text-3xl font-display text-zinc-300 mb-3"
+              className="text-2xl md:text-3xl font-display text-white/80 mb-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35 }}
@@ -278,7 +278,7 @@ export function Celebration({ event, onStop }: CelebrationProps) {
 
                 {products.length > 0 && (
                   <motion.div
-                    className="mt-3 text-xl md:text-3xl font-semibold text-white/95 max-w-4xl mx-auto leading-snug px-6 py-4 rounded-2xl border border-accent/25 bg-accent/10 shadow-[0_0_40px_rgba(226,163,54,0.12)] mb-2"
+                    className="mt-3 text-xl md:text-3xl font-semibold text-white/95 max-w-4xl mx-auto leading-snug px-6 py-4 rounded-2xl border border-accent/25 bg-accent/10 shadow-[0_0_40px_rgba(12,136,255,0.18)] mb-2"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.45 }}

@@ -11,8 +11,16 @@ import { playSong } from "../lib/audio";
 import { SongSearch, type SongChoice, walkupSongDisplayLine } from "./SongSearch";
 
 const AVATAR_COLORS = [
-  "#e2a336", "#ef4444", "#3b82f6", "#10b981", "#a855f7",
-  "#f97316", "#06b6d4", "#ec4899", "#84cc16", "#6366f1",
+  "#0c88ff",
+  "#2663b8",
+  "#2fb140",
+  "#d50b0b",
+  "#ffce00",
+  "#777777",
+  "#666666",
+  "#3da0ff",
+  "#1a4a90",
+  "#5ad66e",
 ];
 
 interface RepManagerProps {
@@ -125,7 +133,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-stone-900/35"
+            className="fixed inset-0 z-40 bg-black/25"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

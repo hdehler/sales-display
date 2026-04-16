@@ -78,7 +78,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
               className="flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl pointer-events-auto max-w-[min(100%,28rem)]"
               style={{
                 borderColor: `${activeRep.avatarColor}50`,
-                background: `linear-gradient(135deg, ${activeRep.avatarColor}22, rgba(14,16,22,0.94))`,
+                background: `linear-gradient(135deg, ${activeRep.avatarColor}22, rgba(250,251,254,0.96))`,
               }}
             >
               <div
@@ -160,7 +160,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
             <button
               type="button"
               aria-label="Close"
-              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/25 backdrop-blur-sm"
               onClick={() => setModalOpen(false)}
             />
             <motion.div

@@ -5,21 +5,29 @@
 @theme {
   --font-display: "DM Serif Display", Georgia, serif;
   --font-body: "Instrument Sans", system-ui, sans-serif;
-  /* Warm charcoal dashboard — readable neutrals, one amber accent */
-  --color-surface: #0a0b0f;
-  --color-surface-raised: #12141c;
-  --color-surface-hover: #1a1d28;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-bright: rgba(255, 255, 255, 0.11);
-  --color-accent: #d4a24a;
-  --color-accent-soft: rgba(212, 162, 74, 0.14);
-  --color-text-primary: #f2f0ec;
-  --color-text-secondary: #b4afa6;
-  --color-text-muted: #7d786f;
-  --color-on-accent: #141009;
+  /*
+   * Product palette (light dashboard)
+   * primary #0C88FF · info #2663b8 · secondary #777777 · warning #FFCE00
+   * error #D50B0B · success #2FB140 · background #fafbfe · paper #FFFFFF
+   * gray #E0E0E0 · darkGrey #666666
+   */
+  --color-surface: #fafbfe;
+  --color-surface-raised: #ffffff;
+  --color-surface-hover: #eef2fb;
+  --color-border: #e0e0e0;
+  --color-border-bright: #cfcfcf;
+  --color-accent: #0c88ff;
+  --color-accent-soft: rgba(12, 136, 255, 0.12);
+  --color-info: #2663b8;
+  --color-warning: #ffce00;
+  --color-error: #d50b0b;
+  --color-text-primary: #111418;
+  --color-text-secondary: #777777;
+  --color-text-muted: #666666;
+  --color-on-accent: #ffffff;
   --color-on-emerald: #ffffff;
-  --color-emerald: #3ecf9b;
-  --color-red-soft: #f87171;
+  --color-emerald: #2fb140;
+  --color-red-soft: #d50b0b;
 }
 
 @layer base {
@@ -32,17 +40,16 @@
   }
 
   ::selection {
-    background: rgba(212, 162, 74, 0.28);
+    background: rgba(12, 136, 255, 0.22);
     color: var(--color-text-primary);
   }
 
   /*
    * Themed scrollbars (thin, neutral thumb) — Firefox + WebKit/Chromium.
-   * Avoids default OS chrome clashing with the dark dashboard.
    */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.22) rgba(255, 255, 255, 0.05);
+    scrollbar-color: rgba(17, 20, 24, 0.28) rgba(17, 20, 24, 0.06);
   }
 
   *::-webkit-scrollbar {
@@ -51,19 +58,19 @@
   }
 
   *::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(17, 20, 24, 0.05);
     border-radius: 9999px;
   }
 
   *::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(17, 20, 24, 0.22);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.32);
+    background: rgba(17, 20, 24, 0.34);
     border: 2px solid transparent;
     background-clip: padding-box;
   }
