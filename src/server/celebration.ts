@@ -62,6 +62,30 @@ export function repWalkupToResolvedSong(
   return resolveSong(product);
 }
 
+/** True when walk-up resolution actually picked a file or jingle (not an empty fallback). */
+function resolvedSongHasAudio(s: ResolvedSong): boolean {
+  return (
+    (s.songUrl != null && String(s.songUrl).trim() !== "") ||
+    (s.jingleId != null && String(s.jingleId).trim() !== "")
+  );
+}
+
+/**
+ * Merge rep walk-up into the celebration audio. `repWalkupToResolvedSong` often returns only
+ * `songUrl` **or** `jingleId`; spreading both onto the event was wiping the model/default track
+ * with `undefined` so nothing played (and leftover `jingleId` could beat the rep `songUrl`).
+ */
+function mergeWalkupIntoCelebrationAudio(
+  base: ResolvedSong,
+  rep: ResolvedSong,
+): ResolvedSong {
+  if (!resolvedSongHasAudio(rep)) return { ...base };
+  return {
+    songUrl: rep.songUrl,
+    jingleId: rep.jingleId,
+  };
+}
+
 function attachSlideRepHero(
   event: CelebrationEvent,
   first: Sale,
@@ -92,11 +116,15 @@ function attachSlideRepHero(
 
   const row = getRepByDisplayName(nm);
   if (row) {
-    const song = repWalkupToResolvedSong(row.walkup_song, first.product);
+    const repSong = repWalkupToResolvedSong(row.walkup_song, first.product);
+    const audio = mergeWalkupIntoCelebrationAudio(
+      { songUrl: event.songUrl, jingleId: event.jingleId },
+      repSong,
+    );
     return {
       ...event,
-      songUrl: song.songUrl,
-      jingleId: song.jingleId,
+      songUrl: audio.songUrl,
+      jingleId: audio.jingleId,
       repHero: {
         name: row.name,
         avatarColor: row.avatar_color,
