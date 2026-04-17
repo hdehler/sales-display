@@ -107,6 +107,8 @@ function extractKeyValuesFromBlocks(blocks: unknown[]): Record<string, string> {
       extractFromMrkdwnBlob(blob, out);
       if (blob.toLowerCase().includes("new order created"))
         out._header = out._header || "New Order Created";
+      if (blob.toLowerCase().includes("big order created"))
+        out._header = out._header || "BIG Order Created";
     }
   }
 
@@ -161,6 +163,8 @@ export function slackPrimaryTextBody(msg: Record<string, unknown>): string {
 function isSlideNewOrder(fields: Record<string, string>): boolean {
   const h = (fields._header || "").toLowerCase();
   if (h.includes("new order created")) return true;
+  /** Slide Cloud alternate template: no `Order o_…` row; qty lines follow Earliest Ship Date */
+  if (h.includes("big order created")) return true;
   if (fields.Account && fields.Order && (fields.Hardware || fields.Service)) return true;
   return false;
 }
@@ -172,6 +176,15 @@ const SLIDE_CONCAT_LABELS = [
   "Datacenter Region",
   "Hardware",
   "Service",
+  "Order History",
+  "Purchased At",
+  "Earliest Ship Date",
+] as const;
+
+/** BIG Order Created — same meta fields except no `Order` id; hardware = qty lines after ship date */
+const BIG_ORDER_SEQ_LABELS = [
+  "Account",
+  "Datacenter Region",
   "Order History",
   "Purchased At",
   "Earliest Ship Date",
@@ -262,6 +275,61 @@ function parseSequentialSlidePlaintext(raw: string): Record<string, string> | nu
   return out;
 }
 
+/** After Earliest Ship Date value, Slack flattening may glue `2030-01-0117x Slide…` */
+function splitEarliestShipDateAndLineItems(rawTail: string): {
+  earliestShipDate: string;
+  lineItems: string;
+} {
+  const v = rawTail.trim();
+  const glued = /^(\d{4}-\d{2}-\d{2})(\d+x\s)/i.exec(v);
+  if (glued) {
+    return {
+      earliestShipDate: glued[1],
+      lineItems: v.slice(glued[1].length).trim(),
+    };
+  }
+  const spaced = v.match(/^(\d{4}-\d{2}-\d{2})\s+([\s\S]+)$/);
+  if (spaced && /^\d+x\s/i.test(spaced[2].trim())) {
+    return { earliestShipDate: spaced[1], lineItems: spaced[2].trim() };
+  }
+  return { earliestShipDate: v, lineItems: "" };
+}
+
+/**
+ * Slide Cloud “BIG Order Created” template: no `Order` row; qty× SKU lines follow ship date.
+ * Flattened block text is normalized with spaces (see `normalizeSlidePlaintext`).
+ */
+function parseBigOrderSlidePlaintext(raw: string): Record<string, string> | null {
+  let s = normalizeSlidePlaintext(raw);
+  if (!s.length) return null;
+  if (!s.toLowerCase().includes("big order created")) return null;
+
+  const accountIdx = s.indexOf("Account");
+  if (accountIdx === -1) return null;
+  s = s.slice(accountIdx);
+
+  const out: Record<string, string> = { _header: "BIG Order Created" };
+  for (let i = 0; i < BIG_ORDER_SEQ_LABELS.length; i++) {
+    const label = BIG_ORDER_SEQ_LABELS[i];
+    if (!s.startsWith(label)) return null;
+    s = s.slice(label.length).replace(/^\s+/, "");
+    const next = BIG_ORDER_SEQ_LABELS[i + 1];
+    if (!next) {
+      const { earliestShipDate, lineItems } = splitEarliestShipDateAndLineItems(s);
+      out[label] = earliestShipDate;
+      if (lineItems) out._lineItems = lineItems;
+      break;
+    }
+    const nextIdx = s.indexOf(next);
+    if (nextIdx === -1) return null;
+    out[label] = s.slice(0, nextIdx).trim();
+    s = s.slice(nextIdx);
+  }
+
+  if (!out.Account?.trim() || !out["Order History"]?.trim()) return null;
+  return out;
+}
+
 /**
  * Parse "Total Orders" from Slide Order History (plain or mrkdwn).
  * Returns null if no recognizable Total Orders line (caller should not infer new partner).
@@ -278,17 +346,58 @@ export function parseTotalOrdersFromOrderHistory(
   return Number.isFinite(n) ? n : null;
 }
 
+function isBigOrderSlide(fields: Record<string, string>): boolean {
+  return (fields._header || "").toLowerCase().includes("big order created");
+}
+
+/** Stable synthetic id when Slack ts missing (rare) */
+function syntheticBigOrderId(fields: Record<string, string>): string {
+  const seed = [
+    fields.Account ?? "",
+    fields["Purchased At"] ?? "",
+    fields["Order History"] ?? "",
+    fields._lineItems ?? fields.Hardware ?? "",
+  ].join("|");
+  let h = 0;
+  for (let i = 0; i < seed.length; i++)
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36).slice(0, 16);
+}
+
 function buildSaleFromSlideFields(
   fields: Record<string, string>,
   slackTs?: string,
 ): Sale | null {
   if (!isSlideNewOrder(fields)) return null;
 
-  const orderId = fields.Order?.trim() || "";
-  if (!/^o_[a-z0-9]+$/i.test(orderId)) return null;
+  const isBig = isBigOrderSlide(fields);
+  const orderRaw = fields.Order?.trim() || "";
 
-  const hardware = fields.Hardware?.trim() || "";
-  const product = hardware || "Slide order";
+  let orderId: string;
+  if (/^o_[a-z0-9]+$/i.test(orderRaw)) {
+    orderId = orderRaw;
+  } else if (isBig) {
+    orderId =
+      slackTs != null && slackTs !== ""
+        ? `slide_big:${slackTs}`
+        : `slide_big:${syntheticBigOrderId(fields)}`;
+  } else {
+    return null;
+  }
+
+  const hardware =
+    fields.Hardware?.trim() ||
+    fields.Service?.trim() ||
+    fields._lineItems?.trim() ||
+    "";
+
+  const firstSku =
+    hardware.split(/\s+(?=\d+x\s)/i)[0]?.trim() ||
+    hardware.match(/\d+x\s+/i)?.[0]?.trim();
+  const product =
+    firstSku ||
+    (hardware ? hardware.split(/\s+/).slice(0, 14).join(" ").slice(0, 160) : "") ||
+    (isBig ? "Slide BIG order" : "Slide order");
 
   const meta: SlideOrderMeta = {
     source: "slide_cloud",
@@ -360,6 +469,23 @@ function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Recor
   return null;
 }
 
+function tryBigOrderPlaintextVariants(
+  slackTs: string | undefined,
+  raws: string[],
+): Sale | null {
+  const seen = new Set<string>();
+  for (const raw of raws) {
+    const t = raw.trim();
+    if (!t.length || seen.has(t)) continue;
+    seen.add(t);
+    const bigFields = parseBigOrderSlidePlaintext(raw);
+    if (!bigFields) continue;
+    const sale = buildSaleFromSlideFields(bigFields, slackTs);
+    if (sale) return sale;
+  }
+  return null;
+}
+
 export function parseSlideOrderFromSlackMessage(
   msg: Record<string, unknown>,
   slackTs?: string,
@@ -376,7 +502,15 @@ export function parseSlideOrderFromSlackMessage(
 
   if (blocks) {
     const fromBlocks = extractKeyValuesFromBlocks(blocks);
-    const sale = buildSaleFromSlideFields(fromBlocks, slackTs);
+    let sale = buildSaleFromSlideFields(fromBlocks, slackTs);
+    if (!sale) {
+      sale = tryBigOrderPlaintextVariants(slackTs, [
+        flattened,
+        topText,
+        `${topText}${flattened}`,
+        `${flattened}${topText}`,
+      ]);
+    }
     if (sale) return sale;
   }
 
@@ -395,9 +529,11 @@ export function parseSlideOrderFromSlackMessage(
     seen.add(c);
     const plainFields = parseSequentialSlidePlaintext(c);
     if (plainFields) {
-      const sale = buildSaleFromSlideFields(plainFields, slackTs);
-      if (sale) return sale;
+      const seqSale = buildSaleFromSlideFields(plainFields, slackTs);
+      if (seqSale) return seqSale;
     }
+    const bigSale = tryBigOrderPlaintextVariants(slackTs, [c]);
+    if (bigSale) return bigSale;
   }
 
   return null;
