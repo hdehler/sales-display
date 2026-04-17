@@ -2,9 +2,11 @@ import type { Sale } from "../../shared/types";
 import { UNKNOWN_REP } from "../../shared/rep";
 import { Sprout } from "lucide-react";
 
+/** Always show a rep label so rows with unresolved reps aren’t visually “missing” the seller. */
 function displayRep(s: Sale): string {
-  if (s.meta?.source === "slide_cloud") return s.rep?.trim() || UNKNOWN_REP;
-  return s.rep?.trim() || "";
+  const t = s.rep?.trim() ?? "";
+  if (!t || t.toLowerCase() === "unknown") return UNKNOWN_REP;
+  return t;
 }
 
 function timeAgo(ts: string): string {
@@ -133,11 +135,9 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
                     <span className="sr-only">New partner</span>
                   </span>
                 ) : null}
-                {row.rep ? (
-                  <span className="text-xs text-text-muted truncate max-w-[40%]">
-                    · {row.rep}
-                  </span>
-                ) : null}
+                <span className="text-xs text-text-muted truncate max-w-[40%]">
+                  · {row.rep}
+                </span>
               </div>
               <time
                 className="text-xs text-text-muted tabular-nums shrink-0 font-medium"

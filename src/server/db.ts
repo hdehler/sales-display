@@ -262,12 +262,20 @@ export function getRepLeaderboard(): LeaderboardEntry[] {
   const start = monthStart();
   return db
     .prepare(
-      `SELECT COALESCE(NULLIF(TRIM(rep), ''), 'Unknown') AS name, COUNT(*) AS count
-       FROM sales
-       WHERE timestamp >= ?
-       GROUP BY COALESCE(NULLIF(TRIM(rep), ''), 'Unknown')
+      `SELECT rep_key AS name, COUNT(*) AS count
+       FROM (
+         SELECT
+           CASE
+             WHEN TRIM(COALESCE(rep, '')) = '' THEN 'Unknown'
+             WHEN LOWER(TRIM(rep)) = 'unknown' THEN 'Unknown'
+             ELSE TRIM(rep)
+           END AS rep_key
+         FROM sales
+         WHERE timestamp >= ?
+       ) x
+       GROUP BY rep_key
        ORDER BY count DESC
-       LIMIT 10`,
+       LIMIT 100`,
     )
     .all(start) as LeaderboardEntry[];
 }
@@ -284,9 +292,10 @@ export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
          SELECT
            COALESCE(
              CASE
-               WHEN TRIM(COALESCE(rep, '')) NOT IN ('', 'Unknown') THEN TRIM(rep)
+               WHEN TRIM(COALESCE(rep, '')) = '' OR LOWER(TRIM(rep)) = 'unknown' THEN NULL
+               ELSE TRIM(rep)
              END,
-             (SELECT r.name FROM reps r WHERE r.id = sales.claimed_by),
+             NULLIF(TRIM(COALESCE((SELECT r.name FROM reps r WHERE r.id = sales.claimed_by), '')), ''),
              'Unknown'
            ) AS rep_name,
            meta_json
@@ -305,7 +314,7 @@ export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
        WHERE rep_name IS NOT NULL AND TRIM(rep_name) != ''
        GROUP BY rep_name
        ORDER BY newBuyingPartners DESC, sales DESC
-       LIMIT 10`,
+       LIMIT 50`,
     )
     .all(start) as {
       name: string;

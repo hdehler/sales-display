@@ -39,56 +39,55 @@ function ContainerHeading({
 
 export function Dashboard({ data, onOpenTeam }: DashboardProps) {
   const monthTag = monthScopeLabel();
+  const tickerSales = data.recentSales.slice(0, 20);
 
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Header onOpenTeam={onOpenTeam} />
-      <SalesTicker
-        sales={data.recentSales.slice(0, 100)}
-      />
+      <SalesTicker sales={tickerSales} />
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-4 lg:px-5 py-3 min-h-0 min-w-0">
-        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 min-w-0">
-          {/* Order counts — three separate mini cards */}
-          <div className="shrink-0 flex flex-col gap-2">
-            <ContainerHeading title="Order counts" right={monthTag} />
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="flex-1 flex flex-col min-h-0 gap-3 px-4 lg:px-5 py-3">
+        {/* Order counts — full width */}
+        <div className="shrink-0 flex flex-col gap-2">
+          <ContainerHeading title="Order counts" right={monthTag} />
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div
+              className={`${panel} p-3 sm:p-3.5 relative overflow-hidden shrink-0`}
+            >
               <div
-                className={`${panel} p-3 sm:p-3.5 relative overflow-hidden shrink-0`}
-              >
-                <div
-                  className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent"
-                  aria-hidden
-                />
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                  Today
-                </div>
-                <div className="font-display text-3xl sm:text-4xl font-normal tabular-nums text-text-primary leading-none tracking-tight">
-                  {data.todayCount}
-                </div>
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent"
+                aria-hidden
+              />
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                Today
               </div>
-              <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                  Week
-                </div>
-                <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
-                  {data.weekCount}
-                </div>
+              <div className="font-display text-3xl sm:text-4xl font-normal tabular-nums text-text-primary leading-none tracking-tight">
+                {data.todayCount}
               </div>
-              <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                  Month
-                </div>
-                <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
-                  {data.monthCount}
-                </div>
+            </div>
+            <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                Week
+              </div>
+              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
+                {data.weekCount}
+              </div>
+            </div>
+            <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                Month
+              </div>
+              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
+                {data.monthCount}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
-            {/* Smaller share — fewer new-partner rows than order volume */}
-            <div className={`${panel} p-3 sm:p-4 flex-1 min-h-0`}>
+        {/* Hunter + Orders | This month — same row height (not spanning order counts) */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-0 min-w-0">
+          <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0 lg:basis-0 lg:min-w-0">
+            <div className={`${panel} p-3 sm:p-4 flex-1 min-h-0 flex flex-col`}>
               <ContainerHeading
                 title="New buying partners"
                 right={monthTag}
@@ -163,7 +162,6 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               </div>
             </div>
 
-            {/* Larger: full rep order list */}
             <div
               className={`${panel} p-3 sm:p-4 flex-[2] min-h-0 min-w-0 flex flex-col overflow-x-hidden`}
             >
@@ -196,14 +194,16 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               )}
             </div>
           </div>
-        </div>
 
-        <div className={`lg:col-span-4 min-h-0 ${panel} p-2.5 sm:p-3`}>
-          <RecentOrders
-            sales={data.recentSales}
-            compact
-            headingRight={`${data.recentSales.length} orders`}
-          />
+          <div
+            className={`flex flex-1 flex-col min-h-0 min-w-0 lg:flex-none lg:basis-[32%] lg:max-w-md ${panel} p-2.5 sm:p-3`}
+          >
+            <RecentOrders
+              sales={data.recentSales}
+              compact
+              headingRight={`${data.recentSales.length} orders`}
+            />
+          </div>
         </div>
       </div>
     </div>

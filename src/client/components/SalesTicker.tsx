@@ -37,6 +37,11 @@ function TickerItems({ sales }: { sales: Sale[] }) {
   );
 }
 
+/** ~4s per item minimum so the strip doesn’t blur past; duplicates for seamless loop. */
+function marqueeDurationSec(count: number): number {
+  return Math.max(72, Math.min(180, count * 5));
+}
+
 export function SalesTicker({ sales }: { sales: Sale[] }) {
   if (sales.length === 0) {
     return (
@@ -46,9 +51,14 @@ export function SalesTicker({ sales }: { sales: Sale[] }) {
     );
   }
 
+  const dur = `${marqueeDurationSec(sales.length)}s`;
+
   return (
     <div className="overflow-hidden border-b border-border bg-surface-raised/50 shrink-0">
-      <div className="flex animate-marquee whitespace-nowrap py-2 w-max [mask-image:linear-gradient(90deg,transparent,black_3%,black_97%,transparent)]">
+      <div
+        className="flex animate-marquee whitespace-nowrap py-2 w-max [mask-image:linear-gradient(90deg,transparent,black_3%,black_97%,transparent)]"
+        style={{ animationDuration: dur }}
+      >
         <TickerItems sales={sales} />
         <TickerItems sales={sales} />
       </div>
