@@ -281,8 +281,8 @@ export function getRepLeaderboard(): LeaderboardEntry[] {
 }
 
 /**
- * Hunters: Slide orders where Order History shows Total Orders = 0 count as a new buying partner
- * for the attributed rep (`rep` or, if empty, `claimed_by` → Team name).
+ * Hunters: Slide orders where Order History shows Total Orders = 0 mark NBP on each row; multiple
+ * lines for the same account (same quote) should count as **one** new buying partner per rep.
  */
 export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
   const start = monthStart();
@@ -290,6 +290,7 @@ export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
     .prepare(
       `WITH per_sale AS (
          SELECT
+           TRIM(customer) AS customer,
            COALESCE(
              CASE
                WHEN TRIM(COALESCE(rep, '')) = '' OR LOWER(TRIM(rep)) = 'unknown' THEN NULL
@@ -298,16 +299,15 @@ export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
              NULLIF(TRIM(COALESCE((SELECT r.name FROM reps r WHERE r.id = sales.claimed_by), '')), ''),
              'Unknown'
            ) AS rep_name,
-           meta_json
+           json_extract(meta_json, '$.newBuyingPartner') AS nbp_flag
          FROM sales
          WHERE timestamp >= ?
        )
        SELECT rep_name AS name,
               COUNT(*) AS sales,
-              SUM(
-                CASE
-                  WHEN json_extract(meta_json, '$.newBuyingPartner') = 1 THEN 1
-                  ELSE 0
+              COUNT(
+                DISTINCT CASE
+                  WHEN nbp_flag = 1 AND TRIM(COALESCE(customer, '')) != '' THEN customer
                 END
               ) AS newBuyingPartners
        FROM per_sale
