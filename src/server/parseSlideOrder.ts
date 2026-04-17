@@ -525,12 +525,17 @@ function collectSkuLinesFromText(text: string): string[] {
 /**
  * Slide uses legacy Slack attachments with `fields: [{title, value, short}, …]`.
  * This is NOT Block Kit — it's the old attachment format. BIG Order Created messages
- * put each `Nx SKU (…)` line in the attachment text / fallback / or a nested Block Kit
- * `blocks` array, not in `fields`, so we pull line items from all three sources.
+ * sometimes put each `Nx SKU (…)` line in the attachment text / fallback / nested Block
+ * Kit `blocks`, or in a *separate* attachment with no `fields` at all — so we aggregate
+ * line items across every attachment and both the top-level `msg.blocks` and `msg.text`.
  */
 function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Record<string, string> | null {
   const atts = msg.attachments;
-  if (!Array.isArray(atts)) return null;
+  if (!Array.isArray(atts) || atts.length === 0) return null;
+
+  const out: Record<string, string> = {};
+  const skuLines: string[] = [];
+  let hasAnyFields = false;
 
   for (const a of atts) {
     if (!a || typeof a !== "object") continue;
@@ -540,53 +545,57 @@ function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Recor
       fallback?: string;
       text?: string;
       blocks?: unknown[];
+      pretext?: string;
     };
-    if (!Array.isArray(att.fields) || att.fields.length === 0) continue;
 
-    const out: Record<string, string> = {};
-    if (typeof att.title === "string" && att.title.trim()) {
-      out._header = att.title.trim();
-    } else if (typeof att.fallback === "string" && att.fallback.trim()) {
-      out._header = att.fallback.trim();
+    if (!out._header) {
+      if (typeof att.title === "string" && att.title.trim())
+        out._header = att.title.trim();
+      else if (typeof att.fallback === "string" && att.fallback.trim())
+        out._header = att.fallback.trim();
     }
 
-    for (const f of att.fields) {
-      if (!f || typeof f !== "object") continue;
-      const title = typeof f.title === "string" ? f.title.trim() : "";
-      const value = typeof f.value === "string" ? f.value.trim() : "";
-      if (title && value) out[title] = value;
+    if (Array.isArray(att.fields) && att.fields.length > 0) {
+      hasAnyFields = true;
+      for (const f of att.fields) {
+        if (!f || typeof f !== "object") continue;
+        const title = typeof f.title === "string" ? f.title.trim() : "";
+        const value = typeof f.value === "string" ? f.value.trim() : "";
+        if (title && value && !out[title]) out[title] = value;
+      }
     }
 
-    const skuLines: string[] = [];
-    if (typeof att.text === "string") skuLines.push(...collectSkuLinesFromText(att.text));
+    if (typeof att.text === "string")
+      skuLines.push(...collectSkuLinesFromText(att.text));
     if (typeof att.fallback === "string")
       skuLines.push(...collectSkuLinesFromText(att.fallback));
+    if (typeof att.pretext === "string")
+      skuLines.push(...collectSkuLinesFromText(att.pretext));
+
     if (Array.isArray(att.blocks) && att.blocks.length > 0) {
       const nested = extractKeyValuesFromBlocks(att.blocks);
       if (nested._lineItems) skuLines.push(nested._lineItems);
-      /** Copy any field names we haven't already captured (e.g. header override) */
       for (const [k, v] of Object.entries(nested)) {
-        if (k === "_lineItems") continue;
-        if (out[k]) continue;
+        if (k === "_lineItems" || out[k]) continue;
         out[k] = v;
       }
     }
-    /** Some Slide BIG payloads keep the summary in a legacy attachment but put the SKU
-     * lines in the *top-level* `msg.blocks`. Pull SKU lines from there too. */
-    if (Array.isArray(msg.blocks) && msg.blocks.length > 0) {
-      const topBlocks = extractKeyValuesFromBlocks(msg.blocks as unknown[]);
-      if (topBlocks._lineItems) skuLines.push(topBlocks._lineItems);
-    }
-    const topText = typeof msg.text === "string" ? msg.text : "";
-    if (topText) skuLines.push(...collectSkuLinesFromText(topText));
-    if (skuLines.length > 0) {
-      const merged = [...new Set(skuLines.map((l) => l.trim()).filter(Boolean))].join(" ");
-      if (merged) out._lineItems = merged;
-    }
-
-    if (Object.keys(out).length > 1) return out;
   }
-  return null;
+
+  if (Array.isArray(msg.blocks) && msg.blocks.length > 0) {
+    const topBlocks = extractKeyValuesFromBlocks(msg.blocks as unknown[]);
+    if (topBlocks._lineItems) skuLines.push(topBlocks._lineItems);
+  }
+  const topText = typeof msg.text === "string" ? msg.text : "";
+  if (topText) skuLines.push(...collectSkuLinesFromText(topText));
+
+  if (skuLines.length > 0) {
+    const merged = [...new Set(skuLines.map((l) => l.trim()).filter(Boolean))].join(" ");
+    if (merged) out._lineItems = merged;
+  }
+
+  if (!hasAnyFields) return null;
+  return Object.keys(out).length > 1 ? out : null;
 }
 
 /**
@@ -727,6 +736,44 @@ export function parseSlideOrderFromSlackMessage(
       consider(expandIfBig(seqSale, plainFields));
     }
     consider(tryBigOrderPlaintextVariants(slackTs, [c]));
+  }
+
+  /** Diagnostics: if this message looks like a BIG order but we only got a single Sale,
+   * dump the raw payload so we can see why `_lineItems` was empty. Toggle with SLACK_DEBUG_PARSE. */
+  const bigLike =
+    (flattened + " " + topText + " " + JSON.stringify(msg.attachments ?? ""))
+      .toLowerCase()
+      .includes("big order created");
+  if (bigLike && (!best || (best as Sale[]).length <= 1)) {
+    console.warn(
+      "[Slide parser] BIG Order Created detected but only 1 unit produced. Dumping payload so SKU source can be identified:",
+      JSON.stringify(
+        {
+          ts: slackTs,
+          textPreview: topText.slice(0, 400),
+          flattenedPreview: flattened.slice(0, 400),
+          msgBlockTypes: Array.isArray(msg.blocks)
+            ? (msg.blocks as { type?: string }[]).map((b) => b?.type)
+            : null,
+          attachments: Array.isArray(msg.attachments)
+            ? (msg.attachments as Record<string, unknown>[]).map((a) => ({
+                title: a?.title,
+                fallback: typeof a?.fallback === "string" ? (a.fallback as string).slice(0, 200) : undefined,
+                text: typeof a?.text === "string" ? (a.text as string).slice(0, 400) : undefined,
+                pretext: typeof a?.pretext === "string" ? (a.pretext as string).slice(0, 200) : undefined,
+                fieldTitles: Array.isArray(a?.fields)
+                  ? (a.fields as { title?: string }[]).map((f) => f?.title)
+                  : null,
+                blockTypes: Array.isArray(a?.blocks)
+                  ? (a.blocks as { type?: string }[]).map((b) => b?.type)
+                  : null,
+              }))
+            : null,
+        },
+        null,
+        0,
+      ).slice(0, 2000),
+    );
   }
 
   return best;
