@@ -479,9 +479,33 @@ function buildSaleFromSlideFields(
   };
 }
 
+/** Collect `Nx SKU …` lines from a free-form text blob (plain, mrkdwn, or flattened). */
+function collectSkuLinesFromText(text: string): string[] {
+  if (!text) return [];
+  const normalized = text.replace(/\*+/g, "").replace(/\r\n/g, "\n");
+  const byNewlines = normalized
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter((l) => /^\d+x\s+/i.test(l));
+  if (byNewlines.length > 0) return byNewlines;
+
+  /** Flattened blob, e.g. "…17x Slide Z1, 2 TB (…)33x Slide Z1, 1 TB (…)" */
+  const out: string[] = [];
+  const re = /(\d+x\s+[^\n]+?)(?=\d+x\s+|$)/gi;
+  let m: RegExpExecArray | null;
+  const flat = normalized.replace(/\s+/g, " ");
+  while ((m = re.exec(flat)) !== null) {
+    const seg = m[1].trim();
+    if (seg) out.push(seg);
+  }
+  return out;
+}
+
 /**
  * Slide uses legacy Slack attachments with `fields: [{title, value, short}, …]`.
- * This is NOT Block Kit — it's the old attachment format.
+ * This is NOT Block Kit — it's the old attachment format. BIG Order Created messages
+ * put each `Nx SKU (…)` line in the attachment text / fallback / or a nested Block Kit
+ * `blocks` array, not in `fields`, so we pull line items from all three sources.
  */
 function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Record<string, string> | null {
   const atts = msg.attachments;
@@ -493,6 +517,8 @@ function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Recor
       fields?: { title?: string; value?: string }[];
       title?: string;
       fallback?: string;
+      text?: string;
+      blocks?: unknown[];
     };
     if (!Array.isArray(att.fields) || att.fields.length === 0) continue;
 
@@ -508,6 +534,33 @@ function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Recor
       const title = typeof f.title === "string" ? f.title.trim() : "";
       const value = typeof f.value === "string" ? f.value.trim() : "";
       if (title && value) out[title] = value;
+    }
+
+    const skuLines: string[] = [];
+    if (typeof att.text === "string") skuLines.push(...collectSkuLinesFromText(att.text));
+    if (typeof att.fallback === "string")
+      skuLines.push(...collectSkuLinesFromText(att.fallback));
+    if (Array.isArray(att.blocks) && att.blocks.length > 0) {
+      const nested = extractKeyValuesFromBlocks(att.blocks);
+      if (nested._lineItems) skuLines.push(nested._lineItems);
+      /** Copy any field names we haven't already captured (e.g. header override) */
+      for (const [k, v] of Object.entries(nested)) {
+        if (k === "_lineItems") continue;
+        if (out[k]) continue;
+        out[k] = v;
+      }
+    }
+    /** Some Slide BIG payloads keep the summary in a legacy attachment but put the SKU
+     * lines in the *top-level* `msg.blocks`. Pull SKU lines from there too. */
+    if (Array.isArray(msg.blocks) && msg.blocks.length > 0) {
+      const topBlocks = extractKeyValuesFromBlocks(msg.blocks as unknown[]);
+      if (topBlocks._lineItems) skuLines.push(topBlocks._lineItems);
+    }
+    const topText = typeof msg.text === "string" ? msg.text : "";
+    if (topText) skuLines.push(...collectSkuLinesFromText(topText));
+    if (skuLines.length > 0) {
+      const merged = [...new Set(skuLines.map((l) => l.trim()).filter(Boolean))].join(" ");
+      if (merged) out._lineItems = merged;
     }
 
     if (Object.keys(out).length > 1) return out;
@@ -600,11 +653,19 @@ export function parseSlideOrderFromSlackMessage(
   msg: Record<string, unknown>,
   slackTs?: string,
 ): Sale[] | null {
+  /** Accept the best (most expanded) result across all extraction paths so that BIG orders
+   * missing line items in one source (e.g. legacy attachment fields) still expand when the
+   * line items live in another (top-level blocks, text, or attachment blocks). */
+  let best: Sale[] | null = null;
+  const consider = (candidate: Sale[] | null): void => {
+    if (!candidate || candidate.length === 0) return;
+    if (!best || candidate.length > best.length) best = candidate;
+  };
+
   const legacyFields = extractFieldsFromLegacyAttachments(msg);
   if (legacyFields) {
     const sale = buildSaleFromSlideFields(legacyFields, slackTs);
-    const expanded = expandIfBig(sale, legacyFields);
-    if (expanded) return expanded;
+    consider(expandIfBig(sale, legacyFields));
   }
 
   const blocks = getBlocksFromMessage(msg);
@@ -614,16 +675,16 @@ export function parseSlideOrderFromSlackMessage(
   if (blocks) {
     const fromBlocks = extractKeyValuesFromBlocks(blocks);
     const sale = buildSaleFromSlideFields(fromBlocks, slackTs);
-    const expanded = expandIfBig(sale, fromBlocks);
-    if (expanded) return expanded;
+    consider(expandIfBig(sale, fromBlocks));
 
-    const big = tryBigOrderPlaintextVariants(slackTs, [
-      flattened,
-      topText,
-      `${topText}${flattened}`,
-      `${flattened}${topText}`,
-    ]);
-    if (big) return big;
+    consider(
+      tryBigOrderPlaintextVariants(slackTs, [
+        flattened,
+        topText,
+        `${topText}${flattened}`,
+        `${flattened}${topText}`,
+      ]),
+    );
   }
 
   const candidates = [
@@ -642,12 +703,10 @@ export function parseSlideOrderFromSlackMessage(
     const plainFields = parseSequentialSlidePlaintext(c);
     if (plainFields) {
       const seqSale = buildSaleFromSlideFields(plainFields, slackTs);
-      const expanded = expandIfBig(seqSale, plainFields);
-      if (expanded) return expanded;
+      consider(expandIfBig(seqSale, plainFields));
     }
-    const big = tryBigOrderPlaintextVariants(slackTs, [c]);
-    if (big) return big;
+    consider(tryBigOrderPlaintextVariants(slackTs, [c]));
   }
 
-  return null;
+  return best;
 }
