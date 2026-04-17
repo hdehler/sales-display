@@ -286,24 +286,45 @@ function parseSequentialSlidePlaintext(raw: string): Record<string, string> | nu
   return out;
 }
 
-/** After Earliest Ship Date value, Slack flattening may glue `2030-01-0117x Slide…` */
+/**
+ * After `Earliest Ship Date`, the value can be:
+ *   - `2030-01-01`
+ *   - `Immediate` (no date)
+ * and Slack flattening may glue a button label and the SKU lines onto it, e.g.
+ *   `2030-01-01View Orders in Console17x Slide Z1, …`
+ *   `ImmediateView Orders in Console30x Slide Z1, 1 TB (…)`
+ *
+ * We split at the first `Nx ` marker so SKU lines are detected regardless of the date shape.
+ * Button labels (e.g. `View Orders in Console`) are stripped from the ship-date value.
+ */
+const SLIDE_BUTTON_LABELS = [
+  "View Orders in Console",
+  "View Order in Console",
+  "View in Console",
+] as const;
+
 function splitEarliestShipDateAndLineItems(rawTail: string): {
   earliestShipDate: string;
   lineItems: string;
 } {
   const v = rawTail.trim();
-  const glued = /^(\d{4}-\d{2}-\d{2})(\d+x\s)/i.exec(v);
-  if (glued) {
+  /** First `Nx ` marker — everything before is ship date (+ maybe a button label), after is line items. */
+  const skuMatch = /\d+x\s/i.exec(v);
+  if (skuMatch) {
+    let head = v.slice(0, skuMatch.index).trim();
+    for (const btn of SLIDE_BUTTON_LABELS) {
+      if (head.endsWith(btn)) head = head.slice(0, -btn.length).trim();
+    }
     return {
-      earliestShipDate: glued[1],
-      lineItems: v.slice(glued[1].length).trim(),
+      earliestShipDate: head,
+      lineItems: v.slice(skuMatch.index).trim(),
     };
   }
-  const spaced = v.match(/^(\d{4}-\d{2}-\d{2})\s+([\s\S]+)$/);
-  if (spaced && /^\d+x\s/i.test(spaced[2].trim())) {
-    return { earliestShipDate: spaced[1], lineItems: spaced[2].trim() };
+  let head = v;
+  for (const btn of SLIDE_BUTTON_LABELS) {
+    if (head.endsWith(btn)) head = head.slice(0, -btn.length).trim();
   }
-  return { earliestShipDate: v, lineItems: "" };
+  return { earliestShipDate: head, lineItems: "" };
 }
 
 /**
