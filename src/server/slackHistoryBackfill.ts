@@ -1,5 +1,5 @@
 import type { WebClient } from "@slack/web-api";
-import { parseMessageToSale } from "./parseSlackMessage.js";
+import { parseMessageToSales } from "./parseSlackMessage.js";
 import { enrichSaleWithAccountOwnerFromDwh } from "./bigqueryAccountOwner.js";
 import type { Sale } from "../shared/types.js";
 
@@ -90,17 +90,19 @@ export async function runSlackHistoryBackfill(
     if (msg.subtype === "message_deleted") return;
 
     if (collectStats) stats.parseCandidates += 1;
-    const sale = parseMessageToSale(msg);
-    if (!sale) {
+    const sales = parseMessageToSales(msg);
+    if (!sales || sales.length === 0) {
       if (collectStats) stats.parseMisses += 1;
       return;
     }
     if (collectStats) stats.parsedAsSale += 1;
 
-    const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
-    const wasNew = onInsert(enriched);
-    if (wasNew) inserted += 1;
-    else if (collectStats) stats.duplicateSkipped += 1;
+    for (const sale of sales) {
+      const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
+      const wasNew = onInsert(enriched);
+      if (wasNew) inserted += 1;
+      else if (collectStats) stats.duplicateSkipped += 1;
+    }
   }
 
   async function fetchThreadReplies(parentTs: string): Promise<void> {

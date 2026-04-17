@@ -1,7 +1,7 @@
 import { App, LogLevel } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
-import { parseMessageToSale } from "./parseSlackMessage.js";
+import { parseMessageToSales } from "./parseSlackMessage.js";
 import { slackMessageHasStructuredContent } from "./parseSlideOrder.js";
 import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
 import { enrichSaleWithAccountOwnerFromDwh } from "./bigqueryAccountOwner.js";
@@ -52,7 +52,7 @@ async function refetchAndParse(
   channel: string,
   ts: string,
   attempt = 1,
-): Promise<Sale | null> {
+): Promise<Sale[] | null> {
   const MAX_ATTEMPTS = 3;
   const INITIAL_DELAY_MS = 3000;
 
@@ -99,15 +99,18 @@ async function refetchAndParse(
     if (fullBlocks === 0 && fullTextLen === 0 && fullAtts === 0) {
       console.log(`[Slack] Re-fetched message raw dump: ${JSON.stringify(full).slice(0, 800)}`);
     }
-    const sale = parseMessageToSale(full);
-    if (sale) {
+    const sales = parseMessageToSales(full);
+    if (sales && sales.length > 0) {
+      const head = sales[0];
+      const big = head.meta?.bigOrder;
+      const suffix = big ? ` — BIG order, ${big.totalUnits} units` : "";
       console.log(
-        `[Slack] Parsed after re-fetch: ${sale.meta?.source === "slide_cloud" ? `Slide order ${sale.meta.orderId} — ${sale.customer}` : `${sale.rep} $${sale.amount} ${sale.customer}`}`,
+        `[Slack] Parsed after re-fetch: ${head.meta?.source === "slide_cloud" ? `Slide order ${head.meta.orderId} — ${head.customer}${suffix}` : `${head.rep} $${head.amount} ${head.customer}`}`,
       );
     } else {
       console.warn("[Slack] Re-fetch returned a message but parser still couldn't match it.");
     }
-    return sale;
+    return sales;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const retryMatch = msg.match(/retry.after[:\s]*(\d+)/i);
@@ -191,18 +194,18 @@ export async function initSlack(): Promise<void> {
       `[Slack] Incoming message ts=${msg.ts} subtype=${subtype || "(none)"} bot_id=${msg.bot_id ?? "none"} blocks=${nBlocks} textLen=${tLen}`,
     );
 
-    let sale = parseMessageToSale(msg);
+    let sales = parseMessageToSales(msg);
 
-    if (!sale && (hasBot || subtype === "bot_message" || nBlocks === 0) && typeof message.ts === "string") {
+    if (!sales && (hasBot || subtype === "bot_message" || nBlocks === 0) && typeof message.ts === "string") {
       console.log(`[Slack] First parse failed, attempting re-fetch for ts=${message.ts}…`);
-      sale = await refetchAndParse(
+      sales = await refetchAndParse(
         client,
         message.channel,
         message.ts as string,
       );
     }
 
-    if (!sale) {
+    if (!sales || sales.length === 0) {
       if ((hasBot || subtype === "bot_message") && configuredCh && !opts?.fromPoll) {
         console.warn(
           `[Slack] Unparsed app/bot message in sales channel (ts=${msg.ts}) blocks=${nBlocks} textLen=${tLen}.`,
@@ -231,20 +234,31 @@ export async function initSlack(): Promise<void> {
       return;
     }
 
-    if (sale.meta?.source === "slide_cloud") {
+    const head = sales[0];
+    const big = head.meta?.bigOrder;
+    if (head.meta?.source === "slide_cloud") {
       console.log(
-        `[Slack] Parsed Slide order: ${sale.meta.orderId} — ${sale.customer}`,
+        big
+          ? `[Slack] Parsed Slide BIG order: ${head.customer} — ${big.totalUnits} units across ${new Set(sales.map((s) => s.meta?.bigOrder?.skuLineIndex)).size} SKUs`
+          : `[Slack] Parsed Slide order: ${head.meta.orderId} — ${head.customer}`,
       );
     } else {
       console.log(
-        `[Slack] Parsed sale: ${sale.rep} — $${sale.amount} — ${sale.customer}`,
+        `[Slack] Parsed sale: ${head.rep} — $${head.amount} — ${head.customer}`,
       );
     }
-    sale = await enrichSaleWithAccountOwnerFromDwh(sale);
-    if (sale.meta?.source === "slide_cloud" && sale.rep.trim()) {
-      console.log(`[Slack] DWH owner: ${sale.rep} — ${sale.customer}`);
+
+    for (let i = 0; i < sales.length; i++) {
+      const enriched = await enrichSaleWithAccountOwnerFromDwh(sales[i]);
+      if (
+        i === 0 &&
+        enriched.meta?.source === "slide_cloud" &&
+        enriched.rep.trim()
+      ) {
+        console.log(`[Slack] DWH owner: ${enriched.rep} — ${enriched.customer}`);
+      }
+      onSale?.(enriched);
     }
-    onSale?.(sale);
   }
 
   // Use raw `message` events so other apps’ `bot_message` payloads are not skipped (more reliable than `app.message()`).

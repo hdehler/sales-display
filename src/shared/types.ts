@@ -10,6 +10,17 @@ export interface SlideOrderMeta {
   newBuyingPartner?: boolean;
   purchasedAt?: string;
   earliestShipDate?: string;
+  /** Slide Cloud BIG Order Created — present on every expanded unit row (one per qty per SKU). */
+  bigOrder?: {
+    /** Total units across all SKUs in this BIG message (e.g. 97 for the 6-line example). */
+    totalUnits: number;
+    /** Index within `totalUnits` (1-based, deterministic per `slack_ts`). */
+    unitIndex: number;
+    /** SKU label without the `Nx ` prefix (e.g. "Slide Z1, 2 TB, 32 GB (…)"). */
+    sku: string;
+    /** Position of the SKU line within the BIG message (1-based). */
+    skuLineIndex: number;
+  };
 }
 
 /** Hunters: rep performance on order volume and net-new buying partners (Slide Total Orders = 0). */

@@ -109,6 +109,17 @@ function extractKeyValuesFromBlocks(blocks: unknown[]): Record<string, string> {
         out._header = out._header || "New Order Created";
       if (blob.toLowerCase().includes("big order created"))
         out._header = out._header || "BIG Order Created";
+      /** BIG orders post each `Nx SKU (…)` line in rich_text after the View Orders button. */
+      const skuLines = blob
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => /^\d+x\s+/i.test(l));
+      if (skuLines.length > 0) {
+        const merged = skuLines.join(" ");
+        out._lineItems = out._lineItems
+          ? `${out._lineItems} ${merged}`
+          : merged;
+      }
     }
   }
 
@@ -364,6 +375,41 @@ function syntheticBigOrderId(fields: Record<string, string>): string {
   return Math.abs(h).toString(36).slice(0, 16);
 }
 
+/**
+ * Parse `_lineItems` like
+ *   "17x Slide Z1, 2 TB, 32 GB (…) 33x Slide Z1, 1 TB (…)"
+ * into individual SKU entries with their quantities.
+ *
+ * The flattening normalizer collapses newlines to spaces, so we split before each `Nx `
+ * marker rather than relying on line breaks.
+ */
+function parseBigOrderLineItems(
+  lineItems: string,
+): { qty: number; sku: string }[] {
+  const trimmed = lineItems.trim();
+  if (!trimmed) return [];
+
+  const out: { qty: number; sku: string }[] = [];
+  const re = /(\d+)x\s+/gi;
+  const positions: { qty: number; start: number; valueStart: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(trimmed)) !== null) {
+    positions.push({
+      qty: parseInt(m[1], 10),
+      start: m.index,
+      valueStart: m.index + m[0].length,
+    });
+  }
+  for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    if (!Number.isFinite(p.qty) || p.qty <= 0) continue;
+    const end = i + 1 < positions.length ? positions[i + 1].start : trimmed.length;
+    const sku = trimmed.slice(p.valueStart, end).trim();
+    if (sku) out.push({ qty: p.qty, sku });
+  }
+  return out;
+}
+
 function buildSaleFromSlideFields(
   fields: Record<string, string>,
   slackTs?: string,
@@ -469,10 +515,67 @@ function extractFieldsFromLegacyAttachments(msg: Record<string, unknown>): Recor
   return null;
 }
 
+/**
+ * BIG Order: expand the single parsed sale into one Sale per unit (qty per SKU).
+ * Each unit gets a unique deterministic `slackTs` (`<ts>#u<NNN>`) so the existing
+ * `slack_ts` dedupe in `insertSaleIfNew` rejects re-imports without extra logic.
+ */
+function expandBigOrderUnits(
+  base: Sale,
+  fields: Record<string, string>,
+): Sale[] {
+  const lineItemsRaw =
+    fields._lineItems?.trim() || fields.Hardware?.trim() || "";
+  const items = parseBigOrderLineItems(lineItemsRaw);
+  if (items.length === 0) return [base];
+
+  const totalUnits = items.reduce((sum, it) => sum + it.qty, 0);
+  if (totalUnits <= 0) return [base];
+
+  const baseSlackTs = base.slackTs ?? "";
+  const baseOrderId = base.meta?.orderId ?? "";
+  const out: Sale[] = [];
+  let unitIndex = 0;
+  const pad = String(totalUnits).length;
+  for (let lineIdx = 0; lineIdx < items.length; lineIdx++) {
+    const it = items[lineIdx];
+    for (let q = 0; q < it.qty; q++) {
+      unitIndex += 1;
+      const suffix = `#u${String(unitIndex).padStart(pad, "0")}`;
+      const unitMeta: SlideOrderMeta = {
+        ...(base.meta as SlideOrderMeta),
+        orderId: `${baseOrderId}${suffix}`,
+        bigOrder: {
+          totalUnits,
+          unitIndex,
+          sku: it.sku,
+          skuLineIndex: lineIdx + 1,
+        },
+      };
+      out.push({
+        ...base,
+        product: it.sku,
+        slackTs: baseSlackTs ? `${baseSlackTs}${suffix}` : undefined,
+        meta: unitMeta,
+      });
+    }
+  }
+  return out;
+}
+
+function expandIfBig(
+  sale: Sale | null,
+  fields: Record<string, string> | null,
+): Sale[] | null {
+  if (!sale) return null;
+  if (!fields || !isBigOrderSlide(fields)) return [sale];
+  return expandBigOrderUnits(sale, fields);
+}
+
 function tryBigOrderPlaintextVariants(
   slackTs: string | undefined,
   raws: string[],
-): Sale | null {
+): Sale[] | null {
   const seen = new Set<string>();
   for (const raw of raws) {
     const t = raw.trim();
@@ -481,19 +584,27 @@ function tryBigOrderPlaintextVariants(
     const bigFields = parseBigOrderSlidePlaintext(raw);
     if (!bigFields) continue;
     const sale = buildSaleFromSlideFields(bigFields, slackTs);
-    if (sale) return sale;
+    const expanded = expandIfBig(sale, bigFields);
+    if (expanded) return expanded;
   }
   return null;
 }
 
+/**
+ * Returns one or more Sales for a single Slack message:
+ *   - normal Slide order → 1 Sale
+ *   - BIG Order Created  → N Sales (one per qty unit across all SKU lines)
+ *   - non-Slide          → null
+ */
 export function parseSlideOrderFromSlackMessage(
   msg: Record<string, unknown>,
   slackTs?: string,
-): Sale | null {
+): Sale[] | null {
   const legacyFields = extractFieldsFromLegacyAttachments(msg);
   if (legacyFields) {
     const sale = buildSaleFromSlideFields(legacyFields, slackTs);
-    if (sale) return sale;
+    const expanded = expandIfBig(sale, legacyFields);
+    if (expanded) return expanded;
   }
 
   const blocks = getBlocksFromMessage(msg);
@@ -502,16 +613,17 @@ export function parseSlideOrderFromSlackMessage(
 
   if (blocks) {
     const fromBlocks = extractKeyValuesFromBlocks(blocks);
-    let sale = buildSaleFromSlideFields(fromBlocks, slackTs);
-    if (!sale) {
-      sale = tryBigOrderPlaintextVariants(slackTs, [
-        flattened,
-        topText,
-        `${topText}${flattened}`,
-        `${flattened}${topText}`,
-      ]);
-    }
-    if (sale) return sale;
+    const sale = buildSaleFromSlideFields(fromBlocks, slackTs);
+    const expanded = expandIfBig(sale, fromBlocks);
+    if (expanded) return expanded;
+
+    const big = tryBigOrderPlaintextVariants(slackTs, [
+      flattened,
+      topText,
+      `${topText}${flattened}`,
+      `${flattened}${topText}`,
+    ]);
+    if (big) return big;
   }
 
   const candidates = [
@@ -530,10 +642,11 @@ export function parseSlideOrderFromSlackMessage(
     const plainFields = parseSequentialSlidePlaintext(c);
     if (plainFields) {
       const seqSale = buildSaleFromSlideFields(plainFields, slackTs);
-      if (seqSale) return seqSale;
+      const expanded = expandIfBig(seqSale, plainFields);
+      if (expanded) return expanded;
     }
-    const bigSale = tryBigOrderPlaintextVariants(slackTs, [c]);
-    if (bigSale) return bigSale;
+    const big = tryBigOrderPlaintextVariants(slackTs, [c]);
+    if (big) return big;
   }
 
   return null;

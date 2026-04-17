@@ -37,23 +37,37 @@ function parsePlainTextSale(text: string, ts?: string): Sale | null {
 }
 
 /**
- * Parse a Slack message object (Socket Mode or conversations.history) into a Sale.
+ * Parse a Slack message object (Socket Mode or conversations.history) into one or more Sales.
+ *
+ * Most messages map to a single Sale. Slide Cloud "BIG Order Created" expands into one Sale
+ * per quantity unit (e.g. `17x Slide Z1` → 17 Sales) so leaderboards, monthCount, and the
+ * hunter board reflect every individual unit. Each unit gets a unique deterministic
+ * `slackTs` (`<ts>#u<NNN>`) so re-imports still dedupe via `slack_ts`.
+ *
+ * Returns `null` only when nothing was recognized; otherwise returns a non-empty array.
  */
-export function parseMessageToSale(msg: Record<string, unknown>): Sale | null {
+export function parseMessageToSales(msg: Record<string, unknown>): Sale[] | null {
   const ts = typeof msg.ts === "string" ? msg.ts : undefined;
 
-  let sale: Sale | null = parseSlideOrderFromSlackMessage(msg, ts);
-
-  if (!sale) {
-    const text = slackPrimaryTextBody(msg);
-    if (!text.trim()) return null;
-    sale = parsePlainTextSale(text.trim(), ts);
+  const slideSales = parseSlideOrderFromSlackMessage(msg, ts);
+  if (slideSales && slideSales.length > 0) {
+    if (ts) {
+      const iso = slackTsToIso(ts);
+      for (const s of slideSales) {
+        s.timestamp = iso;
+        if (!s.slackTs) s.slackTs = ts;
+      }
+    }
+    return slideSales;
   }
 
-  if (sale && ts) {
-    sale.timestamp = slackTsToIso(ts);
-    sale.slackTs = ts;
+  const text = slackPrimaryTextBody(msg);
+  if (!text.trim()) return null;
+  const plain = parsePlainTextSale(text.trim(), ts);
+  if (!plain) return null;
+  if (ts) {
+    plain.timestamp = slackTsToIso(ts);
+    plain.slackTs = ts;
   }
-
-  return sale;
+  return [plain];
 }
