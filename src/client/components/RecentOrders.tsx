@@ -97,10 +97,10 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border shrink-0 min-w-0">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-primary truncate">
-            Recent orders
+            This month
           </h2>
           <span className="text-xs font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
-            {headingRight ?? `${rows.length} SHOWN`}
+            {headingRight ?? `${rows.length} orders`}
           </span>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0 overscroll-contain">

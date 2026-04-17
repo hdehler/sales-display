@@ -49,6 +49,7 @@ export interface DailyTotal {
 }
 
 export interface DashboardData {
+  /** Current calendar month, newest first (dashboard column + ticker source). */
   recentSales: Sale[];
   /** Top accounts by order count this month (customer field). */
   leaderboard: LeaderboardEntry[];

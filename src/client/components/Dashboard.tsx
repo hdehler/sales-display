@@ -43,7 +43,9 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
   return (
     <div className="h-screen flex flex-col bg-surface">
       <Header onOpenTeam={onOpenTeam} />
-      <SalesTicker sales={data.recentSales} />
+      <SalesTicker
+        sales={data.recentSales.slice(0, 100)}
+      />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 px-4 lg:px-5 py-3 min-h-0 min-w-0">
         <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 min-w-0">
@@ -200,7 +202,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
           <RecentOrders
             sales={data.recentSales}
             compact
-            headingRight={`LIVE · ${data.recentSales.length}`.toUpperCase()}
+            headingRight={`${data.recentSales.length} orders`}
           />
         </div>
       </div>

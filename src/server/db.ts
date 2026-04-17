@@ -228,6 +228,21 @@ export function getRecentSales(limit = 20): Sale[] {
   return rows.map(rowToSale);
 }
 
+/** All sales in the current calendar month (same window as leaderboards), newest first. */
+export function getSalesThisMonth(): Sale[] {
+  const start = monthStart();
+  const rows = db
+    .prepare(
+      `SELECT id, rep, customer, product, amount, timestamp,
+              slack_ts as slackTs, raw_message as rawMessage, meta_json
+       FROM sales
+       WHERE timestamp >= ?
+       ORDER BY timestamp DESC`,
+    )
+    .all(start) as Record<string, unknown>[];
+  return rows.map(rowToSale);
+}
+
 /** Slide Cloud orders don’t include a salesperson — we rank by account (customer). */
 export function getLeaderboard(): LeaderboardEntry[] {
   const start = monthStart();
@@ -361,7 +376,7 @@ export function getDashboardData(): DashboardData {
   const month = getPeriodTotal("month");
 
   return {
-    recentSales: getRecentSales(),
+    recentSales: getSalesThisMonth(),
     leaderboard: getLeaderboard(),
     repLeaderboard: getRepLeaderboard(),
     hunterLeaderboard: getHunterLeaderboard(),
