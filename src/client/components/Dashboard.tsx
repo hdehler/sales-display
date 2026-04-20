@@ -11,6 +11,12 @@ interface DashboardProps {
 const panel =
   "rounded-xl border border-border bg-surface-raised flex flex-col min-h-0";
 
+/** Today / Week / Month — match section rails (`ContainerHeading`) + display figures */
+const orderCountLabel =
+  "text-xs font-semibold uppercase tracking-wider text-text-muted mb-1";
+const orderCountValue =
+  "font-display text-3xl sm:text-4xl font-normal tabular-nums text-text-primary leading-none tracking-tight";
+
 /** Short month + year for header rails, e.g. "APR 2026" */
 function monthScopeLabel(): string {
   return new Date()
@@ -58,28 +64,16 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
                 className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/45 to-transparent"
                 aria-hidden
               />
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                Today
-              </div>
-              <div className="font-display text-3xl sm:text-4xl font-normal tabular-nums text-text-primary leading-none tracking-tight">
-                {data.todayCount}
-              </div>
+              <div className={orderCountLabel}>Today</div>
+              <div className={orderCountValue}>{data.todayCount}</div>
             </div>
             <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                Week
-              </div>
-              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
-                {data.weekCount}
-              </div>
+              <div className={orderCountLabel}>Week</div>
+              <div className={orderCountValue}>{data.weekCount}</div>
             </div>
             <div className={`${panel} p-3 sm:p-3.5 shrink-0`}>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
-                Month
-              </div>
-              <div className="text-xl sm:text-2xl font-semibold tabular-nums text-text-primary tracking-tight">
-                {data.monthCount}
-              </div>
+              <div className={orderCountLabel}>Month</div>
+              <div className={orderCountValue}>{data.monthCount}</div>
             </div>
           </div>
         </div>
