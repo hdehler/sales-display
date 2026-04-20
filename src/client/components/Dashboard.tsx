@@ -92,74 +92,81 @@ export function Dashboard({
                 title="New buying partners"
                 right={monthTag}
               />
-              <div className="touch-scroll-y min-h-0 flex-1">
-                {data.hunterLeaderboard.length === 0 ? (
-                  <p className="text-sm text-text-secondary leading-snug">
-                    No Slide orders with parsed Total Orders this month.
-                  </p>
-                ) : (
-                  <table className="w-full min-w-0 table-fixed border-collapse text-left text-sm">
-                    <caption className="sr-only">
-                      Reps ranked by new buying partners this month, then by order
-                      count
-                    </caption>
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th
-                          scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 pr-2 w-[10%] max-w-[2.5rem] text-xs font-semibold uppercase tracking-wider text-text-muted"
+              {data.hunterLeaderboard.length === 0 ? (
+                <p className="text-sm text-text-secondary leading-snug min-h-0">
+                  No Slide orders with parsed Total Orders this month.
+                </p>
+              ) : (
+                <div
+                  className="flex min-h-0 flex-1 flex-col text-sm text-left"
+                  role="table"
+                  aria-label="Reps ranked by new buying partners this month, then by order count"
+                >
+                  {/*
+                    Header sits outside the scroll region so we avoid sticky thead inside
+                    overflow — that pairing often breaks finger scrolling on touch UAs.
+                  */}
+                  <div
+                    role="row"
+                    className="grid shrink-0 grid-cols-[2.25rem_minmax(0,1fr)_5.75rem_5.75rem] gap-x-2 border-b border-border bg-surface-raised py-2 text-xs font-semibold uppercase tracking-wider text-text-muted sm:grid-cols-[2.5rem_minmax(0,1fr)_6.5rem_6.5rem]"
+                  >
+                    <div role="columnheader" className="pr-1">
+                      #
+                    </div>
+                    <div role="columnheader" className="min-w-0">
+                      Rep
+                    </div>
+                    <div
+                      role="columnheader"
+                      className="text-right tabular-nums leading-tight text-accent pl-1"
+                      title="New buying partners"
+                    >
+                      New buying
+                      <br />
+                      partners
+                    </div>
+                    <div
+                      role="columnheader"
+                      className="text-right tabular-nums text-text-muted pl-1"
+                    >
+                      Orders
+                    </div>
+                  </div>
+                  <div className="touch-scroll-y min-h-0 flex-1">
+                    {data.hunterLeaderboard.map((row, i) => (
+                      <div
+                        key={row.name}
+                        role="row"
+                        className="list-row-dim grid grid-cols-[2.25rem_minmax(0,1fr)_5.75rem_5.75rem] gap-x-2 border-b border-border/40 py-2 last:border-0 sm:grid-cols-[2.5rem_minmax(0,1fr)_6.5rem_6.5rem]"
+                      >
+                        <div
+                          role="cell"
+                          className="pr-1 text-text-muted font-mono text-xs tabular-nums"
                         >
-                          #
-                        </th>
-                        <th
-                          scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-xs font-semibold uppercase tracking-wider text-text-muted w-[46%]"
+                          {i + 1}.
+                        </div>
+                        <div
+                          role="cell"
+                          className="min-w-0 truncate font-medium text-text-primary"
                         >
-                          Rep
-                        </th>
-                        <th
-                          scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-accent tabular-nums pl-2 leading-tight w-[22%]"
-                          title="New buying partners"
+                          {row.name}
+                        </div>
+                        <div role="cell" className="pl-1 text-right tabular-nums">
+                          <span className="text-base font-semibold text-accent tabular-nums">
+                            {row.newBuyingPartners}
+                          </span>
+                        </div>
+                        <div
+                          role="cell"
+                          className="pl-1 text-right tabular-nums font-medium text-text-secondary"
                         >
-                          New buying
-                          <br />
-                          partners
-                        </th>
-                        <th
-                          scope="col"
-                          className="sticky top-0 z-10 bg-surface-raised py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted tabular-nums pl-2 w-[22%]"
-                        >
-                          Orders
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.hunterLeaderboard.map((row, i) => (
-                        <tr
-                          key={row.name}
-                          className="list-row-dim border-b border-border/40 last:border-0"
-                        >
-                          <td className="py-2 pr-2 text-text-muted font-mono text-xs tabular-nums align-middle">
-                            {i + 1}.
-                          </td>
-                          <td className="py-2 font-medium text-text-primary truncate align-middle min-w-0">
-                            {row.name}
-                          </td>
-                          <td className="py-2 pl-2 text-right tabular-nums align-middle">
-                            <span className="text-base font-semibold text-accent tabular-nums">
-                              {row.newBuyingPartners}
-                            </span>
-                          </td>
-                          <td className="py-2 pl-2 text-right tabular-nums text-text-secondary font-medium align-middle">
-                            {row.sales}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                          {row.sales}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div
