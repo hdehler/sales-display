@@ -36,6 +36,20 @@
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Scroll/drag on touch & trackpad won’t select dashboard copy */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Keep normal selection inside forms (Team manager, etc.) */
+  input,
+  textarea,
+  select,
+  option,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   ::selection {
