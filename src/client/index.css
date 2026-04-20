@@ -32,6 +32,13 @@
 @layer base {
   html {
     height: 100%;
+    /*
+     * Bumped from the browser default (16px) so text, buttons, padding,
+     * and gaps all scale up uniformly on the kiosk / iPad-class touch
+     * displays the dashboard runs on. Everything in this app is rem-based,
+     * so this is the single knob to tune overall size.
+     */
+    font-size: 18px;
   }
 
   body {
