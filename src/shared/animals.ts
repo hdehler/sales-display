@@ -85,6 +85,27 @@ export const SPIRIT_ANIMALS = [
   { id: "sauropod", label: "Sauropod", emoji: "🦕" },
   { id: "phoenix", label: "Phoenix", emoji: "✨" },
   { id: "seal", label: "Seal", emoji: "🦭" },
+  // Hoofed grazers — gazelle/antelope have no dedicated emoji in Unicode,
+  // so they reuse 🦌 (deer) as the closest visual.
+  { id: "gazelle", label: "Gazelle", emoji: "🦌" },
+  { id: "antelope", label: "Antelope", emoji: "🦌" },
+  { id: "moose", label: "Moose", emoji: "🦌" },
+  { id: "kangaroo", label: "Kangaroo", emoji: "🦘" },
+  { id: "sloth", label: "Sloth", emoji: "🦥" },
+  { id: "mammoth", label: "Mammoth", emoji: "🦣" },
+  { id: "beaver", label: "Beaver", emoji: "🦫" },
+  { id: "dodo", label: "Dodo", emoji: "🦤" },
+  { id: "polar_bear", label: "Polar bear", emoji: "🐻\u200d❄️" },
+  { id: "guide_dog", label: "Guide dog", emoji: "🦮" },
+  { id: "service_dog", label: "Service dog", emoji: "🐕\u200d🦺" },
+  { id: "caterpillar", label: "Caterpillar", emoji: "🐛" },
+  { id: "beetle", label: "Beetle", emoji: "🪲" },
+  { id: "cockroach", label: "Cockroach", emoji: "🪳" },
+  { id: "fly", label: "Fly", emoji: "🪰" },
+  { id: "mosquito", label: "Mosquito", emoji: "🦟" },
+  { id: "worm", label: "Worm", emoji: "🪱" },
+  { id: "microbe", label: "Microbe", emoji: "🦠" },
+  { id: "oyster", label: "Oyster", emoji: "🦪" },
 ] as const;
 
 export type SpiritAnimalId = (typeof SPIRIT_ANIMALS)[number]["id"];
