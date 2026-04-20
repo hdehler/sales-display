@@ -35,11 +35,23 @@ function quoteTableRef(ref: string): string {
   return `\`${proj}\`.\`${dataset}\`.\`${table}\``;
 }
 
-class LruCache {
-  private readonly map = new Map<string, string>();
+/** Hunter = AE (credited on first order). Farmer = AM (credited on every later order). */
+export type OwnerKind = "hunter" | "farmer";
+
+export interface AccountOwners {
+  /** Resolved AE — `account_executive` (or whatever `BIGQUERY_HUNTER_COLUMN` is set to). */
+  hunter: string | null;
+  /** Resolved AM — `account_manager` (or whatever `BIGQUERY_FARMER_COLUMN` is set to). */
+  farmer: string | null;
+  /** Legacy single-owner column, when configured (used as last-resort fallback). */
+  legacy: string | null;
+}
+
+class LruCache<V> {
+  private readonly map = new Map<string, V>();
   constructor(private readonly max: number) {}
 
-  get(key: string): string | undefined {
+  get(key: string): V | undefined {
     const v = this.map.get(key);
     if (v === undefined) return undefined;
     this.map.delete(key);
@@ -47,7 +59,7 @@ class LruCache {
     return v;
   }
 
-  set(key: string, value: string): void {
+  set(key: string, value: V): void {
     if (this.map.has(key)) this.map.delete(key);
     else if (this.map.size >= this.max) {
       const first = this.map.keys().next().value;
@@ -57,7 +69,7 @@ class LruCache {
   }
 }
 
-let cache: LruCache | null = null;
+let cache: LruCache<AccountOwners> | null = null;
 
 function normKey(account: string): string {
   return account.trim().toLowerCase();
@@ -73,24 +85,62 @@ function getBigQuery(): BigQuery | null {
   return bigqueryClient;
 }
 
-function getCache(): LruCache {
+function getCache(): LruCache<AccountOwners> {
   const max = Math.max(
     1,
     Number.isFinite(config.bigqueryAccountOwner.lookupCacheMax)
       ? config.bigqueryAccountOwner.lookupCacheMax
       : 512,
   );
-  if (!cache) cache = new LruCache(max);
+  if (!cache) cache = new LruCache<AccountOwners>(max);
   return cache;
 }
 
+function cleanString(v: unknown): string | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s.length > 0 ? s : null;
+}
+
 /**
- * Resolve HubSpot owner display name for an account name (Slide customer string).
- * Uses LOWER(TRIM) match. Returns null if not configured, on error, or no row.
+ * Returns the appropriate owner for a sale, applying fallbacks:
+ *   1. Preferred kind column for the sale (hunter on first order, farmer otherwise)
+ *   2. The other kind column (better than nothing if BigQuery only filled one side)
+ *   3. Legacy single-owner column (back-compat with the old mart)
  */
-export async function lookupRepForAccount(
+export function pickOwnerForSale(
+  sale: Sale,
+  owners: AccountOwners,
+): { name: string | null; kind: OwnerKind | "legacy" | null } {
+  const kind = ownerKindForSale(sale);
+  const primary = owners[kind];
+  if (primary) return { name: primary, kind };
+  const otherKey: OwnerKind = kind === "hunter" ? "farmer" : "hunter";
+  const secondary = owners[otherKey];
+  if (secondary) return { name: secondary, kind: otherKey };
+  if (owners.legacy) return { name: owners.legacy, kind: "legacy" };
+  return { name: null, kind: null };
+}
+
+/**
+ * Hunter (AE) is credited on a customer's first-ever order; farmer (AM) on every later order.
+ * `meta.newBuyingPartner` is set by the parser from the `Order History: Total Orders: N` line:
+ *   - true  → first order ever for this account → hunter
+ *   - false → existing customer → farmer
+ *   - undefined (no order history parsed) → default to farmer to avoid wrongly crediting
+ *     a hunter when we couldn't confirm it's truly a first sale.
+ */
+export function ownerKindForSale(sale: Sale): OwnerKind {
+  return sale.meta?.newBuyingPartner === true ? "hunter" : "farmer";
+}
+
+/**
+ * Single round-trip lookup that returns hunter, farmer, and legacy owner columns
+ * for an account. Returns null when BigQuery is not configured or the lookup errors.
+ */
+export async function lookupOwnersForAccount(
   accountName: string,
-): Promise<string | null> {
+): Promise<AccountOwners | null> {
   const raw = accountName?.trim();
   if (!raw || raw === "Unknown account") return null;
 
@@ -104,14 +154,36 @@ export async function lookupRepForAccount(
   const b = config.bigqueryAccountOwner;
   const tableSql = quoteTableRef(b.tableRef.trim());
   const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
-  const repCol = assertSafeColumn(b.repColumn.trim(), "owner/rep column");
-  const orderCol = assertSafeColumn(
-    b.orderByColumn.trim(),
-    "order-by column",
-  );
+  const orderCol = assertSafeColumn(b.orderByColumn.trim(), "order-by column");
+
+  const selectParts: string[] = [];
+  const hunterCol = b.hunterColumn.trim();
+  const farmerCol = b.farmerColumn.trim();
+  const legacyCol = b.repColumn.trim();
+  if (hunterCol) {
+    selectParts.push(
+      `\`${assertSafeColumn(hunterCol, "hunter column")}\` AS hunter_name`,
+    );
+  } else {
+    selectParts.push(`CAST(NULL AS STRING) AS hunter_name`);
+  }
+  if (farmerCol) {
+    selectParts.push(
+      `\`${assertSafeColumn(farmerCol, "farmer column")}\` AS farmer_name`,
+    );
+  } else {
+    selectParts.push(`CAST(NULL AS STRING) AS farmer_name`);
+  }
+  if (legacyCol) {
+    selectParts.push(
+      `\`${assertSafeColumn(legacyCol, "legacy owner column")}\` AS legacy_name`,
+    );
+  } else {
+    selectParts.push(`CAST(NULL AS STRING) AS legacy_name`);
+  }
 
   const query = `
-    SELECT \`${repCol}\` AS rep_name
+    SELECT ${selectParts.join(", ")}
     FROM ${tableSql}
     WHERE LOWER(TRIM(CAST(\`${acctCol}\` AS STRING))) = LOWER(TRIM(@acct))
     ORDER BY \`${orderCol}\`
@@ -131,35 +203,55 @@ export async function lookupRepForAccount(
 
   try {
     const [rows] = await bq.query(options);
-    const list = rows as { rep_name?: string | null }[];
+    const list = rows as {
+      hunter_name?: string | null;
+      farmer_name?: string | null;
+      legacy_name?: string | null;
+    }[];
     if (list.length > 1) {
       console.warn(
         `[BigQuery] Multiple owner rows for account=${JSON.stringify(raw)}; using first after ORDER BY`,
       );
     }
     const row = list[0];
-    const name =
-      row?.rep_name != null && String(row.rep_name).trim() !== ""
-        ? String(row.rep_name).trim()
-        : null;
-    if (name) getCache().set(key, name);
-    else {
+    const owners: AccountOwners = {
+      hunter: cleanString(row?.hunter_name),
+      farmer: cleanString(row?.farmer_name),
+      legacy: cleanString(row?.legacy_name),
+    };
+    if (owners.hunter || owners.farmer || owners.legacy) {
+      getCache().set(key, owners);
+    } else {
       console.warn(
         `[BigQuery] No owner row for account=${JSON.stringify(raw)}`,
       );
     }
-    return name;
+    return owners;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[BigQuery] lookupRepForAccount failed:", msg);
+    console.error("[BigQuery] lookupOwnersForAccount failed:", msg);
     return null;
   }
 }
 
 /**
- * For Slide Cloud orders: resolve `rep` from DWH when configured; otherwise leave parsed value.
- * When still blank after lookup (no BQ row, BQ off, or lookup error), store `UNKNOWN_REP` so
- * counts, leaderboards, and celebrations treat the sale as attributed to “Unknown”.
+ * Back-compat shim used by callers that just want a single owner name (no NBP context).
+ * Picks legacy → farmer → hunter, in that order, since callers without a Sale typically
+ * want "the current owner" (farmer) rather than the AE who first signed the account.
+ */
+export async function lookupRepForAccount(
+  accountName: string,
+): Promise<string | null> {
+  const owners = await lookupOwnersForAccount(accountName);
+  if (!owners) return null;
+  return owners.legacy ?? owners.farmer ?? owners.hunter ?? null;
+}
+
+/**
+ * For Slide Cloud orders: resolve `rep` from DWH using hunter (AE) on the first order
+ * and farmer (AM) on every later order. When no owner is resolvable (no BQ row, BQ off,
+ * or lookup error), store `UNKNOWN_REP` so counts/leaderboards/celebrations attribute it
+ * to "Unknown".
  */
 export async function enrichSaleWithAccountOwnerFromDwh(
   sale: Sale,
@@ -168,8 +260,19 @@ export async function enrichSaleWithAccountOwnerFromDwh(
 
   let next: Sale = sale;
   if (isBigQueryAccountOwnerConfigured()) {
-    const rep = await lookupRepForAccount(sale.customer);
-    if (rep) next = { ...sale, rep };
+    const owners = await lookupOwnersForAccount(sale.customer);
+    if (owners) {
+      const picked = pickOwnerForSale(sale, owners);
+      if (picked.name) {
+        next = { ...sale, rep: picked.name };
+        const wantedKind = ownerKindForSale(sale);
+        if (picked.kind !== wantedKind) {
+          console.warn(
+            `[BigQuery] Account=${JSON.stringify(sale.customer)} missing ${wantedKind} (newBuyingPartner=${sale.meta?.newBuyingPartner}); fell back to ${picked.kind}=${JSON.stringify(picked.name)}`,
+          );
+        }
+      }
+    }
   }
 
   const trimmed = next.rep?.trim() ?? "";

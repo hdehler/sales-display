@@ -84,6 +84,23 @@ export const config = {
     tableRef: process.env.BIGQUERY_ACCOUNT_OWNER_TABLE || "",
     accountColumn:
       process.env.BIGQUERY_ACCOUNT_NAME_COLUMN || "account_name",
+    /**
+     * Hunter column = AE who gets credit on a customer's FIRST order (Order History = 0).
+     * Default matches the new mart column we added: `account_executive`.
+     */
+    hunterColumn:
+      process.env.BIGQUERY_HUNTER_COLUMN || "account_executive",
+    /**
+     * Farmer column = AM who gets credit on every order AFTER the first.
+     * Default matches the new mart column: `account_manager`.
+     */
+    farmerColumn:
+      process.env.BIGQUERY_FARMER_COLUMN || "account_manager",
+    /**
+     * Legacy single-owner column. Used as fallback for either side when hunter/farmer column
+     * is empty in BigQuery (back-compat with the old `hubspot_owner_resolved_name` mart).
+     * Set to empty string to disable the fallback entirely.
+     */
     repColumn:
       process.env.BIGQUERY_OWNER_NAME_COLUMN || "hubspot_owner_resolved_name",
     /** Tie-break when multiple rows match the same account_name */

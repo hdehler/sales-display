@@ -158,22 +158,36 @@ export function deleteAllSales(): number {
 export interface SlideUnknownRepRow {
   id: number;
   customer: string;
+  /** json_extract returns 1 / 0 / NULL — true = first order ever (credit hunter / AE). */
+  newBuyingPartner: boolean | null;
 }
 
 /**
  * Slide sales where `rep` is still empty/Unknown and the sale was not manually claimed.
  * When HubSpot owner appears late in the DWH, reconciliation can set `rep` to the owner name.
+ *
+ * Returns the parser-derived `newBuyingPartner` flag so the reconciler can credit the right
+ * column (hunter / AE on first order, farmer / AM on every later order).
  */
 export function listSlideSalesWithUnknownRep(): SlideUnknownRepRow[] {
-  return db
+  const rows = db
     .prepare(
-      `SELECT id, customer FROM sales
+      `SELECT id,
+              customer,
+              json_extract(meta_json, '$.newBuyingPartner') AS nbp_flag
+       FROM sales
        WHERE meta_json IS NOT NULL
          AND json_extract(meta_json, '$.source') = 'slide_cloud'
          AND claimed_by IS NULL
          AND (TRIM(rep) = '' OR LOWER(TRIM(rep)) = LOWER(?))`,
     )
-    .all(UNKNOWN_REP) as SlideUnknownRepRow[];
+    .all(UNKNOWN_REP) as { id: number; customer: string; nbp_flag: number | null }[];
+  return rows.map((r) => ({
+    id: r.id,
+    customer: r.customer,
+    newBuyingPartner:
+      r.nbp_flag === null || r.nbp_flag === undefined ? null : r.nbp_flag === 1,
+  }));
 }
 
 const SQLITE_MAX_VARS = 450;
