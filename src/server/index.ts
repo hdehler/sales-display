@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { WebClient } from "@slack/web-api";
 import { config, isBigQueryAccountOwnerConfigured } from "./config.js";
 import {
+  debugAccountOwnerLookup,
   probeBigQueryAccountOwner,
 } from "./bigqueryAccountOwner.js";
 import { enqueueSlideOrder } from "./slideOrderBatcher.js";
@@ -73,6 +74,30 @@ app.get("/api/health/bigquery", async (_req, res) => {
     res.status(500).json({
       configured: isBigQueryAccountOwnerConfigured(),
       ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+});
+
+/**
+ * Debug BigQuery attribution for one account name (same normalization + joins as live Slide lookup).
+ * Example: GET /api/health/bigquery/lookup?account=Grissom%20Technology
+ * Response includes matchPhase (exact/fuzzy/none), rowCount, owners, bigqueryError if SQL fails.
+ */
+app.get("/api/health/bigquery/lookup", async (req, res) => {
+  try {
+    const q = req.query.account;
+    const account = typeof q === "string" ? q : "";
+    if (!account.trim()) {
+      res.status(400).json({
+        error: "Missing query param: account (company name as shown on the Slide order)",
+      });
+      return;
+    }
+    const r = await debugAccountOwnerLookup(account);
+    res.status(r.bigqueryError ? 503 : 200).json(r);
+  } catch (e) {
+    res.status(500).json({
       error: e instanceof Error ? e.message : String(e),
     });
   }

@@ -39,9 +39,9 @@ function quoteTableRef(ref: string): string {
 export type OwnerKind = "hunter" | "farmer";
 
 export interface AccountOwners {
-  /** Resolved AE — `account_executive` (or whatever `BIGQUERY_HUNTER_COLUMN` is set to). */
+  /** Resolved AE — hunter column from config. */
   hunter: string | null;
-  /** Resolved AM — `account_manager` (or whatever `BIGQUERY_FARMER_COLUMN` is set to). */
+  /** Resolved AM — farmer column from config. */
   farmer: string | null;
   /** Legacy single-owner column, when configured (used as last-resort fallback). */
   legacy: string | null;
@@ -71,8 +71,17 @@ class LruCache<V> {
 
 let cache: LruCache<AccountOwners> | null = null;
 
-function normKey(account: string): string {
-  return account.trim().toLowerCase();
+/**
+ * Client-side normalization for cache keys — should match the SQL `NORMALIZE … NFKC` path
+ * closely (Slack sometimes sends nbsp / odd Unicode in the Account field).
+ */
+export function normalizeAccountForLookup(raw: string): string {
+  return raw
+    .normalize("NFKC")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 function getBigQuery(): BigQuery | null {
@@ -134,32 +143,39 @@ export function ownerKindForSale(sale: Sale): OwnerKind {
   return sale.meta?.newBuyingPartner === true ? "hunter" : "farmer";
 }
 
-/**
- * Single round-trip lookup that returns hunter, farmer, and legacy owner columns
- * for an account. Returns null when BigQuery is not configured or the lookup errors.
- */
-export async function lookupOwnersForAccount(
-  accountName: string,
-): Promise<AccountOwners | null> {
-  const raw = accountName?.trim();
-  if (!raw || raw === "Unknown account") return null;
+type Row = {
+  hunter_name?: string | null;
+  farmer_name?: string | null;
+  legacy_name?: string | null;
+};
 
-  const bq = getBigQuery();
-  if (!bq) return null;
+function rowToOwners(row: Row | undefined): AccountOwners {
+  return {
+    hunter: cleanString(row?.hunter_name),
+    farmer: cleanString(row?.farmer_name),
+    legacy: cleanString(row?.legacy_name),
+  };
+}
 
-  const key = normKey(raw);
-  const hit = getCache().get(key);
-  if (hit !== undefined) return hit;
+function ownersHasAny(o: AccountOwners): boolean {
+  return Boolean(o.hunter || o.farmer || o.legacy);
+}
 
-  const b = config.bigqueryAccountOwner;
-  const tableSql = quoteTableRef(b.tableRef.trim());
-  const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
-  const orderCol = assertSafeColumn(b.orderByColumn.trim(), "order-by column");
+/** BigQuery: normalize account string (NFKC + collapse ASCII spaces), lowercased — matches JS `normalizeAccountForLookup`. */
+function sqlNormParam(): string {
+  return `LOWER(TRIM(REGEXP_REPLACE(NORMALIZE(@acct, NFKC), r' +', ' ')))`;
+}
 
-  const selectParts: string[] = [];
+function sqlNormAcctCol(acctCol: string): string {
+  const c = `\`${acctCol}\``;
+  return `LOWER(TRIM(REGEXP_REPLACE(NORMALIZE(CAST(${c} AS STRING), NFKC), r' +', ' ')))`;
+}
+
+function buildSelectParts(b: typeof config.bigqueryAccountOwner): string[] {
   const hunterCol = b.hunterColumn.trim();
   const farmerCol = b.farmerColumn.trim();
   const legacyCol = b.repColumn.trim();
+  const selectParts: string[] = [];
   if (hunterCol) {
     selectParts.push(
       `\`${assertSafeColumn(hunterCol, "hunter column")}\` AS hunter_name`,
@@ -181,11 +197,38 @@ export async function lookupOwnersForAccount(
   } else {
     selectParts.push(`CAST(NULL AS STRING) AS legacy_name`);
   }
+  return selectParts;
+}
+
+function buildWhereExact(acctCol: string): string {
+  return `${sqlNormAcctCol(acctCol)} = ${sqlNormParam()}`;
+}
+
+function buildWhereFuzzy(acctCol: string): string {
+  const col = sqlNormAcctCol(acctCol);
+  const p = sqlNormParam();
+  return `(
+  CONTAINS_SUBSTR(${col}, ${p})
+  OR CONTAINS_SUBSTR(${p}, ${col})
+)
+AND LENGTH(${p}) >= @fuzzyMinLen`;
+}
+
+async function runOwnerQuery(
+  bq: BigQuery,
+  whereClause: string,
+  params: { acct: string; fuzzyMinLen?: number },
+): Promise<Row[]> {
+  const b = config.bigqueryAccountOwner;
+  const tableSql = quoteTableRef(b.tableRef.trim());
+  const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
+  const orderCol = assertSafeColumn(b.orderByColumn.trim(), "order-by column");
+  const selectParts = buildSelectParts(b);
 
   const query = `
     SELECT ${selectParts.join(", ")}
     FROM ${tableSql}
-    WHERE LOWER(TRIM(CAST(\`${acctCol}\` AS STRING))) = LOWER(TRIM(@acct))
+    WHERE ${whereClause}
     ORDER BY \`${orderCol}\`
     LIMIT 2
   `;
@@ -193,44 +236,177 @@ export async function lookupOwnersForAccount(
   const loc = b.location.trim();
   const options: {
     query: string;
-    params: { acct: string };
+    params: Record<string, string | number>;
     location?: string;
   } = {
     query,
-    params: { acct: raw },
+    params:
+      params.fuzzyMinLen !== undefined
+        ? {
+            acct: params.acct,
+            fuzzyMinLen: params.fuzzyMinLen,
+          }
+        : { acct: params.acct },
   };
   if (loc) options.location = loc;
 
+  const [rows] = await bq.query(options);
+  return rows as Row[];
+}
+
+export interface LookupOwnersOptions {
+  /** Bypass LRU cache (used by debug endpoint). */
+  skipCache?: boolean;
+}
+
+/**
+ * Single round-trip lookup that returns hunter, farmer, and legacy owner columns
+ * for an account. Returns null when BigQuery is not configured or the lookup errors.
+ */
+export async function lookupOwnersForAccount(
+  accountName: string,
+  options?: LookupOwnersOptions,
+): Promise<AccountOwners | null> {
+  const raw = accountName?.trim();
+  if (!raw || raw === "Unknown account") return null;
+
+  const bq = getBigQuery();
+  if (!bq) return null;
+
+  const key = normalizeAccountForLookup(raw);
+  if (!options?.skipCache) {
+    const hit = getCache().get(key);
+    if (hit !== undefined) return hit;
+  }
+
+  const b = config.bigqueryAccountOwner;
+  const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
+  const fuzzyMin = Math.max(
+    2,
+    Number.isFinite(b.fuzzyAccountMatchMinLen) ? b.fuzzyAccountMatchMinLen : 5,
+  );
+
   try {
-    const [rows] = await bq.query(options);
-    const list = rows as {
-      hunter_name?: string | null;
-      farmer_name?: string | null;
-      legacy_name?: string | null;
-    }[];
+    let list = await runOwnerQuery(bq, buildWhereExact(acctCol), { acct: raw });
+
+    let matchPhase: "exact" | "fuzzy" = "exact";
+    if (
+      list.length === 0 &&
+      b.fuzzyAccountMatch &&
+      key.length >= fuzzyMin
+    ) {
+      matchPhase = "fuzzy";
+      list = await runOwnerQuery(bq, buildWhereFuzzy(acctCol), {
+        acct: raw,
+        fuzzyMinLen: fuzzyMin,
+      });
+    }
+
     if (list.length > 1) {
       console.warn(
-        `[BigQuery] Multiple owner rows for account=${JSON.stringify(raw)}; using first after ORDER BY`,
+        `[BigQuery] Multiple owner rows for account=${JSON.stringify(raw)} (${matchPhase}); using first after ORDER BY`,
       );
     }
+
     const row = list[0];
-    const owners: AccountOwners = {
-      hunter: cleanString(row?.hunter_name),
-      farmer: cleanString(row?.farmer_name),
-      legacy: cleanString(row?.legacy_name),
-    };
-    if (owners.hunter || owners.farmer || owners.legacy) {
-      getCache().set(key, owners);
-    } else {
+    const owners = rowToOwners(row);
+
+    if (!ownersHasAny(owners)) {
       console.warn(
-        `[BigQuery] No owner row for account=${JSON.stringify(raw)}`,
+        `[BigQuery] No matching row / empty owner columns for account=${JSON.stringify(raw)} ` +
+          `(normalized=${JSON.stringify(key)}). Check BIGQUERY_ACCOUNT_NAME_COLUMN vs Slide "Account" text; try GET /api/health/bigquery/lookup?account=…`,
       );
+    } else if (!options?.skipCache) {
+      getCache().set(key, owners);
     }
+
     return owners;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[BigQuery] lookupOwnersForAccount failed:", msg);
+    console.error(
+      `[BigQuery] lookupOwnersForAccount failed for account=${JSON.stringify(raw)}:`,
+      msg,
+    );
     return null;
+  }
+}
+
+export interface AccountOwnerLookupDebugResult {
+  configured: boolean;
+  accountRaw: string;
+  accountNormalized: string;
+  /** Which predicate produced rows (if any). */
+  matchPhase: "exact" | "fuzzy" | "none";
+  rowCount: number;
+  owners: AccountOwners | null;
+  /** Populated when the query throws (often an invalid column name in .env). */
+  bigqueryError?: string;
+}
+
+/**
+ * Runs the same lookup as production but skips cache and returns structured diagnostics.
+ * Call from the Pi: `curl -s 'http://localhost:3000/api/health/bigquery/lookup?account=Grissom%20Technology'`
+ */
+export async function debugAccountOwnerLookup(
+  accountName: string,
+): Promise<AccountOwnerLookupDebugResult> {
+  const raw = accountName?.trim() ?? "";
+  const norm = normalizeAccountForLookup(raw);
+  const empty: AccountOwnerLookupDebugResult = {
+    configured: isBigQueryAccountOwnerConfigured(),
+    accountRaw: raw,
+    accountNormalized: norm,
+    matchPhase: "none",
+    rowCount: 0,
+    owners: null,
+  };
+
+  if (!isBigQueryAccountOwnerConfigured()) {
+    return empty;
+  }
+
+  const bq = getBigQuery();
+  if (!bq || !raw || raw === "Unknown account") {
+    return empty;
+  }
+
+  const b = config.bigqueryAccountOwner;
+  const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
+  const fuzzyMin = Math.max(
+    2,
+    Number.isFinite(b.fuzzyAccountMatchMinLen) ? b.fuzzyAccountMatchMinLen : 5,
+  );
+
+  try {
+    let list = await runOwnerQuery(bq, buildWhereExact(acctCol), { acct: raw });
+    let phase: "exact" | "fuzzy" = "exact";
+    if (
+      list.length === 0 &&
+      b.fuzzyAccountMatch &&
+      norm.length >= fuzzyMin
+    ) {
+      phase = "fuzzy";
+      list = await runOwnerQuery(bq, buildWhereFuzzy(acctCol), {
+        acct: raw,
+        fuzzyMinLen: fuzzyMin,
+      });
+    }
+
+    const owners = rowToOwners(list[0]);
+    return {
+      configured: true,
+      accountRaw: raw,
+      accountNormalized: norm,
+      matchPhase: list.length > 0 ? phase : "none",
+      rowCount: list.length,
+      owners: ownersHasAny(owners) ? owners : null,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ...empty,
+      bigqueryError: msg,
+    };
   }
 }
 

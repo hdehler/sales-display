@@ -114,6 +114,18 @@ export const config = {
       10,
     ),
     /**
+     * When exact normalized name match returns 0 rows, run a second query using substring
+     * containment (handles "Acme" vs "Acme, Inc." and minor spelling gaps). Set to 0/false to disable.
+     */
+    fuzzyAccountMatch:
+      process.env.BIGQUERY_ACCOUNT_FUZZY_MATCH !== "false" &&
+      process.env.BIGQUERY_ACCOUNT_FUZZY_MATCH !== "0",
+    /** Min normalized length (chars) before fuzzy match is attempted (avoid false positives). */
+    fuzzyAccountMatchMinLen: parseInt(
+      process.env.BIGQUERY_ACCOUNT_FUZZY_MIN_LEN || "5",
+      10,
+    ),
+    /**
      * Re-fetch HubSpot owner for Slide rows still stored as Unknown (late DWH assignment).
      * 0 = disabled. Example: 900000 = every 15 minutes.
      */
