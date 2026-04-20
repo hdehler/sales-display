@@ -126,7 +126,7 @@ export function RecentOrders({
           {rows.map((row) => (
             <div
               key={row.key}
-              className="flex items-center gap-2 py-1.5 px-0.5 rounded-md hover:bg-surface-hover/30 transition-colors min-w-0"
+              className="list-row-compact flex items-center gap-2 py-1.5 px-0.5 rounded-md min-w-0"
             >
               {row.count > 1 ? (
                 <span
@@ -167,7 +167,7 @@ export function RecentOrders({
                         product: row.product,
                       })
                     }
-                    className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-accent/35 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/55 transition-colors"
+                    className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-accent/35 bg-accent/10 text-accent transition-colors active:bg-accent/25 active:border-accent/55"
                   >
                     Assign
                   </button>
@@ -201,7 +201,7 @@ export function RecentOrders({
         {rows.map((row, i) => (
           <article
             key={row.key}
-            className="group flex items-center gap-4 rounded-xl border border-border px-4 py-3.5 bg-surface-hover/15 hover:bg-surface-hover/35 hover:border-border-bright transition-colors animate-fade-up"
+            className="list-row-card group flex items-center gap-4 rounded-xl border border-border px-4 py-3.5 bg-surface-hover/15 animate-fade-up"
             style={{ animationDelay: `${i * 40}ms` }}
           >
             <div
@@ -255,7 +255,7 @@ export function RecentOrders({
                         product: row.product,
                       })
                     }
-                    className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-accent/35 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/55 transition-colors"
+                    className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-accent/35 bg-accent/10 text-accent transition-colors active:bg-accent/25 active:border-accent/55"
                   >
                     Assign
                   </button>

@@ -220,10 +220,10 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                         key={rep.id}
                         type="button"
                         onClick={() => play(rep, { closeModal: true })}
-                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors active:opacity-95 ${
                           playing
                             ? "bg-accent/15 border border-accent/35"
-                            : "border border-transparent hover:bg-surface-hover hover:border-border"
+                            : "list-walkup-rep border border-transparent active:bg-surface-hover/50"
                         }`}
                       >
                         <div

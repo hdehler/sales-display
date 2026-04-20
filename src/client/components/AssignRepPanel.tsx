@@ -106,7 +106,7 @@ export function AssignRepPanel({ context, onClose }: AssignRepPanelProps) {
               <button
                 type="button"
                 onClick={() => !submitting && onClose()}
-                className="shrink-0 text-text-muted hover:text-text-secondary transition-colors text-sm px-3 py-2 rounded-lg hover:bg-surface-hover"
+                className="modal-quiet-btn shrink-0 text-text-muted transition-colors text-sm px-3 py-2 rounded-lg active:bg-surface-hover/60"
               >
                 Close
               </button>
@@ -124,7 +124,7 @@ export function AssignRepPanel({ context, onClose }: AssignRepPanelProps) {
                     type="button"
                     disabled={submitting}
                     onClick={() => handlePick(rep.id)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border hover:border-accent/40 bg-surface-hover hover:bg-accent-soft transition-all active:scale-[0.98] disabled:opacity-50"
+                    className="rep-pick-tile flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border bg-surface-hover transition-all active:scale-[0.98] disabled:opacity-50 active:bg-accent-soft/80"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}

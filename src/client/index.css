@@ -128,6 +128,71 @@
   touch-action: auto;
 }
 
+@layer components {
+  /**
+   * List / card row highlight: only when the device has true hover (mouse + fine pointer).
+   * On touchscreens, :hover on rows can stick after a drag and fight scroll gestures.
+   */
+  .list-row-dim,
+  .list-row-dim-sm,
+  .list-row-compact,
+  .list-row-card {
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .list-row-dim:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--color-surface-hover) 30%,
+        transparent
+      );
+    }
+    .list-row-dim-sm:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--color-surface-hover) 25%,
+        transparent
+      );
+    }
+    .list-row-compact:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--color-surface-hover) 30%,
+        transparent
+      );
+    }
+    .list-row-card:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--color-surface-hover) 35%,
+        transparent
+      );
+      border-color: var(--color-border-bright);
+    }
+
+    .list-walkup-rep:hover {
+      background-color: var(--color-surface-hover);
+      border-color: var(--color-border);
+    }
+
+    .rep-pick-tile:hover {
+      border-color: rgba(12, 136, 255, 0.4);
+      background-color: var(--color-accent-soft);
+    }
+
+    .modal-quiet-btn:hover {
+      color: var(--color-text-secondary);
+      background-color: var(--color-surface-hover);
+    }
+
+    .spirit-animal-tile:hover {
+      border-color: var(--color-border-bright);
+      background-color: var(--color-surface-hover);
+    }
+  }
+}
+
 @layer utilities {
   .overflow-x-auto,
   .overflow-x-scroll {

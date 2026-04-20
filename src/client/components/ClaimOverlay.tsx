@@ -106,7 +106,7 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
               </div>
               <button
                 onClick={() => setVisible(false)}
-                className="text-text-muted hover:text-text-secondary transition-colors text-base px-4 py-2 rounded-lg hover:bg-surface-hover"
+                className="modal-quiet-btn text-text-muted transition-colors text-base px-4 py-2 rounded-lg active:bg-surface-hover/60"
               >
                 Dismiss
               </button>
@@ -117,7 +117,7 @@ export function ClaimOverlay({ lastCelebration }: ClaimOverlayProps) {
                 <motion.button
                   key={rep.id}
                   onClick={() => handleClaim(rep.id)}
-                  className="flex items-center gap-3 px-5 py-3.5 rounded-xl border border-border hover:border-accent/40 bg-surface-hover hover:bg-accent-soft transition-all active:scale-95"
+                  className="rep-pick-tile flex items-center gap-3 px-5 py-3.5 rounded-xl border border-border bg-surface-hover transition-all active:scale-95 active:bg-accent-soft/80"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
