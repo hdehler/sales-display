@@ -37,6 +37,7 @@ import {
   getAllSettings,
   getSetting,
   setSetting,
+  assignRepToSaleIds,
 } from "./db.js";
 import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
@@ -478,6 +479,35 @@ app.delete("/api/song-mappings/:id", (req, res) => {
   } else {
     res.status(404).json({ error: "not_found" });
   }
+});
+
+// ── Assign rep to one or more sales (no celebration; dashboard "Unknown" rows) ──
+
+app.post("/api/sales/assign-rep", (req, res) => {
+  const body = req.body as { saleIds?: unknown; repId?: unknown };
+  const repIdRaw = body.repId;
+  const repId =
+    typeof repIdRaw === "number"
+      ? repIdRaw
+      : parseInt(String(repIdRaw ?? ""), 10);
+  const saleIds = Array.isArray(body.saleIds)
+    ? body.saleIds
+        .map((x) =>
+          typeof x === "number" ? x : parseInt(String(x ?? ""), 10),
+        )
+        .filter((n) => Number.isFinite(n) && n > 0)
+    : [];
+  if (!Number.isFinite(repId) || repId < 1 || saleIds.length === 0) {
+    res.status(400).json({ error: "repId and non-empty saleIds required" });
+    return;
+  }
+  const updated = assignRepToSaleIds(saleIds, repId);
+  if (updated === 0) {
+    res.status(404).json({ error: "no matching sales or invalid rep" });
+    return;
+  }
+  broadcastDashboard();
+  res.json({ ok: true, updated });
 });
 
 // ── Sale claim (walk-up trigger) ──────────────────────────

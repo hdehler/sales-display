@@ -1,5 +1,6 @@
 import type { Sale } from "../../shared/types";
-import { UNKNOWN_REP } from "../../shared/rep";
+import type { AssignRepContext } from "./AssignRepPanel";
+import { UNKNOWN_REP, isUnresolvedRepName } from "../../shared/rep";
 import { Sprout } from "lucide-react";
 
 /** Always show a rep label so rows with unresolved reps aren’t visually “missing” the seller. */
@@ -29,6 +30,8 @@ interface OrderRow {
   time: string;
   rep: string;
   newBuyingPartner?: boolean;
+  /** DB ids for this row (packed Slide rows include every unit id). Used for Assign. */
+  saleIds: number[];
 }
 
 function buildRows(sales: Sale[]): OrderRow[] {
@@ -47,17 +50,23 @@ function buildRows(sales: Sale[]): OrderRow[] {
       }
       const pack = sales.slice(i, j);
       const newBuyingPartner = pack.some((x) => x.meta?.newBuyingPartner);
+      const saleIds = pack
+        .map((x) => x.id)
+        .filter((id): id is number => typeof id === "number" && id > 0);
       rows.push({
         key: `${s.timestamp}-${i}`,
         account: s.customer,
-        product: s.product || "",
+        product: pack.find((x) => x.product)?.product || "",
         count: j - i,
         time: s.timestamp,
         rep: displayRep(s),
         newBuyingPartner: newBuyingPartner || undefined,
+        saleIds,
       });
       i = j;
     } else {
+      const sid =
+        typeof s.id === "number" && s.id > 0 ? [s.id] : ([] as number[]);
       rows.push({
         key: `${s.timestamp}-${i}`,
         account: s.customer,
@@ -66,6 +75,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         time: s.timestamp,
         rep: displayRep(s),
         newBuyingPartner: s.meta?.newBuyingPartner || undefined,
+        saleIds: sid,
       });
       i++;
     }
@@ -79,9 +89,16 @@ interface RecentOrdersProps {
   compact?: boolean;
   /** Uppercase rail on the right (e.g. month tag or `LIVE · 20`) */
   headingRight?: string;
+  /** Opens rep picker when user taps Assign on Unknown rows */
+  onAssignRep?: (ctx: AssignRepContext) => void;
 }
 
-export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps) {
+export function RecentOrders({
+  sales,
+  compact,
+  headingRight,
+  onAssignRep,
+}: RecentOrdersProps) {
   const rows = buildRows(sales);
 
   if (rows.length === 0) {
@@ -98,49 +115,66 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
     return (
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border shrink-0 min-w-0">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-primary truncate">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-text-primary truncate">
             This month
           </h2>
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
+          <span className="text-sm font-semibold uppercase tracking-wider text-text-muted shrink-0 tabular-nums">
             {headingRight ?? `${rows.length} orders`}
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 pt-1.5 space-y-0 overscroll-contain">
+        <div className="flex-1 overflow-y-auto min-h-0 pt-2 space-y-0 overscroll-contain">
           {rows.map((row) => (
             <div
               key={row.key}
-              className="flex items-center gap-1.5 py-1 px-0.5 rounded-md hover:bg-surface-hover/30 transition-colors min-w-0"
+              className="flex items-center gap-2 py-1.5 px-0.5 rounded-md hover:bg-surface-hover/30 transition-colors min-w-0"
             >
               {row.count > 1 ? (
                 <span
-                  className="shrink-0 text-xs font-bold tabular-nums text-accent w-5 text-center"
+                  className="shrink-0 text-sm font-bold tabular-nums text-accent w-6 text-center"
                   title={`${row.count} orders`}
                 >
                   ×{row.count}
                 </span>
               ) : (
-                <span className="shrink-0 w-5" aria-hidden />
+                <span className="shrink-0 w-6" aria-hidden />
               )}
               <div className="flex-1 min-w-0 flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-xs font-medium text-text-primary truncate">
+                <span className="text-sm font-medium text-text-primary truncate">
                   {row.account}
                 </span>
                 {row.newBuyingPartner ? (
                   <span className="inline-flex shrink-0" title="New partner">
                     <Sprout
-                      className="new-partner-icon h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                      className="new-partner-icon h-4 w-4 text-emerald-600 dark:text-emerald-400"
                       strokeWidth={2}
                       aria-hidden
                     />
                     <span className="sr-only">New partner</span>
                   </span>
                 ) : null}
-                <span className="text-xs text-text-muted truncate max-w-[40%]">
+                <span className="text-sm text-text-muted truncate max-w-[35%] sm:max-w-[40%]">
                   · {row.rep}
                 </span>
+                {isUnresolvedRepName(row.rep) &&
+                row.saleIds.length > 0 &&
+                onAssignRep ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAssignRep({
+                        saleIds: row.saleIds,
+                        account: row.account,
+                        product: row.product,
+                      })
+                    }
+                    className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-accent/35 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/55 transition-colors"
+                  >
+                    Assign
+                  </button>
+                ) : null}
               </div>
               <time
-                className="text-xs text-text-muted tabular-nums shrink-0 font-medium"
+                className="text-sm text-text-muted tabular-nums shrink-0 font-medium"
                 dateTime={row.time}
               >
                 {timeAgo(row.time)}
@@ -195,7 +229,7 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
                   </span>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2 mt-1 min-w-0 text-sm">
+              <div className="flex items-center gap-2 mt-1 min-w-0 text-sm flex-wrap">
                 {row.product ? (
                   <span className="text-text-secondary truncate">{row.product}</span>
                 ) : null}
@@ -209,11 +243,28 @@ export function RecentOrders({ sales, compact, headingRight }: RecentOrdersProps
                     <span className="text-accent/90 font-medium truncate">{row.rep}</span>
                   </>
                 ) : null}
+                {isUnresolvedRepName(row.rep) &&
+                row.saleIds.length > 0 &&
+                onAssignRep ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onAssignRep({
+                        saleIds: row.saleIds,
+                        account: row.account,
+                        product: row.product,
+                      })
+                    }
+                    className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-lg border border-accent/35 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/55 transition-colors"
+                  >
+                    Assign
+                  </button>
+                ) : null}
               </div>
             </div>
 
             <time
-              className="text-[11px] text-text-muted flex-shrink-0 tabular-nums font-medium uppercase tracking-wide"
+              className="text-[11px] text-text-muted flex-shrink-0 tabular-nums font-medium uppercase tracking-wide self-start pt-0.5"
               dateTime={row.time}
             >
               {timeAgo(row.time)}

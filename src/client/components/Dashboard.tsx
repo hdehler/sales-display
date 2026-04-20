@@ -1,4 +1,5 @@
 import type { DashboardData } from "../../shared/types";
+import type { AssignRepContext } from "./AssignRepPanel";
 import { Header } from "./Header";
 import { SalesTicker } from "./SalesTicker";
 import { RecentOrders } from "./RecentOrders";
@@ -6,6 +7,7 @@ import { RecentOrders } from "./RecentOrders";
 interface DashboardProps {
   data: DashboardData;
   onOpenTeam?: () => void;
+  onAssignRep?: (ctx: AssignRepContext) => void;
 }
 
 const panel =
@@ -43,7 +45,11 @@ function ContainerHeading({
   );
 }
 
-export function Dashboard({ data, onOpenTeam }: DashboardProps) {
+export function Dashboard({
+  data,
+  onOpenTeam,
+  onAssignRep,
+}: DashboardProps) {
   const monthTag = monthScopeLabel();
   const tickerSales = data.recentSales.slice(0, 20);
 
@@ -196,6 +202,7 @@ export function Dashboard({ data, onOpenTeam }: DashboardProps) {
               sales={data.recentSales}
               compact
               headingRight={`${data.recentSales.length} orders`}
+              onAssignRep={onAssignRep}
             />
           </div>
         </div>

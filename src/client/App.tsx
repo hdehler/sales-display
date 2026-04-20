@@ -4,6 +4,7 @@ import { useSocket } from "./hooks/useSocket";
 import { Dashboard } from "./components/Dashboard";
 import { Celebration } from "./components/Celebration";
 import { ClaimOverlay } from "./components/ClaimOverlay";
+import { AssignRepPanel, type AssignRepContext } from "./components/AssignRepPanel";
 import { RepManager } from "./components/RepManager";
 import { WalkUpBar } from "./components/WalkUpBar";
 import type { CelebrationEvent } from "../shared/types";
@@ -14,6 +15,8 @@ export default function App() {
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
   const [teamOpen, setTeamOpen] = useState(false);
   const [repsVersion, setRepsVersion] = useState(0);
+  const [assignRepContext, setAssignRepContext] =
+    useState<AssignRepContext | null>(null);
 
   if (celebration && celebration.type !== "walkup") {
     lastCelebrationRef.current = celebration;
@@ -54,7 +57,11 @@ export default function App() {
       {/* Content */}
       <div className="relative z-[2] h-full">
         {dashboard ? (
-          <Dashboard data={dashboard} onOpenTeam={() => setTeamOpen(true)} />
+          <Dashboard
+            data={dashboard}
+            onOpenTeam={() => setTeamOpen(true)}
+            onAssignRep={(ctx) => setAssignRepContext(ctx)}
+          />
         ) : (
           <div className="flex items-center justify-center h-full px-6">
             <div className="text-center max-w-md">
@@ -79,6 +86,11 @@ export default function App() {
       </AnimatePresence>
 
       <ClaimOverlay lastCelebration={lastCelebrationRef.current} />
+
+      <AssignRepPanel
+        context={assignRepContext}
+        onClose={() => setAssignRepContext(null)}
+      />
 
       <RepManager open={teamOpen} onClose={() => setTeamOpen(false)} onRepsChanged={() => setRepsVersion((v) => v + 1)} />
     </div>

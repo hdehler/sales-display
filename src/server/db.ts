@@ -579,7 +579,12 @@ export function claimSale(
   saleId: number,
   repId: number,
 ): Sale | null {
-  db.prepare(`UPDATE sales SET claimed_by = ? WHERE id = ?`).run(repId, saleId);
+  const rep = getRepById(repId);
+  if (!rep) return null;
+  const result = db
+    .prepare(`UPDATE sales SET claimed_by = ?, rep = ? WHERE id = ?`)
+    .run(repId, rep.name, saleId);
+  if (result.changes === 0) return null;
   const row = db
     .prepare(
       `SELECT id, rep, customer, product, amount, timestamp,
@@ -589,6 +594,23 @@ export function claimSale(
     .get(saleId) as Record<string, unknown> | undefined;
   if (!row) return null;
   return rowToSale(row);
+}
+
+/** Set `claimed_by` and `rep` name for multiple sales (manual attribution from the dashboard). */
+export function assignRepToSaleIds(saleIds: number[], repId: number): number {
+  const rep = getRepById(repId);
+  if (!rep || saleIds.length === 0) return 0;
+  const upd = db.prepare(
+    `UPDATE sales SET claimed_by = ?, rep = ? WHERE id = ?`,
+  );
+  const run = db.transaction((ids: number[]) => {
+    let n = 0;
+    for (const id of ids) {
+      n += upd.run(repId, rep.name, id).changes;
+    }
+    return n;
+  });
+  return run(saleIds);
 }
 
 function periodStart(period: "day" | "week" | "month"): string {
