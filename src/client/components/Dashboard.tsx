@@ -1,8 +1,10 @@
+import { useRef } from "react";
 import type { DashboardData } from "../../shared/types";
 import type { AssignRepContext } from "./AssignRepPanel";
 import { Header } from "./Header";
 import { SalesTicker } from "./SalesTicker";
 import { RecentOrders } from "./RecentOrders";
+import { useDragScroll } from "../hooks/useDragScroll";
 
 interface DashboardProps {
   data: DashboardData;
@@ -52,6 +54,11 @@ export function Dashboard({
 }: DashboardProps) {
   const monthTag = monthScopeLabel();
   const tickerSales = data.recentSales.slice(0, 20);
+
+  const nbpScrollRef = useRef<HTMLDivElement | null>(null);
+  const ordersScrollRef = useRef<HTMLOListElement | null>(null);
+  useDragScroll(nbpScrollRef);
+  useDragScroll(ordersScrollRef);
 
   return (
     <div className="h-screen flex flex-col bg-surface">
@@ -132,7 +139,11 @@ export function Dashboard({
                       Orders
                     </div>
                   </div>
-                  <div className="touch-scroll-y min-h-0 flex-1">
+                  <div
+                    ref={nbpScrollRef}
+                    className="touch-scroll-y min-h-0 flex-1 select-none"
+                    style={{ touchAction: "pan-y" }}
+                  >
                     {data.hunterLeaderboard.map((row, i) => (
                       <div
                         key={row.name}
@@ -178,7 +189,11 @@ export function Dashboard({
                   No rep-attributed orders this month.
                 </p>
               ) : (
-                <ol className="touch-scroll-y min-w-0 space-y-0 min-h-0 flex-1 divide-y divide-border/40 text-sm">
+                <ol
+                  ref={ordersScrollRef}
+                  className="touch-scroll-y min-w-0 space-y-0 min-h-0 flex-1 divide-y divide-border/40 text-sm select-none"
+                  style={{ touchAction: "pan-y" }}
+                >
                   {data.repLeaderboard.map((row, i) => (
                     <li
                       key={row.name}
