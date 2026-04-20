@@ -37,6 +37,11 @@ export const config = {
       10,
     ),
     /**
+     * `slack-backfill-cli.ts` date range (`YYYY-MM-DD`): calendar days in this IANA zone (e.g.
+     * America/New_York). Empty = UTC (backward compatible).
+     */
+    backfillTimezone: process.env.BACKFILL_TIMEZONE ?? "",
+    /**
      * Poll conversations.history on the sales channel (ms). Socket Mode often does NOT deliver
      * `message` events for other apps’ bots unless `message.channels` is subscribed — polling
      * still picks up Slide. Set to 0 to disable.

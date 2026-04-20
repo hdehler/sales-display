@@ -6,29 +6,67 @@
  *   npx tsx src/server/slack-backfill-cli.ts [maxMessages] <from-YYYY-MM-DD> <to-YYYY-MM-DD>
  *   npx tsx src/server/slack-backfill-cli.ts <from-YYYY-MM-DD> <to-YYYY-MM-DD>
  *
- * Date range is UTC midnight boundaries: `from` inclusive, `to` inclusive (end of that day).
+ * Date range: `from` is start of that **calendar day**, `to` is end of that **calendar day**
+ * (both inclusive), in the timezone given by **BACKFILL_TIMEZONE** (default **UTC**).
+ * Example: `BACKFILL_TIMEZONE=America/New_York` so `2026-04-01` … `2026-04-16` matches local April days.
+ * Slack `latest` is the first instant **after** the last inclusive day (exclusive upper bound).
+ *
  * Within that window, **all** channel messages are paginated (no 15k cap) and **thread replies**
  * are fetched so orders posted only in threads are not skipped.
- * Example (April 1–16, 2026):
- *   npx tsx src/server/slack-backfill-cli.ts 2026-04-01 2026-04-16
  */
+import { DateTime } from "luxon";
 import { WebClient } from "@slack/web-api";
 import { config } from "./config.js";
 import { insertSaleIfNew } from "./db.js";
 import { runSlackHistoryBackfill } from "./slackHistoryBackfill.js";
 
-function parseUtcDay(isoDate: string): Date {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
-  if (!m) {
-    throw new Error(`Invalid date "${isoDate}" — use YYYY-MM-DD (UTC)`);
-  }
-  return new Date(
-    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0),
-  );
+/** IANA zone, e.g. America/New_York. Default UTC so CLI dates stay pure calendar UTC (backward compatible). */
+function backfillTimezone(): string {
+  const z = config.slack.backfillTimezone?.trim();
+  return z && z.length > 0 ? z : "UTC";
 }
 
-function toSlackTs(d: Date): string {
-  return (d.getTime() / 1000).toFixed(6);
+/** Start of calendar day `YYYY-MM-DD` in `zone`. */
+function startOfDayInZone(isoDate: string, zone: string): DateTime {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!m) {
+    throw new Error(`Invalid date "${isoDate}" — use YYYY-MM-DD`);
+  }
+  const dt = DateTime.fromObject(
+    {
+      year: Number(m[1]),
+      month: Number(m[2]),
+      day: Number(m[3]),
+    },
+    { zone },
+  ).startOf("day");
+  if (!dt.isValid) {
+    throw new Error(`Invalid date "${isoDate}" for timezone "${zone}": ${dt.invalidReason}`);
+  }
+  return dt;
+}
+
+/** Slack ts string (seconds.microseconds) from an instant in time. */
+function instantToSlackTs(dt: DateTime): string {
+  return (dt.toMillis() / 1000).toFixed(6);
+}
+
+/** `from` … `to` inclusive calendar days in `backfillTimezone()`, Slack `latest` exclusive. */
+function dateRangeToSlackTs(fromStr: string, toStr: string): {
+  oldest: string;
+  latest: string;
+} {
+  const zone = backfillTimezone();
+  const fromStart = startOfDayInZone(fromStr, zone);
+  const toStart = startOfDayInZone(toStr, zone);
+  if (fromStart > toStart) {
+    throw new Error("`from` date must be on or before `to` date");
+  }
+  const latestExclusive = toStart.plus({ days: 1 });
+  return {
+    oldest: instantToSlackTs(fromStart),
+    latest: instantToSlackTs(latestExclusive),
+  };
 }
 
 function parseCliArgs(): {
@@ -55,22 +93,16 @@ function parseCliArgs(): {
   if (args.length === 2) {
     if (!iso.test(args[0]) || !iso.test(args[1])) {
       throw new Error(
-        "With two arguments, use YYYY-MM-DD YYYY-MM-DD for the date range (UTC), or pass a single number for max messages.",
+        "With two arguments, use YYYY-MM-DD YYYY-MM-DD for the date range, or pass a single number for max messages.",
       );
     }
-    const fromD = parseUtcDay(args[0]);
-    const toD = parseUtcDay(args[1]);
-    if (fromD > toD) {
-      throw new Error("`from` date must be on or before `to` date");
-    }
-    const oldest = toSlackTs(fromD);
-    const dayAfterTo = new Date(toD.getTime() + 24 * 60 * 60 * 1000);
-    const latest = toSlackTs(dayAfterTo);
+    const z = backfillTimezone();
+    const { oldest, latest } = dateRangeToSlackTs(args[0], args[1]);
     return {
       maxMessages: 15000,
       oldest,
       latest,
-      label: `${args[0]} … ${args[1]} UTC (inclusive days), up to 15000 messages`,
+      label: `${args[0]} … ${args[1]} (${z} calendar days, inclusive), up to 15000 messages`,
     };
   }
 
@@ -79,21 +111,15 @@ function parseCliArgs(): {
     throw new Error("First argument must be a positive number (max messages)");
   }
   if (!iso.test(args[1]) || !iso.test(args[2])) {
-    throw new Error("Second and third arguments must be YYYY-MM-DD (UTC)");
+    throw new Error("Second and third arguments must be YYYY-MM-DD");
   }
-  const fromD = parseUtcDay(args[1]);
-  const toD = parseUtcDay(args[2]);
-  if (fromD > toD) {
-    throw new Error("`from` date must be on or before `to` date");
-  }
-  const oldest = toSlackTs(fromD);
-  const dayAfterTo = new Date(toD.getTime() + 24 * 60 * 60 * 1000);
-  const latest = toSlackTs(dayAfterTo);
+  const z = backfillTimezone();
+  const { oldest, latest } = dateRangeToSlackTs(args[1], args[2]);
   return {
     maxMessages,
     oldest,
     latest,
-    label: `${args[1]} … ${args[2]} UTC (inclusive days), up to ${maxMessages} messages`,
+    label: `${args[1]} … ${args[2]} (${z} calendar days, inclusive), up to ${maxMessages} messages`,
   };
 }
 
@@ -117,7 +143,11 @@ async function main(): Promise<void> {
 
   console.log(`Backfilling: ${label}`);
   if (oldest && latest) {
-    console.log(`  API range: oldest=${oldest} latest=${latest} (latest is exclusive end instant)`);
+    const z = backfillTimezone();
+    console.log(
+      `  Calendar timezone: ${z} (set BACKFILL_TIMEZONE / default UTC — dates are full local days in this zone)`,
+    );
+    console.log(`  API range: oldest=${oldest} latest=${latest} (latest is exclusive — first instant after last day)`);
   }
 
   const result = await runSlackHistoryBackfill(

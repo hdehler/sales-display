@@ -11,11 +11,12 @@ export interface BackfillOptions {
   /** Pause between API pages (ms) to respect rate limits */
   pageDelayMs: number;
   /**
-   * Slack `ts` strings (Unix seconds.microseconds). When set, passed to
-   * `conversations.history` so only messages in [oldest, latest) are fetched (Slack semantics).
+   * Slack `ts` strings (Unix seconds.microseconds). Passed to `conversations.history`.
+   * Typical range from `slack-backfill-cli`: `oldest` = start of first calendar day,
+   * `latest` = start of day **after** last inclusive day (exclusive upper bound).
    */
   oldest?: string;
-  /** Upper bound exclusive in practice: use start of day after your last inclusive day. */
+  /** Exclusive upper bound (first instant after the last calendar day you want included). */
   latest?: string;
   /**
    * `conversations.history` omits thread replies. When true (default), also call
