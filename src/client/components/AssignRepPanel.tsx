@@ -67,7 +67,7 @@ export function AssignRepPanel({ context, onClose }: AssignRepPanelProps) {
           }}
         >
           <motion.div
-            className="w-full max-w-lg rounded-2xl border border-border-bright bg-surface-raised/98 shadow-2xl ring-1 ring-white/[0.06] p-6 max-h-[90vh] overflow-y-auto"
+            className="touch-scroll-y w-full max-w-lg rounded-2xl border border-border-bright bg-surface-raised/98 shadow-2xl ring-1 ring-white/[0.06] p-6 max-h-[90vh]"
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.96, opacity: 0 }}

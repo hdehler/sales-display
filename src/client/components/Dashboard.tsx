@@ -92,7 +92,7 @@ export function Dashboard({
                 title="New buying partners"
                 right={monthTag}
               />
-              <div className="overflow-y-auto overflow-x-hidden min-h-0 flex-1 overscroll-contain">
+              <div className="touch-scroll-y min-h-0 flex-1">
                 {data.hunterLeaderboard.length === 0 ? (
                   <p className="text-sm text-text-secondary leading-snug">
                     No Slide orders with parsed Total Orders this month.
@@ -171,7 +171,7 @@ export function Dashboard({
                   No rep-attributed orders this month.
                 </p>
               ) : (
-                <ol className="min-w-0 space-y-0 overflow-y-auto overflow-x-hidden min-h-0 flex-1 divide-y divide-border/40 text-sm overscroll-contain">
+                <ol className="touch-scroll-y min-w-0 space-y-0 min-h-0 flex-1 divide-y divide-border/40 text-sm">
                   {data.repLeaderboard.map((row, i) => (
                     <li
                       key={row.name}

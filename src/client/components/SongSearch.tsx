@@ -468,7 +468,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           {searching && (
             <div className="text-xs text-text-muted py-2">Searching…</div>
           )}
-          <div className="max-h-52 overflow-y-auto space-y-1">
+          <div className="max-h-52 touch-scroll-y space-y-1">
             {results.map((r) => (
               <div
                 key={r.id}
@@ -526,7 +526,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
               {uploading ? "Uploading…" : "+ Upload MP3 / WAV"}
             </button>
           </div>
-          <div className="max-h-52 overflow-y-auto space-y-1">
+          <div className="max-h-52 touch-scroll-y space-y-1">
             {uploads.map((u) => {
               const filename = u.split("/").pop() || u;
               return (
@@ -568,7 +568,7 @@ export function SongSearch({ value, onChange, label, walkupLabel }: SongSearchPr
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-1.5 max-h-52 touch-scroll-y">
           {JINGLES.map((j) => (
             <div
               key={j.id}

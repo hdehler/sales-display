@@ -207,7 +207,7 @@ export function WalkUpBar({ version = 0 }: { version?: number }) {
                 </div>
               )}
 
-              <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5">
+              <div className="touch-scroll-y flex-1 min-h-0 p-3 space-y-1.5">
                 {filtered.length === 0 ? (
                   <div className="text-sm text-text-muted text-center py-8 px-4">
                     No names match &ldquo;{query}&rdquo;.

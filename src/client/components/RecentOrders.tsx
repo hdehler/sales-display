@@ -122,7 +122,7 @@ export function RecentOrders({
             {headingRight ?? `${rows.length} orders`}
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 pt-2 space-y-0 overscroll-contain">
+        <div className="touch-scroll-y flex-1 min-h-0 pt-2 space-y-0">
           {rows.map((row) => (
             <div
               key={row.key}
@@ -197,7 +197,7 @@ export function RecentOrders({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 pt-3 space-y-2">
+      <div className="touch-scroll-y flex-1 min-h-0 pt-3 space-y-2">
         {rows.map((row, i) => (
           <article
             key={row.key}

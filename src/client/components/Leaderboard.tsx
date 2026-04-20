@@ -25,7 +25,7 @@ export function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
           No sales data yet
         </div>
       ) : (
-        <div className="space-y-3 flex-1 overflow-y-auto">
+        <div className="space-y-3 flex-1 touch-scroll-y">
           {entries.map((entry, i) => {
             const pct = (entry.count / maxCount) * 100;
             return (

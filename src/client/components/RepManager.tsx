@@ -131,7 +131,7 @@ export function RepManager({ open, onClose, onRepsChanged }: RepManagerProps) {
             onClick={onClose}
           />
           <motion.div
-            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-surface-raised border-l border-border shadow-2xl overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xl bg-surface-raised border-l border-border shadow-2xl touch-scroll-y"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}

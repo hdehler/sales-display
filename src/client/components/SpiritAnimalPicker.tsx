@@ -12,7 +12,7 @@ export function SpiritAnimalPicker({
 }: SpiritAnimalPickerProps) {
   return (
     <div
-      className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-surface p-2"
+      className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 touch-scroll-y rounded-xl border border-border bg-surface p-2"
       role="listbox"
       aria-label="Spirit animal"
     >

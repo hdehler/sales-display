@@ -105,22 +105,36 @@
 }
 
 /*
- * Touch / trackpad: vertical pan gestures scroll panel content, not only the scrollbar track.
- * Pairs with overflow-* scroll regions used across the dashboard, Team drawer, walk-up sheet, etc.
+ * iPhone-like vertical scroll on touchscreens: dragging on rows/text/buttons scrolls the panel,
+ * not only grabbing the scrollbar track. Nested elements default to `touch-action:auto` which
+ * steals vertical pans; inheriting `pan-y` from the scroll root fixes that.
  */
-@layer utilities {
-  .overflow-y-auto,
-  .overflow-y-scroll {
-    touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
-  }
+.touch-scroll-y {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
 
+.touch-scroll-y * {
+  /* Defeat `touch-manipulation` / UA on nested controls so pan-y applies to the scroller */
+  touch-action: inherit !important;
+}
+
+.touch-scroll-y input,
+.touch-scroll-y textarea,
+.touch-scroll-y select {
+  touch-action: auto;
+}
+
+@layer utilities {
   .overflow-x-auto,
   .overflow-x-scroll {
     touch-action: pan-x;
   }
 
-  .overflow-auto {
+  .overflow-auto:not(.touch-scroll-y) {
     touch-action: pan-x pan-y;
     -webkit-overflow-scrolling: touch;
   }
