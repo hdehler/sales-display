@@ -1,6 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import { useRef, useState, useCallback } from "react";
 import { useSocket } from "./hooks/useSocket";
+import { useGlobalDragScroll } from "./hooks/useDragScroll";
 import { Dashboard } from "./components/Dashboard";
 import { Celebration } from "./components/Celebration";
 import { ClaimOverlay } from "./components/ClaimOverlay";
@@ -11,6 +12,7 @@ import type { CelebrationEvent } from "../shared/types";
 import { stopAll } from "./lib/audio";
 
 export default function App() {
+  useGlobalDragScroll();
   const { dashboard, celebration, connected, dismissCelebration } = useSocket();
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
   const [teamOpen, setTeamOpen] = useState(false);
