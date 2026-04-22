@@ -179,6 +179,23 @@ npx tsx src/server/slack-backfill-cli.ts 20000 2026-04-01 2026-04-16
 
 Backfill **does not** fire celebrations — it only fills SQLite. New live messages still behave as before.
 
+### Demo bookings history (HubSpot channel)
+
+Past demo notifications live in the same SQLite file as orders — **`data/sales.db`** — in the **`demo_bookings`** table (not in `sales`). Inspect with e.g. `sqlite3 data/sales.db ".schema demo_bookings"` or any SQLite GUI pointed at that file.
+
+Requires **`SLACK_BOT_TOKEN`** and **`SLACK_DEMO_BOOKINGS_CHANNEL_ID`**. Uses the same **`BACKFILL_TIMEZONE`** rules as order backfill (calendar-day bounds).
+
+```bash
+cd ~/sales-display
+# April 2026 (inclusive), interpreted in BACKFILL_TIMEZONE (default UTC)
+npm run demo-bookings-backfill -- 2026-04-01 2026-04-30
+
+# With explicit timezone for local April days:
+BACKFILL_TIMEZONE=America/New_York npm run demo-bookings-backfill -- 2026-04-01 2026-04-30
+```
+
+No celebrations during import; duplicates are skipped by **`slack_ts`**. Restart the app or rely on the next **`dashboard:update`** / refresh to see leaderboard changes.
+
 ## Desktop app on the Pi (not a generic browser)
 
 The UI is still built with web tech, but it runs in a **dedicated Electron window** (fullscreen / kiosk, no tabs, no address bar) so it feels like a normal desktop app. The Node server stays on **127.0.0.1:3000** on the same machine; Electron is just the shell (same pattern as Slack, VS Code, etc.).

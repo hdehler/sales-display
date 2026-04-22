@@ -47,64 +47,38 @@ export interface BackfillResult {
   stats?: BackfillStats;
 }
 
+export interface WalkChannelResult {
+  scanned: number;
+  pages: number;
+  channelMessagesScanned: number;
+  threadMessagesScanned: number;
+}
+
 /**
- * Walk channel history (newest-first pages) and insert parsed sales.
- * `onInsert` should return true if the row was new (dedupe by slack_ts in caller).
- *
- * When `oldest` is set (CLI date range), pagination continues until Slack returns no
- * `next_cursor` — `maxMessages` is not applied, so busy channels do not truncate the month.
+ * Low-level: paginate `conversations.history` (+ optional thread replies) and invoke
+ * `processMessage` per Slack message object.
  */
-export async function runSlackHistoryBackfill(
+export async function walkSlackChannelHistory(
   client: WebClient,
   channelId: string,
   options: BackfillOptions,
-  onInsert: (sale: Sale) => boolean,
-): Promise<BackfillResult> {
+  processMessage: (msg: Record<string, unknown>) => Promise<void>,
+): Promise<WalkChannelResult> {
   let scanned = 0;
   let channelMessagesScanned = 0;
   let threadMessagesScanned = 0;
-  let inserted = 0;
   let pages = 0;
   let cursor: string | undefined;
 
   const dateBounded =
     options.oldest != null && String(options.oldest).trim() !== "";
-  /** In date-range mode, fetch every page in the window; otherwise respect maxMessages (e.g. startup backfill). */
   const messageCap = dateBounded ? Number.MAX_SAFE_INTEGER : Math.max(1, options.maxMessages);
   const includeThreadReplies = options.includeThreadReplies !== false;
-  /** Date-range imports: always check threads — not only when reply_count &gt; 0 */
   const fetchAllThreadParents = dateBounded && includeThreadReplies;
   const threadReplyPageDelayMs = Math.max(
     0,
     options.threadReplyPageDelayMs ?? options.pageDelayMs,
   );
-  const collectStats = options.collectStats === true;
-  const stats: BackfillStats = {
-    parseCandidates: 0,
-    parsedAsSale: 0,
-    parseMisses: 0,
-    duplicateSkipped: 0,
-  };
-
-  async function tryInsertFromMessage(msg: Record<string, unknown>): Promise<void> {
-    if (msg.type !== "message") return;
-    if (msg.subtype === "message_deleted") return;
-
-    if (collectStats) stats.parseCandidates += 1;
-    const sales = parseMessageToSales(msg);
-    if (!sales || sales.length === 0) {
-      if (collectStats) stats.parseMisses += 1;
-      return;
-    }
-    if (collectStats) stats.parsedAsSale += 1;
-
-    for (const sale of sales) {
-      const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
-      const wasNew = onInsert(enriched);
-      if (wasNew) inserted += 1;
-      else if (collectStats) stats.duplicateSkipped += 1;
-    }
-  }
 
   async function fetchThreadReplies(parentTs: string): Promise<void> {
     let replyCursor: string | undefined;
@@ -132,7 +106,7 @@ export async function runSlackHistoryBackfill(
         scanned += 1;
         threadMessagesScanned += 1;
         const raw = msgs[i] as unknown as Record<string, unknown>;
-        await tryInsertFromMessage(raw);
+        await processMessage(raw);
       }
 
       replyCursor = rep.response_metadata?.next_cursor;
@@ -173,7 +147,7 @@ export async function runSlackHistoryBackfill(
       channelMessagesScanned += 1;
 
       const msg = raw as unknown as Record<string, unknown>;
-      await tryInsertFromMessage(msg);
+      await processMessage(msg);
 
       if (includeThreadReplies && typeof msg.ts === "string") {
         const rc = msg.reply_count;
@@ -192,10 +166,64 @@ export async function runSlackHistoryBackfill(
 
   return {
     scanned,
-    inserted,
     pages,
     channelMessagesScanned,
     threadMessagesScanned,
+  };
+}
+
+/**
+ * Walk channel history (newest-first pages) and insert parsed sales.
+ * `onInsert` should return true if the row was new (dedupe by slack_ts in caller).
+ *
+ * When `oldest` is set (CLI date range), pagination continues until Slack returns no
+ * `next_cursor` — `maxMessages` is not applied, so busy channels do not truncate the month.
+ */
+export async function runSlackHistoryBackfill(
+  client: WebClient,
+  channelId: string,
+  options: BackfillOptions,
+  onInsert: (sale: Sale) => boolean,
+): Promise<BackfillResult> {
+  let inserted = 0;
+  const collectStats = options.collectStats === true;
+  const stats: BackfillStats = {
+    parseCandidates: 0,
+    parsedAsSale: 0,
+    parseMisses: 0,
+    duplicateSkipped: 0,
+  };
+
+  async function tryInsertFromMessage(msg: Record<string, unknown>): Promise<void> {
+    if (msg.type !== "message") return;
+    if (msg.subtype === "message_deleted") return;
+
+    if (collectStats) stats.parseCandidates += 1;
+    const sales = parseMessageToSales(msg);
+    if (!sales || sales.length === 0) {
+      if (collectStats) stats.parseMisses += 1;
+      return;
+    }
+    if (collectStats) stats.parsedAsSale += 1;
+
+    for (const sale of sales) {
+      const enriched = await enrichSaleWithAccountOwnerFromDwh(sale);
+      const wasNew = onInsert(enriched);
+      if (wasNew) inserted += 1;
+      else if (collectStats) stats.duplicateSkipped += 1;
+    }
+  }
+
+  const walk = await walkSlackChannelHistory(
+    client,
+    channelId,
+    options,
+    tryInsertFromMessage,
+  );
+
+  return {
+    inserted,
+    ...walk,
     ...(collectStats ? { stats } : {}),
   };
 }

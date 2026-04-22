@@ -12,6 +12,7 @@
     "setup": "npm install && npm run build",
     "desktop": "sh scripts/run-electron.sh",
     "slack-backfill": "tsx src/server/slack-backfill-cli.ts",
+    "demo-bookings-backfill": "tsx src/server/demo-bookings-backfill-cli.ts",
     "clear-sales": "tsx src/server/clear-sales-cli.ts"
   },
   "dependencies": {
