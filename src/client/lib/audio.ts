@@ -79,6 +79,8 @@ export function playUrl(url: string): HTMLAudioElement {
 
 export function playSong(song: string): void {
   if (!song) return;
+  /** Jingle path used to skip unlock — keep HTML5 + Web Audio ready for Tone.js. */
+  unlockAudio();
   if (JINGLES.some((j) => j.id === song)) {
     stopAll();
     void playJingle(song).catch((err) => {

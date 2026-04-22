@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { DashboardData, CelebrationEvent } from "../../shared/types";
+import { unlockAudio } from "../lib/audio";
 
 function socketIoUrl(): string {
   if (import.meta.env.DEV) return "http://localhost:3000";
@@ -33,7 +34,11 @@ export function useSocket() {
     });
     setSocket(s);
 
-    s.on("connect", () => setConnected(true));
+    s.on("connect", () => {
+      setConnected(true);
+      /** Prime Web Audio / HTMLAudio for celebrations (Electron autoplayPolicy + kiosk). */
+      unlockAudio();
+    });
     s.on("disconnect", () => setConnected(false));
     s.on("connect_error", () => setConnected(false));
 

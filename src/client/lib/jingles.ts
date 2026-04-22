@@ -227,6 +227,10 @@ export async function playJingle(jingleId: string): Promise<void> {
   if (!jingle) return;
 
   await Tone.start();
+  const raw = Tone.getContext().rawContext as AudioContext;
+  if (raw.state === "suspended") {
+    await raw.resume().catch(() => {});
+  }
 
   if (currentSynth) {
     currentSynth.dispose();
