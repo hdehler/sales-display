@@ -292,10 +292,34 @@ During a celebration the API can run **two shell commands**: one when the overla
 
 On **server start**, the OFF command runs **multiple times at staggered delays** by default (`CELEBRATION_USB_OFF_ON_START`, omit or `true`; delays from **`CELEBRATION_USB_STARTUP_OFF_DELAYS_MS`** or built-in `0,2500,5000,10000,15000`). The Pi often ignores the first `uhubctl` while USB comes up—retries fix that. Set **`CELEBRATION_USB_OFF_ON_START=false`** to disable.
 
-**Your OFF command must turn off every hub port that powers the lamp.** If you needed several `sudo uhubctl …` lines to get it dark, put them in **one** env value, e.g. `CELEBRATION_USB_OFF_CMD=sh -c 'sudo uhubctl -l 3 -p 1 -a 0; sudo uhubctl -l 3 -p 2 -a 0; sudo uhubctl -l 1 -p 2 -a 0'` — use the **same** composite command for celebrations (that script is what runs at start too). Match **`CELEBRATION_USB_ON_CMD`** the same way for “on” during celebrations.
+**Your OFF command must match how VBUS actually drops on your Pi.** If you needed several `sudo uhubctl …` lines to get it dark, put them in **one** env value (e.g. `CELEBRATION_USB_OFF_CMD=sh -c '…; …'`). Match **`CELEBRATION_USB_ON_CMD`** the same way for celebrations and startup OFF.
 
-If the light is **still on** after all attempts, it may not respect VBUS control—use a **relay or smart plug**, not USB power switching alone.
+#### Raspberry Pi 5: why `-l 3 -p 1 -a 0` can lie
 
-Cheap USB party lights are often **always on when the port delivers power**. On a Pi you can sometimes switch that port with [**uhubctl**](https://github.com/mvp/uhubctl): `sudo apt install uhubctl`, then run **`sudo uhubctl`** (no arguments). **Only hub locations and ports printed there are valid** — copy the exact `-l` value (e.g. `2`, `1-1`, or on Pi 5 often `2`–`5`) and the port number; using a guess like `2-1` usually fails with *No compatible devices detected*. On **Raspberry Pi 4**, upstream docs often use **`uhubctl -l 2 -p 4`** or **`-l 1-1 -p 4`** for the internal hub (all Type-A ports may be **ganged**, so toggling one can affect every port — that is a hardware limit). Update **VL805** EEPROM if power switching does not work on Pi 4 (`sudo rpi-eeprom-update`). **Pi 5** uses a different USB layout; rely on your own `sudo uhubctl` output.
+On **Pi 5**, the four Type-A ports share **one ganged VBUS switch** across **four logical root hubs**. [uhubctl’s Pi 5 section](https://github.com/mvp/uhubctl?tab=readme-ov-file#raspberry-pi-5) says **VBUS only goes down after power is cleared the right way across that layout** — not merely because one `-l`/`-p` pair prints “off”. A single command (like `-l 3 -p 1`) can update status text while the lamp **stays lit** until the full pattern your kernel needs is applied.
+
+**Try the upstream Pi 5 pair first** (turns power for **all** onboard USB-A ports off/on together — unavoidable on Pi 5):
+
+```bash
+# off
+sudo uhubctl -l 2 -a 0
+sudo uhubctl -l 4 -a 0
+# on
+sudo uhubctl -l 2 -a 1
+sudo uhubctl -l 4 -a 1
+```
+
+Env form:
+
+`CELEBRATION_USB_OFF_CMD=sh -c 'sudo uhubctl -l 2 -a 0; sudo uhubctl -l 4 -a 0'`  
+`CELEBRATION_USB_ON_CMD=sh -c 'sudo uhubctl -l 2 -a 1; sudo uhubctl -l 4 -a 1'`
+
+**Downside:** anything else on those USB ports (touch controller, dongle, etc.) loses power when the light is off — you may need a setup that doesn’t rely on USB for the display, or a **powered USB hub** / **relay on the lamp** instead.
+
+**Kernel / tool version:** After a Raspberry Pi OS upgrade (e.g. kernel **6.12**), hub numbering or USB3 handling can change. Run `uhubctl -v` — prefer **2.6.0+** (apt can be older); [build from source](https://github.com/mvp/uhubctl?tab=readme-ov-file#compiling) if the stock binary misbehaves. If you see *No compatible devices detected* for some `-l` values, check [uhubctl issues for Pi 5](https://github.com/mvp/uhubctl/issues?q=is%3Aissue+raspberry+pi+5) for `-e` / hub-shift workarounds.
+
+If the light is **still on** after the official pair and a current `uhubctl`, it may ignore VBUS — use a **relay or smart plug**, not USB port switching alone.
+
+Cheap USB party lights are often **always on when the port delivers power**. On a Pi you can sometimes switch that port with [**uhubctl**](https://github.com/mvp/uhubctl): `sudo apt install uhubctl`, then run **`sudo uhubctl`** (no arguments). **Only hub locations and ports printed there are valid** — copy the exact `-l` value (e.g. `2`, `1-1`, or on Pi 5 often `2`–`5`) and the port number; using a guess like `2-1` usually fails with *No compatible devices detected*. On **Raspberry Pi 4**, upstream docs often use **`uhubctl -l 2 -p 4`** or **`-l 1-1 -p 4`** for the internal hub (all Type-A ports may be **ganged**, so toggling one can affect every port — that is a hardware limit). Update **VL805** EEPROM if power switching does not work on Pi 4 (`sudo rpi-eeprom-update`). **Pi 5** uses the ganged layout above — per-port `-l 3 -p 1` is often **not** sufficient even when the tool prints success.
 
 The Unix user running Node needs permission to run those commands (e.g. **sudoers** for passwordless `uhubctl`). If your light does not respond to port power cycling, use a relay or GPIO and point the env vars at your own scripts instead.
