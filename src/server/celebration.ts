@@ -86,7 +86,7 @@ function mergeWalkupIntoCelebrationAudio(
   };
 }
 
-function attachSlideRepHero(
+export function attachSlideRepHero(
   event: CelebrationEvent,
   first: Sale,
   opts?: { skipRepWalkup?: boolean },
@@ -139,6 +139,27 @@ function attachSlideRepHero(
         ? { name: nm, avatarColor: "#64748b" }
         : { name: nm },
   };
+}
+
+/**
+ * Full-screen celebration for HubSpot demo bookings (BDR = rep).
+ * Uses the same enable flag as Slide order celebrations (`celebrateSlideOrders`).
+ * Does not use order-milestone intervals or `getTodaySaleCount()`.
+ */
+export function shouldCelebrateDemoBooking(sale: Sale): CelebrationEvent | null {
+  if (sale.meta?.source !== "hubspot_demo") return null;
+  if (!config.celebration.celebrateSlideOrders) return null;
+
+  const { songUrl, jingleId } = resolveSong(sale.product);
+  const base: CelebrationEvent = {
+    sale,
+    type: "product",
+    duration: config.celebration.defaultDuration,
+    message: `${sale.customer} — demo booked`,
+    songUrl,
+    jingleId,
+  };
+  return attachSlideRepHero(base, sale);
 }
 
 export function shouldCelebrate(sale: Sale): CelebrationEvent | null {

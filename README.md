@@ -265,6 +265,14 @@ If you never got a running app, `pm2 delete all` then the same `pm2 start "$PWD/
 2. **Rows in the database:** `curl -s http://127.0.0.1:3000/api/stats` — check `totalSales`. If `0`, nothing has been parsed into SQLite yet.
 3. **PM2 + logs:** `pm2 status` (process **online**), then `pm2 logs sales-display --lines 50`. You want `[Slack] Connected via Socket Mode`. When a matching message arrives you should see `[Slack] Parsed Slide order:` or `[Slack] Parsed sale:`.
 4. **Channel ID:** `SLACK_SALES_CHANNEL_ID` must be the **exact** ID of the channel where Slide posts (public `C…`, private `G…`). Wrong ID = every message is ignored.
-5. **Your bot in that channel:** run `/invite @YourSalesDisplayApp` in that channel.
+5. **Your bot in that channel:** run `/invite @YourSalesDisplayApp` in that channel (and in **`SLACK_DEMO_BOOKINGS_CHANNEL_ID`** if you use HubSpot demo posts — same bot, separate channel ID in `.env`).
 6. **Import history:** if you only turned the app on recently, turn on `SLACK_BACKFILL_ON_START=true` (or run `npm run slack-backfill -- 500`) so past orders are loaded.
 7. **Still nothing:** Slide may be using a Block Kit layout we don’t parse (e.g. `rich_text` only). Check logs for errors; you may need a sample message JSON to extend the parser.
+
+### USB disco light (Raspberry Pi)
+
+During a celebration the API can run **two shell commands**: one when the overlay starts (`CELEBRATION_USB_ON_CMD`) and one when it ends (`CELEBRATION_USB_OFF_CMD`), using the same timing as **`CELEBRATION_DURATION`** (and **Stop** on the kiosk turns the light off early via `celebration:dismiss`). Both variables must be set or USB control stays disabled.
+
+Cheap USB party lights are often **always on when the port delivers power**. On a Pi you can sometimes switch that port with [**uhubctl**](https://github.com/mvp/uhubctl): `sudo apt install uhubctl`, then run **`sudo uhubctl`** (no arguments). **Only hub locations and ports printed there are valid** — copy the exact `-l` value (e.g. `2`, `1-1`, or on Pi 5 often `2`–`5`) and the port number; using a guess like `2-1` usually fails with *No compatible devices detected*. On **Raspberry Pi 4**, upstream docs often use **`uhubctl -l 2 -p 4`** or **`-l 1-1 -p 4`** for the internal hub (all Type-A ports may be **ganged**, so toggling one can affect every port — that is a hardware limit). Update **VL805** EEPROM if power switching does not work on Pi 4 (`sudo rpi-eeprom-update`). **Pi 5** uses a different USB layout; rely on your own `sudo uhubctl` output.
+
+The Unix user running Node needs permission to run those commands (e.g. **sudoers** for passwordless `uhubctl`). If your light does not respond to port power cycling, use a relay or GPIO and point the env vars at your own scripts instead.

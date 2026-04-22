@@ -20,6 +20,10 @@ export const config = {
     salesChannelId: normalizeSlackChannelId(
       process.env.SLACK_SALES_CHANNEL_ID || "",
     ),
+    /** HubSpot demo-bookings channel (C…/G…). When set, messages here never go to the sales parser. */
+    demoBookingsChannelId: normalizeSlackChannelId(
+      process.env.SLACK_DEMO_BOOKINGS_CHANNEL_ID || "",
+    ),
     /** Log messages in the sales channel that have blocks/attachments but don’t parse as a sale */
     debugParse:
       process.env.SLACK_DEBUG_PARSE === "1" ||
@@ -70,6 +74,13 @@ export const config = {
     celebrateSlideOrders:
       process.env.CELEBRATE_SLIDE_ORDERS !== "false" &&
       process.env.CELEBRATE_SLIDE_ORDERS !== "0",
+    /**
+     * Raspberry Pi / kiosk: optional shell commands to toggle a USB disco light (or relay).
+     * Run when celebration starts / ends (same duration as CELEBRATION_DURATION). Both must be set to enable.
+     * Example: `sudo uhubctl -l 2-1 -p 4 -a 1` / `-a 0` (install uhubctl; port varies per Pi/USB tree).
+     */
+    usbDiscoOnCmd: (process.env.CELEBRATION_USB_ON_CMD ?? "").trim(),
+    usbDiscoOffCmd: (process.env.CELEBRATION_USB_OFF_CMD ?? "").trim(),
   },
 
   /** Quiet time (ms) after the last Slide order before flushing a batch for the same account */

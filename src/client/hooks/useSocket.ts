@@ -63,5 +63,11 @@ export function useSocket() {
     setCelebration(null);
   }
 
-  return { socket, dashboard, celebration, connected, dismissCelebration };
+  return {
+    socket,
+    dashboard,
+    celebration,
+    connected,
+    dismissCelebration,
+  };
 }

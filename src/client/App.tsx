@@ -13,7 +13,8 @@ import { stopAll } from "./lib/audio";
 
 export default function App() {
   useGlobalDragScroll();
-  const { dashboard, celebration, connected, dismissCelebration } = useSocket();
+  const { dashboard, celebration, connected, dismissCelebration, socket } =
+    useSocket();
   const lastCelebrationRef = useRef<CelebrationEvent | null>(null);
   const [teamOpen, setTeamOpen] = useState(false);
   const [repsVersion, setRepsVersion] = useState(0);
@@ -25,9 +26,10 @@ export default function App() {
   }
 
   const handleStopCelebration = useCallback(() => {
+    socket?.emit("celebration:dismiss");
     stopAll();
     dismissCelebration();
-  }, [dismissCelebration]);
+  }, [socket, dismissCelebration]);
 
   return (
     <div className="h-screen w-screen bg-surface text-text-primary overflow-hidden relative">

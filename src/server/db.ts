@@ -41,6 +41,20 @@ if (!salesCols.some((c) => c.name === "meta_json")) {
 }
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS demo_bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slack_ts TEXT UNIQUE NOT NULL,
+    bdr TEXT NOT NULL,
+    company TEXT NOT NULL,
+    ae TEXT,
+    territory TEXT,
+    demo_scheduled_date TEXT,
+    raw_message TEXT,
+    timestamp TEXT NOT NULL
+  )
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS reps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
@@ -129,6 +143,82 @@ export function insertSale(sale: Sale): Sale {
 }
 
 /** Skip insert if this Slack message was already stored (live + backfill dedupe). */
+export interface DemoBookingRow {
+  id: number;
+  slack_ts: string;
+  bdr: string;
+  company: string;
+  ae: string | null;
+  territory: string | null;
+  demo_scheduled_date: string | null;
+  raw_message: string | null;
+  timestamp: string;
+}
+
+export function insertDemoBookingIfNew(row: {
+  slackTs: string;
+  bdr: string;
+  company: string;
+  ae?: string;
+  territory?: string;
+  demoScheduledDate?: string;
+  rawMessage?: string;
+  timestamp: string;
+}): DemoBookingRow | null {
+  const exists = db
+    .prepare(`SELECT 1 FROM demo_bookings WHERE slack_ts = ?`)
+    .get(row.slackTs);
+  if (exists) return null;
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO demo_bookings (
+        slack_ts, bdr, company, ae, territory, demo_scheduled_date, raw_message, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      row.slackTs,
+      row.bdr,
+      row.company,
+      row.ae?.trim() || null,
+      row.territory?.trim() || null,
+      row.demoScheduledDate?.trim() || null,
+      row.rawMessage ?? null,
+      row.timestamp,
+    );
+    const id = result.lastInsertRowid as number;
+    return {
+      id,
+      slack_ts: row.slackTs,
+      bdr: row.bdr,
+      company: row.company,
+      ae: row.ae?.trim() || null,
+      territory: row.territory?.trim() || null,
+      demo_scheduled_date: row.demoScheduledDate?.trim() || null,
+      raw_message: row.rawMessage ?? null,
+      timestamp: row.timestamp,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("UNIQUE") || msg.includes("unique")) return null;
+    throw e;
+  }
+}
+
+/** Top BDRs by demo count in the current calendar month. */
+export function getDemoBdrLeaderboardTop3(): LeaderboardEntry[] {
+  const start = monthStart();
+  return db
+    .prepare(
+      `SELECT bdr AS name, COUNT(*) AS count
+       FROM demo_bookings
+       WHERE timestamp >= ?
+       GROUP BY bdr
+       ORDER BY count DESC, name ASC
+       LIMIT 3`,
+    )
+    .all(start) as LeaderboardEntry[];
+}
+
 export function insertSaleIfNew(sale: Sale): Sale | null {
   if (sale.slackTs) {
     const exists = db
@@ -407,6 +497,7 @@ export function getDashboardData(): DashboardData {
     weekCount: week.count,
     monthCount: month.count,
     dailyTotals: getDailyTotals(),
+    demoBookingsLeaderboard: getDemoBdrLeaderboardTop3(),
   };
 }
 

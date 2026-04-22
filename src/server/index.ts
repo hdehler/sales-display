@@ -13,18 +13,22 @@ import { enqueueSlideOrder } from "./slideOrderBatcher.js";
 import {
   initSlack,
   setSaleCallback,
+  setDemoBookingCallback,
   setHistorySaleHandler,
   setBackfillCompleteHandler,
 } from "./slack.js";
 import {
   shouldCelebrate,
   shouldCelebrateSlidePack,
+  shouldCelebrateDemoBooking,
   triggerCelebration,
   setCelebrationCallback,
   buildWalkupCelebration,
 } from "./celebration.js";
+import { slackTsToIso } from "./parseSlackMessage.js";
 import {
   insertSaleIfNew,
+  insertDemoBookingIfNew,
   getDashboardData,
   getSalesStats,
   getAllReps,
@@ -38,8 +42,14 @@ import {
   getSetting,
   setSetting,
   assignRepToSaleIds,
+  type DemoBookingRow,
 } from "./db.js";
 import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
+import {
+  celebrationUsbScheduleForDuration,
+  celebrationUsbCancelScheduled,
+  celebrationUsbConfigured,
+} from "./celebrationUsbDisco.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 import { readdirSync, mkdirSync, writeFileSync } from "fs";
 import multer from "multer";
@@ -56,6 +66,9 @@ const io = new Server(server, {
         : undefined,
   },
 });
+
+/** Cleared on `celebration:dismiss` so USB + overlay stay in sync when user taps Stop. */
+let pendingCelebrationEndTimer: ReturnType<typeof setTimeout> | null = null;
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
@@ -545,6 +558,14 @@ if (process.env.NODE_ENV === "production") {
 io.on("connection", (socket) => {
   console.log("[Socket] Client connected");
   socket.emit("dashboard:update", getDashboardData());
+  socket.on("celebration:dismiss", () => {
+    if (pendingCelebrationEndTimer) {
+      clearTimeout(pendingCelebrationEndTimer);
+      pendingCelebrationEndTimer = null;
+    }
+    celebrationUsbCancelScheduled(true);
+    io.emit("celebration:end");
+  });
   socket.on("disconnect", () => console.log("[Socket] Client disconnected"));
 });
 
@@ -553,11 +574,38 @@ function broadcastDashboard(): void {
 }
 
 setCelebrationCallback((event: CelebrationEvent) => {
+  if (pendingCelebrationEndTimer) {
+    clearTimeout(pendingCelebrationEndTimer);
+    pendingCelebrationEndTimer = null;
+  }
   const eventName =
     event.type === "walkup" ? "celebration:walkup" : "celebration:start";
   io.emit(eventName, event);
-  setTimeout(() => io.emit("celebration:end"), event.duration * 1000);
+  const durationMs = event.duration * 1000;
+  celebrationUsbScheduleForDuration(durationMs);
+  pendingCelebrationEndTimer = setTimeout(() => {
+    pendingCelebrationEndTimer = null;
+    io.emit("celebration:end");
+    celebrationUsbCancelScheduled(false);
+  }, durationMs);
 });
+
+function demoBookingRowToSale(row: DemoBookingRow): Sale {
+  return {
+    id: row.id,
+    rep: row.bdr,
+    customer: row.company,
+    product: "Demo booking",
+    amount: 0,
+    timestamp: row.timestamp,
+    slackTs: row.slack_ts,
+    rawMessage: row.raw_message ?? undefined,
+    meta: {
+      source: "hubspot_demo",
+      demoScheduledDate: row.demo_scheduled_date ?? undefined,
+    },
+  };
+}
 
 function ingestSlackSale(
   sale: Sale,
@@ -575,6 +623,24 @@ function ingestSlackSale(
   }
   return true;
 }
+
+setDemoBookingCallback((payload) => {
+  const saved = insertDemoBookingIfNew({
+    slackTs: payload.slackTs,
+    bdr: payload.bdr,
+    company: payload.company,
+    ae: payload.ae,
+    territory: payload.territory,
+    demoScheduledDate: payload.demoScheduledDate,
+    rawMessage: payload.rawMessage,
+    timestamp: slackTsToIso(payload.slackTs),
+  });
+  if (!saved) return;
+  broadcastDashboard();
+  const sale = demoBookingRowToSale(saved);
+  const ev = shouldCelebrateDemoBooking(sale);
+  if (ev) void triggerCelebration(ev);
+});
 
 setSaleCallback((sale) => {
   if (sale.meta?.source === "slide_cloud") {
@@ -603,6 +669,11 @@ setBackfillCompleteHandler(() => {
 async function start(): Promise<void> {
   server.listen(config.port, () => {
     console.log(`[Server] Running on http://localhost:${config.port}`);
+    if (celebrationUsbConfigured()) {
+      console.log(
+        "[Celebration] USB disco commands enabled (CELEBRATION_USB_ON_CMD / OFF).",
+      );
+    }
   });
 
   try {

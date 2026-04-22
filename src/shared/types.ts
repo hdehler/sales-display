@@ -30,6 +30,12 @@ export interface HunterLeaderboardEntry {
   newBuyingPartners: number;
 }
 
+/** Demo booking attributed to BDR (HubSpot → Slack demo channel). */
+export interface HubSpotDemoMeta {
+  source: "hubspot_demo";
+  demoScheduledDate?: string;
+}
+
 export interface Sale {
   id?: number;
   /**
@@ -44,7 +50,14 @@ export interface Sale {
   timestamp: string;
   slackTs?: string;
   rawMessage?: string;
-  meta?: SlideOrderMeta;
+  meta?: SlideOrderMeta | HubSpotDemoMeta;
+}
+
+/** Narrow `Sale.meta` to Slide Cloud rows (excludes HubSpot demo, etc.). */
+export function isSlideOrderMeta(
+  meta: Sale["meta"] | undefined,
+): meta is SlideOrderMeta {
+  return meta?.source === "slide_cloud";
 }
 
 /** Ranked row: `name` is account/customer (Slide has no per-rep field in Slack). */
@@ -73,6 +86,8 @@ export interface DashboardData {
   weekCount: number;
   monthCount: number;
   dailyTotals: DailyTotal[];
+  /** Top BDRs by demo booking count this month (max 3). */
+  demoBookingsLeaderboard: LeaderboardEntry[];
 }
 
 export interface CelebrationEvent {

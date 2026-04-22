@@ -1,6 +1,6 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { config, isBigQueryAccountOwnerConfigured } from "./config.js";
-import type { Sale } from "../shared/types.js";
+import { isSlideOrderMeta, type Sale } from "../shared/types.js";
 import { UNKNOWN_REP } from "../shared/rep.js";
 
 let bigqueryClient: BigQuery | null = null;
@@ -140,7 +140,8 @@ export function pickOwnerForSale(
  *     a hunter when we couldn't confirm it's truly a first sale.
  */
 export function ownerKindForSale(sale: Sale): OwnerKind {
-  return sale.meta?.newBuyingPartner === true ? "hunter" : "farmer";
+  if (!isSlideOrderMeta(sale.meta)) return "farmer";
+  return sale.meta.newBuyingPartner === true ? "hunter" : "farmer";
 }
 
 type Row = {

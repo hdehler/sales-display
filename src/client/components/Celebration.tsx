@@ -69,7 +69,9 @@ export function Celebration({ event, onStop }: CelebrationProps) {
   }, [onStop]);
 
   const account = pack ? pack.account : event.sale.customer;
-  const isSlide = pack ? true : event.sale.meta?.source === "slide_cloud";
+  const isHubspotDemo = event.sale.meta?.source === "hubspot_demo";
+  const isSlide =
+    pack ? true : event.sale.meta?.source === "slide_cloud" || isHubspotDemo;
   const count = pack ? pack.count : 1;
   const single = count === 1;
 
@@ -229,11 +231,13 @@ export function Celebration({ event, onStop }: CelebrationProps) {
               transition={{ delay: 0.2 }}
             >
               <span className="inline-block px-4 py-1.5 rounded-full border border-accent/30 bg-accent-soft text-accent text-xs font-semibold uppercase tracking-[0.2em]">
-                {isSlide
-                  ? single
-                    ? "New order"
-                    : `${count} new orders`
-                  : "New sale"}
+                {isHubspotDemo
+                  ? "Demo booked"
+                  : isSlide
+                    ? single
+                      ? "New order"
+                      : `${count} new orders`
+                    : "New sale"}
               </span>
             </motion.div>
 

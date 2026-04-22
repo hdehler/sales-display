@@ -209,6 +209,7 @@ export function Dashboard({
               sales={data.recentSales}
               compact
               headingRight={`${data.recentSales.length} orders`}
+              demoLeaderboard={data.demoBookingsLeaderboard}
               onAssignRep={onAssignRep}
             />
           </div>

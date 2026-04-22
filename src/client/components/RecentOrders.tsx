@@ -1,4 +1,8 @@
-import type { Sale } from "../../shared/types";
+import {
+  isSlideOrderMeta,
+  type LeaderboardEntry,
+  type Sale,
+} from "../../shared/types";
 import type { AssignRepContext } from "./AssignRepPanel";
 import { UNKNOWN_REP, isUnresolvedRepName } from "../../shared/rep";
 import { Sprout } from "lucide-react";
@@ -49,7 +53,9 @@ function buildRows(sales: Sale[]): OrderRow[] {
         j++;
       }
       const pack = sales.slice(i, j);
-      const newBuyingPartner = pack.some((x) => x.meta?.newBuyingPartner);
+      const newBuyingPartner = pack.some(
+        (x) => isSlideOrderMeta(x.meta) && x.meta.newBuyingPartner,
+      );
       const saleIds = pack
         .map((x) => x.id)
         .filter((id): id is number => typeof id === "number" && id > 0);
@@ -67,6 +73,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
     } else {
       const sid =
         typeof s.id === "number" && s.id > 0 ? [s.id] : ([] as number[]);
+      const slideMeta = isSlideOrderMeta(s.meta) ? s.meta : undefined;
       rows.push({
         key: `${s.timestamp}-${i}`,
         account: s.customer,
@@ -74,7 +81,7 @@ function buildRows(sales: Sale[]): OrderRow[] {
         count: 1,
         time: s.timestamp,
         rep: displayRep(s),
-        newBuyingPartner: s.meta?.newBuyingPartner || undefined,
+        newBuyingPartner: slideMeta?.newBuyingPartner || undefined,
         saleIds: sid,
       });
       i++;
@@ -89,6 +96,8 @@ interface RecentOrdersProps {
   compact?: boolean;
   /** Uppercase rail on the right (e.g. month tag or `LIVE · 20`) */
   headingRight?: string;
+  /** Top BDRs by demo booking count this month (max 3), shown under compact “This month” */
+  demoLeaderboard?: LeaderboardEntry[];
   /** Opens rep picker when user taps Assign on Unknown rows */
   onAssignRep?: (ctx: AssignRepContext) => void;
 }
@@ -97,11 +106,13 @@ export function RecentOrders({
   sales,
   compact,
   headingRight,
+  demoLeaderboard = [],
   onAssignRep,
 }: RecentOrdersProps) {
   const rows = buildRows(sales);
+  const demos = demoLeaderboard.slice(0, 3);
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && demos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center flex-1 min-h-0 py-8 text-center px-2">
         <p className="text-text-muted text-xs uppercase tracking-wider">
@@ -122,66 +133,108 @@ export function RecentOrders({
             {headingRight ?? `${rows.length} orders`}
           </span>
         </div>
-        <div className="touch-scroll-y flex-1 min-h-0 pt-2 space-y-0">
-          {rows.map((row) => (
-            <div
-              key={row.key}
-              className="list-row-compact flex items-center gap-2 py-1.5 px-0.5 rounded-md min-w-0"
-            >
-              {row.count > 1 ? (
-                <span
-                  className="shrink-0 text-sm font-bold tabular-nums text-accent w-6 text-center"
-                  title={`${row.count} orders`}
-                >
-                  ×{row.count}
-                </span>
-              ) : (
-                <span className="shrink-0 w-6" aria-hidden />
-              )}
-              <div className="flex-1 min-w-0 flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-sm font-medium text-text-primary truncate">
-                  {row.account}
-                </span>
-                {row.newBuyingPartner ? (
-                  <span className="inline-flex shrink-0" title="New partner">
-                    <Sprout
-                      className="new-partner-icon h-4 w-4 text-emerald-600 dark:text-emerald-400"
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                    <span className="sr-only">New partner</span>
-                  </span>
-                ) : null}
-                <span className="text-sm text-text-muted truncate max-w-[35%] sm:max-w-[40%]">
-                  · {row.rep}
-                </span>
-                {isUnresolvedRepName(row.rep) &&
-                row.saleIds.length > 0 &&
-                onAssignRep ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onAssignRep({
-                        saleIds: row.saleIds,
-                        account: row.account,
-                        product: row.product,
-                      })
-                    }
-                    className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-accent/35 bg-accent/10 text-accent transition-colors active:bg-accent/25 active:border-accent/55"
-                  >
-                    Assign
-                  </button>
-                ) : null}
-              </div>
-              <time
-                className="text-sm text-text-muted tabular-nums shrink-0 font-medium"
-                dateTime={row.time}
+        {rows.length > 0 ? (
+          <div className="touch-scroll-y flex-1 min-h-0 pt-2 space-y-0">
+            {rows.map((row) => (
+              <div
+                key={row.key}
+                className="list-row-compact flex items-center gap-2 py-1.5 px-0.5 rounded-md min-w-0"
               >
-                {timeAgo(row.time)}
-              </time>
+                {row.count > 1 ? (
+                  <span
+                    className="shrink-0 text-sm font-bold tabular-nums text-accent w-6 text-center"
+                    title={`${row.count} orders`}
+                  >
+                    ×{row.count}
+                  </span>
+                ) : (
+                  <span className="shrink-0 w-6" aria-hidden />
+                )}
+                <div className="flex-1 min-w-0 flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-sm font-medium text-text-primary truncate">
+                    {row.account}
+                  </span>
+                  {row.newBuyingPartner ? (
+                    <span className="inline-flex shrink-0" title="New partner">
+                      <Sprout
+                        className="new-partner-icon h-4 w-4 text-emerald-600 dark:text-emerald-400"
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span className="sr-only">New partner</span>
+                    </span>
+                  ) : null}
+                  <span className="text-sm text-text-muted truncate max-w-[35%] sm:max-w-[40%]">
+                    · {row.rep}
+                  </span>
+                  {isUnresolvedRepName(row.rep) &&
+                  row.saleIds.length > 0 &&
+                  onAssignRep ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onAssignRep({
+                          saleIds: row.saleIds,
+                          account: row.account,
+                          product: row.product,
+                        })
+                      }
+                      className="shrink-0 text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border border-accent/35 bg-accent/10 text-accent transition-colors active:bg-accent/25 active:border-accent/55"
+                    >
+                      Assign
+                    </button>
+                  ) : null}
+                </div>
+                <time
+                  className="text-sm text-text-muted tabular-nums shrink-0 font-medium"
+                  dateTime={row.time}
+                >
+                  {timeAgo(row.time)}
+                </time>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {demos.length > 0 ? (
+          <div
+            className={`shrink-0 border-t border-border ${rows.length > 0 ? "mt-2 pt-2" : "pt-2"}`}
+            role="table"
+            aria-label="Top demo bookings by BDR this month"
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5 px-0.5">
+              Demos booked
             </div>
-          ))}
-        </div>
+            <div
+              className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.75rem] gap-x-1.5 text-[10px] items-center border-b border-border/60 pb-1 text-text-muted font-semibold uppercase tracking-wide leading-tight"
+              role="row"
+            >
+              <span role="columnheader">#</span>
+              <span role="columnheader" className="truncate min-w-0">
+                BDR
+              </span>
+              <span role="columnheader" className="text-right tabular-nums leading-tight">
+                Demos
+              </span>
+            </div>
+            {demos.map((d, idx) => (
+              <div
+                key={d.name}
+                role="row"
+                className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.75rem] gap-x-1.5 py-1 text-sm items-center border-b border-border/30 last:border-0"
+              >
+                <span className="text-text-muted font-mono tabular-nums">
+                  {idx + 1}.
+                </span>
+                <span className="truncate font-medium text-text-primary">
+                  {d.name}
+                </span>
+                <span className="text-right tabular-nums font-semibold text-accent">
+                  {d.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     );
   }

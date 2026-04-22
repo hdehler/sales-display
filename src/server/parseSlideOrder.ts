@@ -1,4 +1,4 @@
-import type { Sale, SlideOrderMeta } from "../shared/types.js";
+import { isSlideOrderMeta, type Sale, type SlideOrderMeta } from "../shared/types.js";
 
 /** Extract Slack section field text into label → value (handles *Label* and Label:). */
 function parseSectionFieldText(text: string): { label: string; value: string } | null {
@@ -616,7 +616,7 @@ function expandBigOrderUnits(
   if (totalUnits <= 0) return [base];
 
   const baseSlackTs = base.slackTs ?? "";
-  const baseOrderId = base.meta?.orderId ?? "";
+  const baseOrderId = isSlideOrderMeta(base.meta) ? base.meta.orderId ?? "" : "";
   const out: Sale[] = [];
   let unitIndex = 0;
   const pad = String(totalUnits).length;
