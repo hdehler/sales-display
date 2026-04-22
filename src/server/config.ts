@@ -88,6 +88,20 @@ export const config = {
     usbDiscoOffOnStart:
       process.env.CELEBRATION_USB_OFF_ON_START !== "false" &&
       process.env.CELEBRATION_USB_OFF_ON_START !== "0",
+    /**
+     * Run CELEBRATION_USB_OFF_CMD at these delays (ms) after the server listens — USB hubs on Pi
+     * often ignore the first command while the stack comes up; multiple ports may need one shell.
+     * Comma-separated; unset = 0,2500,5000,10000,15000.
+     */
+    usbStartupOffDelaysMs: (() => {
+      const raw = process.env.CELEBRATION_USB_STARTUP_OFF_DELAYS_MS?.trim();
+      if (!raw) return [0, 2500, 5000, 10000, 15000];
+      const nums = raw
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => Number.isFinite(n) && n >= 0);
+      return nums.length > 0 ? nums : [0, 2500, 5000, 10000, 15000];
+    })(),
   },
 
   /** Quiet time (ms) after the last Slide order before flushing a batch for the same account */

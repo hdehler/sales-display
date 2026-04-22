@@ -290,7 +290,11 @@ If you never got a running app, `pm2 delete all` then the same `pm2 start "$PWD/
 
 During a celebration the API can run **two shell commands**: one when the overlay starts (`CELEBRATION_USB_ON_CMD`) and one when it ends (`CELEBRATION_USB_OFF_CMD`), using the same timing as **`CELEBRATION_DURATION`** (and **Stop** on the kiosk turns the light off early via `celebration:dismiss`). Both variables must be set or USB control stays disabled.
 
-On **server start**, the OFF command runs **once by default** (`CELEBRATION_USB_OFF_ON_START`, omit or `true`) so the light is dark after boot until the next celebration—USB ports often power on before Node starts. Set **`CELEBRATION_USB_OFF_ON_START=false`** if you do not want that.
+On **server start**, the OFF command runs **multiple times at staggered delays** by default (`CELEBRATION_USB_OFF_ON_START`, omit or `true`; delays from **`CELEBRATION_USB_STARTUP_OFF_DELAYS_MS`** or built-in `0,2500,5000,10000,15000`). The Pi often ignores the first `uhubctl` while USB comes up—retries fix that. Set **`CELEBRATION_USB_OFF_ON_START=false`** to disable.
+
+**Your OFF command must turn off every hub port that powers the lamp.** If you needed several `sudo uhubctl …` lines to get it dark, put them in **one** env value, e.g. `CELEBRATION_USB_OFF_CMD=sh -c 'sudo uhubctl -l 3 -p 1 -a 0; sudo uhubctl -l 3 -p 2 -a 0; sudo uhubctl -l 1 -p 2 -a 0'` — use the **same** composite command for celebrations (that script is what runs at start too). Match **`CELEBRATION_USB_ON_CMD`** the same way for “on” during celebrations.
+
+If the light is **still on** after all attempts, it may not respect VBUS control—use a **relay or smart plug**, not USB power switching alone.
 
 Cheap USB party lights are often **always on when the port delivers power**. On a Pi you can sometimes switch that port with [**uhubctl**](https://github.com/mvp/uhubctl): `sudo apt install uhubctl`, then run **`sudo uhubctl`** (no arguments). **Only hub locations and ports printed there are valid** — copy the exact `-l` value (e.g. `2`, `1-1`, or on Pi 5 often `2`–`5`) and the port number; using a guess like `2-1` usually fails with *No compatible devices detected*. On **Raspberry Pi 4**, upstream docs often use **`uhubctl -l 2 -p 4`** or **`-l 1-1 -p 4`** for the internal hub (all Type-A ports may be **ganged**, so toggling one can affect every port — that is a hardware limit). Update **VL805** EEPROM if power switching does not work on Pi 4 (`sudo rpi-eeprom-update`). **Pi 5** uses a different USB layout; rely on your own `sudo uhubctl` output.
 

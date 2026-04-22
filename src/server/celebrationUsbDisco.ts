@@ -33,13 +33,26 @@ export function celebrationUsbLightOff(): void {
 
 /**
  * Ensure the disco port is off when the process starts (boot usually leaves USB powered on).
+ * Repeats OFF at staggered delays — the first exec often runs before uhubctl/USB is ready on Pi.
  * No-op unless both ON/OFF cmds are set and `usbDiscoOffOnStart` is true.
  */
 export function celebrationUsbOffAtStartup(): void {
   if (!celebrationUsbConfigured()) return;
   if (!config.celebration.usbDiscoOffOnStart) return;
-  console.log("[Celebration/USB] Startup: turning light off (default until next celebration).");
-  celebrationUsbLightOff();
+
+  const delays = config.celebration.usbStartupOffDelaysMs;
+  console.log(
+    `[Celebration/USB] Startup: ${delays.length} off attempt(s) at ms offsets [${delays.join(", ")}] (until one sticks).`,
+  );
+
+  for (let i = 0; i < delays.length; i++) {
+    const ms = delays[i];
+    const n = i + 1;
+    setTimeout(() => {
+      console.log(`[Celebration/USB] Startup off ${n}/${delays.length} (t+${ms}ms)`);
+      celebrationUsbLightOff();
+    }, ms);
+  }
 }
 
 /**
