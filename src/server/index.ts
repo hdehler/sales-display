@@ -45,12 +45,13 @@ import {
   type DemoBookingRow,
 } from "./db.js";
 import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
-import {
-  celebrationUsbScheduleForDuration,
-  celebrationUsbCancelScheduled,
-  celebrationUsbConfigured,
-  celebrationUsbOffAtStartup,
-} from "./celebrationUsbDisco.js";
+// USB disco / uhubctl — disabled; re-enable import + calls below when needed.
+// import {
+//   celebrationUsbScheduleForDuration,
+//   celebrationUsbCancelScheduled,
+//   celebrationUsbConfigured,
+//   celebrationUsbOffAtStartup,
+// } from "./celebrationUsbDisco.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 import { readdirSync, mkdirSync, writeFileSync } from "fs";
 import multer from "multer";
@@ -68,7 +69,7 @@ const io = new Server(server, {
   },
 });
 
-/** Cleared on `celebration:dismiss` so USB + overlay stay in sync when user taps Stop. */
+/** Cleared on `celebration:dismiss` when user taps Stop (overlay / timers). */
 let pendingCelebrationEndTimer: ReturnType<typeof setTimeout> | null = null;
 
 app.get("/api/health", (_req, res) => {
@@ -564,7 +565,7 @@ io.on("connection", (socket) => {
       clearTimeout(pendingCelebrationEndTimer);
       pendingCelebrationEndTimer = null;
     }
-    celebrationUsbCancelScheduled(true);
+    // celebrationUsbCancelScheduled(true);
     io.emit("celebration:end");
   });
   socket.on("disconnect", () => console.log("[Socket] Client disconnected"));
@@ -583,11 +584,11 @@ setCelebrationCallback((event: CelebrationEvent) => {
     event.type === "walkup" ? "celebration:walkup" : "celebration:start";
   io.emit(eventName, event);
   const durationMs = event.duration * 1000;
-  celebrationUsbScheduleForDuration(durationMs);
+  // celebrationUsbScheduleForDuration(durationMs);
   pendingCelebrationEndTimer = setTimeout(() => {
     pendingCelebrationEndTimer = null;
     io.emit("celebration:end");
-    celebrationUsbCancelScheduled(false);
+    // celebrationUsbCancelScheduled(false);
   }, durationMs);
 });
 
@@ -670,12 +671,13 @@ setBackfillCompleteHandler(() => {
 async function start(): Promise<void> {
   server.listen(config.port, () => {
     console.log(`[Server] Running on http://localhost:${config.port}`);
-    if (celebrationUsbConfigured()) {
-      console.log(
-        "[Celebration] USB disco commands enabled (CELEBRATION_USB_ON_CMD / OFF).",
-      );
-      celebrationUsbOffAtStartup();
-    }
+    // USB disco startup OFF — disabled; restore with celebrationUsbDisco import above.
+    // if (celebrationUsbConfigured()) {
+    //   console.log(
+    //     "[Celebration] USB disco commands enabled (CELEBRATION_USB_ON_CMD / OFF).",
+    //   );
+    //   celebrationUsbOffAtStartup();
+    // }
   });
 
   try {

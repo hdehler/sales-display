@@ -66,7 +66,9 @@ export function playUrl(url: string): HTMLAudioElement {
     }, { once: true });
   }
 
-  a.play().catch(() => {});
+  a.play().catch((err) => {
+    console.warn("[Audio] Could not play URL (autoplay/device?):", cleanUrl, err);
+  });
   a.onended = () => {
     if (activeAudio === a) activeAudio = null;
   };
@@ -79,7 +81,9 @@ export function playSong(song: string): void {
   if (!song) return;
   if (JINGLES.some((j) => j.id === song)) {
     stopAll();
-    playJingle(song);
+    void playJingle(song).catch((err) => {
+      console.warn("[Audio] Jingle failed (autoplay/context?):", song, err);
+    });
     return;
   }
   if (song.startsWith("http") || song.startsWith("/")) {

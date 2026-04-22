@@ -219,7 +219,17 @@ Configure which sales trigger celebrations in `.env`:
 
 ## Custom Sounds
 
-Drop any `.mp3` file at `public/sounds/celebration.mp3` to replace the default chime. The file is played through the browser on the touchscreen, which routes to your connected speakers.
+Celebration audio comes from **Team walk-ups**, **model/default song mappings** in Settings, or (if nothing is set) a built-in synth jingle (**Champion**). Uploaded tracks live under `public/sounds/` and are referenced from the Sound Library / Team UI.
+
+Sound plays in **Electron or the browser** on the kiosk and uses whatever output device the OS selects (3.5mm, HDMI, Bluetooth, etc.).
+
+### No music during celebration
+
+1. **USB speakers lost power** — If you use `uhubctl` on the Pi’s built-in USB ports, **all** USB‑A devices can lose power, including **USB speakers**. Use **analog (3.5mm)**, **HDMI audio**, or **Bluetooth** speakers instead, or plug USB audio into a port that stays powered.
+
+2. **Autoplay** — The Electron app is built with **`autoplayPolicy: no-user-gesture-required`** so celebration sounds can run without tapping first. If you use **Chromium** instead of Electron, start it with a permissive autoplay policy or tap the screen once after load.
+
+3. **DevTools console** — On the kiosk, open devtools (if enabled) and look for **`[Audio]`** warnings from playback failures.
 
 ## Project Structure
 
@@ -315,6 +325,18 @@ Env form:
 `CELEBRATION_USB_ON_CMD=sh -c 'sudo uhubctl -l 2 -a 1; sudo uhubctl -l 4 -a 1'`
 
 **Downside:** anything else on those USB ports (touch controller, dongle, etc.) loses power when the light is off — you may need a setup that doesn’t rely on USB for the display, or a **powered USB hub** / **relay on the lamp** instead.
+
+##### Touchscreen stays on Pi — disco must move off the Pi’s shared power
+
+You **cannot** keep a USB touchscreen working on the Pi while using `uhubctl -l 2`/`-l 4` on the **built-in** ports: that pair drops VBUS for **every** onboard USB-A device at once (see [Pi 5 ganged VBUS](https://github.com/mvp/uhubctl?tab=readme-ov-file#raspberry-pi-5)).
+
+**Practical setups:**
+
+1. **External powered hub for the disco only** — Plug the **touchscreen into the Raspberry Pi** (or another port you never toggle). Plug the **party light only** into a **separate USB hub** that supports real per-port power switching ([uhubctl compatible hubs](https://github.com/mvp/uhubctl?tab=readme-ov-file#compatible-usb-hubs)). Run `sudo uhubctl` with the hub connected: use the **`Location`** and **`Port`** that correspond to **only** the jack the light uses. Your `CELEBRATION_USB_*` commands target **that external hub** — not `-l 2`/`-l 4` on the Pi.
+
+2. **Relay or smart plug** — Switch **mains** or **inline VBUS** to the lamp so the Pi’s USB ports stay powered for touch.
+
+3. **Disable USB control until wiring is fixed** — Remove or empty **`CELEBRATION_USB_ON_CMD`** and **`CELEBRATION_USB_OFF_CMD`** (both required for the feature); touch works, celebrations run without the light.
 
 **Kernel / tool version:** After a Raspberry Pi OS upgrade (e.g. kernel **6.12**), hub numbering or USB3 handling can change. Run `uhubctl -v` — prefer **2.6.0+** (apt can be older); [build from source](https://github.com/mvp/uhubctl?tab=readme-ov-file#compiling) if the stock binary misbehaves. If you see *No compatible devices detected* for some `-l` values, check [uhubctl issues for Pi 5](https://github.com/mvp/uhubctl/issues?q=is%3Aissue+raspberry+pi+5) for `-e` / hub-shift workarounds.
 

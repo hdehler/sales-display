@@ -27,6 +27,16 @@ interface ResolvedSong {
   jingleId?: string;
 }
 
+/** Client-side synth jingle — used when nothing is configured and no mp3/url resolved */
+const FALLBACK_CELEBRATION_JINGLE_ID = "champion";
+
+function ensureCelebrationHasAudio(ev: CelebrationEvent): CelebrationEvent {
+  const hasJingle = ev.jingleId != null && String(ev.jingleId).trim() !== "";
+  const hasUrl = ev.songUrl != null && String(ev.songUrl).trim() !== "";
+  if (hasJingle || hasUrl) return ev;
+  return { ...ev, jingleId: FALLBACK_CELEBRATION_JINGLE_ID };
+}
+
 function classifySongValue(val: string): ResolvedSong {
   if (val.startsWith("http")) return { songUrl: val };
   if (val.startsWith("/sounds/")) return { songUrl: val };
@@ -306,7 +316,7 @@ export function shouldCelebrateSlidePack(
 export async function triggerCelebration(
   event: CelebrationEvent,
 ): Promise<void> {
-  queue.push(event);
+  queue.push(ensureCelebrationHasAudio(event));
   if (!processing) {
     void processQueue().catch((err) => {
       console.error("[Celebration] processQueue failed:", err);

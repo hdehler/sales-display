@@ -16,6 +16,8 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      /** Allow celebration / walk-up sounds without requiring a tap first (kiosk). */
+      autoplayPolicy: "no-user-gesture-required",
     },
   });
 
