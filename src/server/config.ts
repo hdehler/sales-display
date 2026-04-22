@@ -81,6 +81,13 @@ export const config = {
      */
     usbDiscoOnCmd: (process.env.CELEBRATION_USB_ON_CMD ?? "").trim(),
     usbDiscoOffCmd: (process.env.CELEBRATION_USB_OFF_CMD ?? "").trim(),
+    /**
+     * After the API binds the port, run CELEBRATION_USB_OFF_CMD once so the light is off
+     * until the next celebration (Pi often powers USB ports on at boot). Default on; set false to skip.
+     */
+    usbDiscoOffOnStart:
+      process.env.CELEBRATION_USB_OFF_ON_START !== "false" &&
+      process.env.CELEBRATION_USB_OFF_ON_START !== "0",
   },
 
   /** Quiet time (ms) after the last Slide order before flushing a batch for the same account */

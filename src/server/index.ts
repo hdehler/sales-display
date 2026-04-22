@@ -49,6 +49,7 @@ import {
   celebrationUsbScheduleForDuration,
   celebrationUsbCancelScheduled,
   celebrationUsbConfigured,
+  celebrationUsbOffAtStartup,
 } from "./celebrationUsbDisco.js";
 import type { CelebrationEvent, Sale } from "../shared/types.js";
 import { readdirSync, mkdirSync, writeFileSync } from "fs";
@@ -673,6 +674,7 @@ async function start(): Promise<void> {
       console.log(
         "[Celebration] USB disco commands enabled (CELEBRATION_USB_ON_CMD / OFF).",
       );
+      celebrationUsbOffAtStartup();
     }
   });
 

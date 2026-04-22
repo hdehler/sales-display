@@ -32,6 +32,17 @@ export function celebrationUsbLightOff(): void {
 }
 
 /**
+ * Ensure the disco port is off when the process starts (boot usually leaves USB powered on).
+ * No-op unless both ON/OFF cmds are set and `usbDiscoOffOnStart` is true.
+ */
+export function celebrationUsbOffAtStartup(): void {
+  if (!celebrationUsbConfigured()) return;
+  if (!config.celebration.usbDiscoOffOnStart) return;
+  console.log("[Celebration/USB] Startup: turning light off (default until next celebration).");
+  celebrationUsbLightOff();
+}
+
+/**
  * Turn light on and schedule off after `durationMs` (aligned with celebration overlay).
  * Cancels any pending off timer from a previous celebration.
  */
