@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Install a clickable desktop launcher for Sales Display (Electron) with the Slide icon.
+# Desktop launcher: git pull, build, free port 3000, then npm run start:all (API + Electron).
 # Usage: bash scripts/create-desktop-shortcut.sh
-# Requires: backend already managed by PM2, or start it before opening the window.
-
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,17 +15,20 @@ fi
 
 mkdir -p "$DESKTOP_DIR"
 
+# Exec must be one logical line. Embed ROOT when generating the file — do not use "~" or "$HOME"
+# inside .desktop (many parsers do not expand them). Avoid nested double-quotes around paths.
 cat > "$SHORTCUT" <<EOF
 [Desktop Entry]
+Version=1.0
 Type=Application
 Name=Sales Display
-Comment=Sales dashboard (Slide / Electron)
-Exec=bash -lc "cd \"$ROOT\" && npm run desktop"
-Terminal=false
+Comment=Update, rebuild, restart API and Electron window
+Exec=/usr/bin/bash -lc 'cd ${ROOT} && git pull && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all'
+Terminal=true
 Icon=${ICON}
 Categories=Utility;
 EOF
 
 chmod +x "$SHORTCUT"
 echo "Created: $SHORTCUT"
-echo "If the icon does not show, right-click the shortcut → Allow Launching (Pi desktop)."
+echo "Right-click → Allow Launching if prompted. Terminal=true shows git/npm output."
