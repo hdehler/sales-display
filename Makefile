@@ -56,11 +56,12 @@ run:
 	npm run start:all
 
 # ── Local testing ─────────────────────────────────────────
-# Slack stays off (the Pi's app token would split live events with the Pi), the DB is
+# Slack stays off (the Pi's app token would split live events with the Pi), hostit sync
+# stays off (it would seed hostit and report sync status as if this were the Pi), the DB is
 # data/local.db, and DWH owners come from dev/mock-owners.json unless REAL_BQ=1.
 LOCAL_DB ?= data/local.db
 SIM_URL ?= http://127.0.0.1:3000/api/dev/simulate
-LOCAL_ENV = SLACK_DISABLED=1 ENABLE_DEV_ENDPOINTS=1 SALES_DB_PATH=$(LOCAL_DB) \
+LOCAL_ENV = SLACK_DISABLED=1 HOSTIT_SYNC_URL= ENABLE_DEV_ENDPOINTS=1 SALES_DB_PATH=$(LOCAL_DB) \
 	$(if $(REAL_BQ),,BIGQUERY_MOCK_OWNERS_FILE=dev/mock-owners.json)
 
 local:

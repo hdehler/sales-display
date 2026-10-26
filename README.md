@@ -28,8 +28,8 @@ make run
 Don't run the server here with the Pi's `.env` as-is. Two Socket Mode connections on the same Slack app token split live events, so the Pi would miss orders. Use local mode instead:
 
 ```bash
-make pull-pi        # optional: copy the Pi's Team, walk-up songs and orders (needs ssh to the Pi)
-make local          # http://localhost:5173 — Slack off, data/local.db, owners from dev/mock-owners.json
+make pull-pi        # optional: copy the Pi's Team (as synced from hostit), walk-up songs and orders (needs ssh to the Pi)
+make local          # http://localhost:5173 — Slack + hostit sync off, data/local.db, owners from dev/mock-owners.json
 make sim-order ACCOUNT="Grissom Technology" NEW=1   # first order → AE gets credit
 make sim-order ACCOUNT="Grissom Technology"         # repeat order → AM
 make sim-demo BDR="Jane Doe" COMPANY=Acme           # HubSpot demo booking → BDR
