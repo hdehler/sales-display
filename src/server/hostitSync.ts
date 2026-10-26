@@ -23,6 +23,8 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const walkupsDir = path.join(__dirname, "../../public/sounds/walkups");
+/** v2: clip walk-ups are stored as "/sounds/walkups/<file>" (v1 stored the bare filename, which never played). */
+const APPLY_FORMAT = 2;
 
 interface ManifestRep {
   id: number;
@@ -117,7 +119,8 @@ function applyManifest(m: Manifest): boolean {
     let walkupSong: string | null | undefined;
     let walkupSongLabel: string | null | undefined;
     if (mr.walkup?.type === "clip") {
-      walkupSong = mr.walkup.file;
+      // playSong() only plays URLs/paths ("/sounds/walkups/x.mp3"); a bare filename is silently ignored
+      walkupSong = `/sounds/walkups/${mr.walkup.file}`;
       walkupSongLabel = mr.walkup.label;
     } else if (mr.walkup?.type === "jingle") {
       walkupSong = mr.walkup.id;
@@ -193,7 +196,8 @@ async function tick(onChange: () => void): Promise<void> {
   running = true;
   try {
     await seedIfNeeded();
-    const applied = getSetting("hostitAppliedRev") || "0";
+    // bump APPLY_FORMAT when applyManifest's output changes so existing rows get rewritten once
+    const applied = getSetting(`hostitAppliedRev${APPLY_FORMAT}`) || "0";
     const qs = new URLSearchParams({ applied, error: lastError });
     const m = await fetchJson<Manifest>(`${baseUrl}/api/sync/manifest?${qs}`);
     if (String(m.rev) !== applied) {
@@ -203,7 +207,7 @@ async function tick(onChange: () => void): Promise<void> {
       }
       const changed = applyManifest(m);
       pruneClips(m);
-      setSetting("hostitAppliedRev", String(m.rev));
+      setSetting(`hostitAppliedRev${APPLY_FORMAT}`, String(m.rev));
       console.log(
         `[hostit-sync] Applied rev ${m.rev} (${m.reps.length} reps${changed ? ", changed" : ""})`,
       );
