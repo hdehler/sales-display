@@ -8,7 +8,7 @@
  * Disabled unless HOSTIT_SYNC_URL and HOSTIT_SYNC_TOKEN are set.
  */
 import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync, renameSync, readFileSync, rmSync, mkdtempSync } from "fs";
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -231,13 +231,42 @@ const jobIntervalMs = 4_000;
 let jobBusy = false;
 let ytdlpMissingLogged = false;
 
-function run(cmd: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
+function report(id: string, stage: string, pct?: number): void {
+  void fetch(`${baseUrl}/api/sync/jobs/${id}/progress`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ stage, pct }),
+    signal: AbortSignal.timeout(5_000),
+  }).catch(() => {});
+}
+
+/** yt-dlp with progress → hostit (throttled). Resolves with the final stdout line. */
+function ytdlpWithProgress(id: string, args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: timeoutMs, maxBuffer: 32 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) {
-        const tail = String(stderr || err.message).trim().split("\n").pop() || err.message;
-        reject(Object.assign(new Error(tail), { code: (err as NodeJS.ErrnoException).code }));
-      } else resolve({ stdout: String(stdout), stderr: String(stderr) });
+    const p = spawn(ytdlpBin, [...args, "--newline", "--progress", "--no-colors", "--progress-template",
+      "download:PROG %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s"]);
+    let last = "", err = "", sent = 0;
+    const timer = setTimeout(() => p.kill("SIGKILL"), timeoutMs);
+    let buf = "";
+    p.stdout.on("data", (d: Buffer) => {
+      buf += d.toString();
+      const lines = buf.split("\n");
+      buf = lines.pop()!;
+      for (const line of lines) {
+        const m = line.match(/^PROG (\S+) (\S+) (\S+)/);
+        if (m) {
+          const done = Number(m[1]), total = Number(m[2]) || Number(m[3]);
+          if (Date.now() - sent > 1000 && total) { sent = Date.now(); report(id, "download", (done / total) * 100); }
+        } else if (line.trim()) last = line.trim();
+      }
+    });
+    p.stderr.on("data", (d: Buffer) => { err += d.toString(); });
+    p.on("error", (e) => { clearTimeout(timer); reject(e); });
+    p.on("close", (code) => {
+      clearTimeout(timer);
+      if (buf.trim() && !buf.startsWith("PROG")) last = buf.trim();
+      if (code === 0) resolve(last);
+      else reject(new Error(err.trim().split("\n").pop() || `yt-dlp exited ${code}`));
     });
   });
 }
@@ -246,14 +275,16 @@ async function doJob(job: { id: string; url: string }): Promise<void> {
   const dir = mkdtempSync(path.join(os.tmpdir(), "hostit-yt-"));
   try {
     console.log(`[hostit-sync] Downloading for hostit: ${job.url}`);
-    const { stdout } = await run(
-      ytdlpBin,
+    report(job.id, "lookup");
+    const lastLine = await ytdlpWithProgress(
+      job.id,
       ["--no-playlist", "--no-warnings", "-f", "bestaudio[ext=m4a]/bestaudio/best",
        "-o", path.join(dir, "a.%(ext)s"), "--print", "after_move:%(title)s\t%(duration)s\t%(filepath)s", job.url],
       10 * 60_000,
     );
-    const [title = "", duration = "0", filepath = ""] = stdout.trim().split("\n").pop()!.split("\t");
+    const [title = "", duration = "0", filepath = ""] = lastLine.split("\t");
     if (!filepath || !existsSync(filepath)) throw new Error("yt-dlp produced no file");
+    report(job.id, "upload", 0);
     const r = await fetch(`${baseUrl}/api/sync/jobs/${job.id}/upload`, {
       method: "POST",
       headers: {
