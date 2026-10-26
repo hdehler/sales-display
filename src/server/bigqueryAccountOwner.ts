@@ -1,5 +1,11 @@
 import { BigQuery } from "@google-cloud/bigquery";
-import { config, isBigQueryAccountOwnerConfigured } from "./config.js";
+import { readFileSync } from "fs";
+import path from "path";
+import {
+  BIGQUERY_OWNER_COLUMN_DEFAULTS,
+  config,
+  isBigQueryAccountOwnerConfigured,
+} from "./config.js";
 import { isSlideOrderMeta, type Sale } from "../shared/types.js";
 import { UNKNOWN_REP } from "../shared/rep.js";
 
@@ -18,8 +24,7 @@ function assertSafeColumn(name: string, label: string): string {
   return name;
 }
 
-/** Build `proj`.`dataset`.`table` for use in SQL. */
-function quoteTableRef(ref: string): string {
+function parseTableRef(ref: string): [string, string, string] {
   const parts = ref.split(".").map((p) => p.trim()).filter(Boolean);
   if (parts.length !== 3) {
     throw new Error(
@@ -32,6 +37,12 @@ function quoteTableRef(ref: string): string {
       `BIGQUERY_ACCOUNT_OWNER_TABLE has invalid characters in: ${ref}`,
     );
   }
+  return [proj, dataset, table];
+}
+
+/** Build `proj`.`dataset`.`table` for use in SQL. */
+function quoteTableRef(ref: string): string {
+  const [proj, dataset, table] = parseTableRef(ref);
   return `\`${proj}\`.\`${dataset}\`.\`${table}\``;
 }
 
@@ -82,6 +93,29 @@ export function normalizeAccountForLookup(raw: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+/**
+ * Local testing stand-in for the mart: `BIGQUERY_MOCK_OWNERS_FILE` maps account name →
+ * `{ hunter, farmer, legacy }`. Re-read every call so edits apply without a restart.
+ * Returns undefined when no mock is configured; an account missing from the file gets
+ * empty owners, which exercises the "Unknown" path like a real miss.
+ */
+function mockOwnersForAccount(raw: string): AccountOwners | undefined {
+  const file = config.bigqueryAccountOwner.mockOwnersFile;
+  if (!file) return undefined;
+  const parsed = JSON.parse(
+    readFileSync(path.resolve(file), "utf8"),
+  ) as Record<string, Partial<Record<keyof AccountOwners, string>>>;
+  const key = normalizeAccountForLookup(raw);
+  const hit = Object.entries(parsed).find(
+    ([name]) => normalizeAccountForLookup(name) === key,
+  )?.[1];
+  return {
+    hunter: cleanString(hit?.hunter),
+    farmer: cleanString(hit?.farmer),
+    legacy: cleanString(hit?.legacy),
+  };
 }
 
 function getBigQuery(): BigQuery | null {
@@ -172,33 +206,91 @@ function sqlNormAcctCol(acctCol: string): string {
   return `LOWER(TRIM(REGEXP_REPLACE(NORMALIZE(CAST(${c} AS STRING), NFKC), r' +', ' ')))`;
 }
 
-function buildSelectParts(b: typeof config.bigqueryAccountOwner): string[] {
-  const hunterCol = b.hunterColumn.trim();
-  const farmerCol = b.farmerColumn.trim();
-  const legacyCol = b.repColumn.trim();
-  const selectParts: string[] = [];
-  if (hunterCol) {
-    selectParts.push(
-      `\`${assertSafeColumn(hunterCol, "hunter column")}\` AS hunter_name`,
-    );
-  } else {
-    selectParts.push(`CAST(NULL AS STRING) AS hunter_name`);
+/** Owner columns that actually exist on the mart (null = select NULL for that role). */
+interface OwnerColumns {
+  hunter: string | null;
+  farmer: string | null;
+  legacy: string | null;
+  /** Configured columns the mart doesn't have (surfaced by the health probe). */
+  missing: string[];
+}
+
+let ownerColumnsPromise: Promise<OwnerColumns> | null = null;
+
+/**
+ * Check configured owner columns against the mart schema. A single unknown column makes
+ * BigQuery reject the whole query, which silently turned every order into "Unknown" when the
+ * DWH renamed `hubspot_owner_resolved_name`. Missing columns fall back to the current mart
+ * default for that role, else are skipped. Account / order-by columns are required.
+ */
+async function resolveOwnerColumns(bq: BigQuery): Promise<OwnerColumns> {
+  const b = config.bigqueryAccountOwner;
+  const configured = {
+    hunter: b.hunterColumn.trim(),
+    farmer: b.farmerColumn.trim(),
+    legacy: b.repColumn.trim(),
+  };
+
+  const [proj, dataset, table] = parseTableRef(b.tableRef.trim());
+  const [meta] = await bq
+    .dataset(dataset, { projectId: proj })
+    .table(table)
+    .getMetadata();
+  const fields: { name?: string }[] = meta?.schema?.fields ?? [];
+  const have = new Set(fields.map((f) => (f.name ?? "").toLowerCase()));
+
+  for (const [label, col] of [
+    ["BIGQUERY_ACCOUNT_NAME_COLUMN", b.accountColumn.trim()],
+    ["BIGQUERY_ACCOUNT_OWNER_ORDER_BY", b.orderByColumn.trim()],
+  ] as const) {
+    if (!have.has(col.toLowerCase())) {
+      throw new Error(`${label}=${col} is not a column of ${b.tableRef}`);
+    }
   }
-  if (farmerCol) {
-    selectParts.push(
-      `\`${assertSafeColumn(farmerCol, "farmer column")}\` AS farmer_name`,
-    );
-  } else {
-    selectParts.push(`CAST(NULL AS STRING) AS farmer_name`);
+
+  const out: OwnerColumns = { hunter: null, farmer: null, legacy: null, missing: [] };
+  for (const role of ["hunter", "farmer", "legacy"] as const) {
+    const col = configured[role];
+    if (!col) continue;
+    if (have.has(col.toLowerCase())) {
+      out[role] = assertSafeColumn(col, `${role} column`);
+      continue;
+    }
+    out.missing.push(col);
+    const fallback = BIGQUERY_OWNER_COLUMN_DEFAULTS[role];
+    if (have.has(fallback)) {
+      out[role] = fallback;
+      console.warn(
+        `[BigQuery] ${role} column ${JSON.stringify(col)} not in ${b.tableRef}; using ${JSON.stringify(fallback)}. Fix the BIGQUERY_* override in .env.`,
+      );
+    } else {
+      console.warn(
+        `[BigQuery] ${role} column ${JSON.stringify(col)} not in ${b.tableRef}; skipping it.`,
+      );
+    }
   }
-  if (legacyCol) {
-    selectParts.push(
-      `\`${assertSafeColumn(legacyCol, "legacy owner column")}\` AS legacy_name`,
-    );
-  } else {
-    selectParts.push(`CAST(NULL AS STRING) AS legacy_name`);
+  return out;
+}
+
+/** Cached per process; a failed schema read is retried on the next lookup. */
+function getOwnerColumns(bq: BigQuery): Promise<OwnerColumns> {
+  if (!ownerColumnsPromise) {
+    ownerColumnsPromise = resolveOwnerColumns(bq).catch((e) => {
+      ownerColumnsPromise = null;
+      throw e;
+    });
   }
-  return selectParts;
+  return ownerColumnsPromise;
+}
+
+function buildSelectParts(cols: OwnerColumns): string[] {
+  const part = (col: string | null, alias: string): string =>
+    col ? `\`${col}\` AS ${alias}` : `CAST(NULL AS STRING) AS ${alias}`;
+  return [
+    part(cols.hunter, "hunter_name"),
+    part(cols.farmer, "farmer_name"),
+    part(cols.legacy, "legacy_name"),
+  ];
 }
 
 function buildWhereExact(acctCol: string): string {
@@ -224,7 +316,7 @@ async function runOwnerQuery(
   const tableSql = quoteTableRef(b.tableRef.trim());
   const acctCol = assertSafeColumn(b.accountColumn.trim(), "account column");
   const orderCol = assertSafeColumn(b.orderByColumn.trim(), "order-by column");
-  const selectParts = buildSelectParts(b);
+  const selectParts = buildSelectParts(await getOwnerColumns(bq));
 
   const query = `
     SELECT ${selectParts.join(", ")}
@@ -270,6 +362,9 @@ export async function lookupOwnersForAccount(
 ): Promise<AccountOwners | null> {
   const raw = accountName?.trim();
   if (!raw || raw === "Unknown account") return null;
+
+  const mock = mockOwnersForAccount(raw);
+  if (mock) return mock;
 
   const bq = getBigQuery();
   if (!bq) return null;
@@ -342,6 +437,8 @@ export interface AccountOwnerLookupDebugResult {
   owners: AccountOwners | null;
   /** Populated when the query throws (often an invalid column name in .env). */
   bigqueryError?: string;
+  /** Answered from BIGQUERY_MOCK_OWNERS_FILE, not BigQuery. */
+  mock?: boolean;
 }
 
 /**
@@ -364,6 +461,17 @@ export async function debugAccountOwnerLookup(
 
   if (!isBigQueryAccountOwnerConfigured()) {
     return empty;
+  }
+
+  const mock = raw ? mockOwnersForAccount(raw) : undefined;
+  if (mock) {
+    return {
+      ...empty,
+      matchPhase: ownersHasAny(mock) ? "exact" : "none",
+      rowCount: ownersHasAny(mock) ? 1 : 0,
+      owners: ownersHasAny(mock) ? mock : null,
+      mock: true,
+    };
   }
 
   const bq = getBigQuery();
@@ -461,6 +569,10 @@ export interface BigQueryProbeResult {
   ok: boolean;
   error?: string;
   elapsedMs?: number;
+  /** Configured owner columns the mart doesn't have (lookups fall back or skip them). */
+  missingColumns?: string[];
+  /** Lookups use BIGQUERY_MOCK_OWNERS_FILE instead of BigQuery. */
+  mock?: boolean;
 }
 
 const PROBE_QUERY_TIMEOUT_MS = 25_000;
@@ -478,13 +590,26 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-/** Run a trivial read against the configured mart (startup or GET /api/health/bigquery). */
+/** Read the configured mart and check its owner columns (startup or GET /api/health/bigquery). */
 export async function probeBigQueryAccountOwner(): Promise<BigQueryProbeResult> {
   if (!isBigQueryAccountOwnerConfigured()) {
     return {
       ok: false,
       error: "BigQuery account owner not configured (BIGQUERY_PROJECT_ID + BIGQUERY_ACCOUNT_OWNER_TABLE)",
     };
+  }
+  const mockFile = config.bigqueryAccountOwner.mockOwnersFile;
+  if (mockFile) {
+    try {
+      mockOwnersForAccount("");
+      return { ok: true, mock: true, elapsedMs: 0 };
+    } catch (e) {
+      return {
+        ok: false,
+        mock: true,
+        error: `BIGQUERY_MOCK_OWNERS_FILE=${mockFile}: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
   }
   const t0 = Date.now();
   try {
@@ -505,7 +630,18 @@ export async function probeBigQueryAccountOwner(): Promise<BigQueryProbeResult> 
       PROBE_QUERY_TIMEOUT_MS,
       "BigQuery probe query",
     );
-    return { ok: true, elapsedMs: Date.now() - t0 };
+    /** Re-read the schema so a DWH column change shows up without a restart. */
+    ownerColumnsPromise = null;
+    const cols = await withTimeout(
+      getOwnerColumns(bq),
+      PROBE_QUERY_TIMEOUT_MS,
+      "BigQuery schema read",
+    );
+    return {
+      ok: true,
+      elapsedMs: Date.now() - t0,
+      ...(cols.missing.length > 0 ? { missingColumns: cols.missing } : {}),
+    };
   } catch (e) {
     return {
       ok: false,

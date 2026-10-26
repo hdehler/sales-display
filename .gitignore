@@ -5,4 +5,7 @@ data/
 *.db
 *.db-journal
 *.db-wal
-.cursor
+.cursor# Songs uploaded on the Pi (pulled locally by `make pull-pi`)
+public/sounds/walkups/*
+public/sounds/models/*
+!public/sounds/**/.gitkeep

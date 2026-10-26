@@ -23,6 +23,21 @@ make run
 # same as: npm run build && npm run start:all
 ```
 
+### Testing locally without the Pi
+
+Don't run the server here with the Pi's `.env` as-is. Two Socket Mode connections on the same Slack app token split live events, so the Pi would miss orders. Use local mode instead:
+
+```bash
+make pull-pi        # optional: copy the Pi's Team, walk-up songs and orders (needs ssh to the Pi)
+make local          # http://localhost:5173 — Slack off, data/local.db, owners from dev/mock-owners.json
+make sim-order ACCOUNT="Grissom Technology" NEW=1   # first order → AE gets credit
+make sim-order ACCOUNT="Grissom Technology"         # repeat order → AM
+make sim-demo BDR="Jane Doe" COMPANY=Acme           # HubSpot demo booking → BDR
+make test           # automated attribution + walk-up checks
+```
+
+Each `sim-*` command shows who got credit, whether that name matches someone on the Team, and which song will play. In the browser, tap the page once so audio is allowed to play. Edit `dev/mock-owners.json` to map accounts to real rep names (it is re-read on every order). To use the real DWH instead, run `REAL_BQ=1 make local` with `GOOGLE_APPLICATION_CREDENTIALS` pointing at a service account key. To replay a real Slack payload, `POST /api/dev/simulate/slack` with `{"channel":"sales","message":{…}}`.
+
 **Development** (hot reload, open http://localhost:5173 in a browser):
 
 ```bash

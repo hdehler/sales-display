@@ -1,3 +1,4 @@
+import "./config.js"; // load .env before reading SALES_DB_PATH
 import Database from "better-sqlite3";
 import path from "path";
 import { mkdirSync } from "fs";
@@ -12,7 +13,11 @@ import type {
 import { UNKNOWN_REP } from "../shared/rep.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, "../../data/sales.db");
+/** `SALES_DB_PATH` (relative to the project root) lets local testing use its own copy. */
+const dbPath = path.resolve(
+  path.join(__dirname, "../.."),
+  process.env.SALES_DB_PATH || "data/sales.db",
+);
 
 mkdirSync(path.dirname(dbPath), { recursive: true });
 
