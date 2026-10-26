@@ -132,7 +132,7 @@ app.get("/api/stats", (_req, res) => {
 
 /**
  * Verify `.env` channel id + bot membership (curl from the Pi).
- * Expect: ok:true, name:"dev-orders", isMember:true
+ * Expect: ok:true, name:"orders", isMember:true
  */
 app.get("/api/slack/channel", async (_req, res) => {
   const id = config.slack.salesChannelId;
@@ -140,7 +140,7 @@ app.get("/api/slack/channel", async (_req, res) => {
     res.status(400).json({
       ok: false,
       error: "SLACK_SALES_CHANNEL_ID is empty",
-      hint: "In Slack: open #dev-orders → channel name → View channel details → copy Channel ID at the bottom (C… or G…).",
+      hint: "In Slack: open #orders → channel name → View channel details → copy Channel ID at the bottom (C… or G…).",
     });
     return;
   }
@@ -166,7 +166,7 @@ app.get("/api/slack/channel", async (_req, res) => {
         slackError: r.error,
         hint:
           r.error === "channel_not_found"
-            ? "Wrong ID, or bot lacks access — invite @SalesDisplay to #dev-orders and add channels:read / groups:read (private)."
+            ? "Wrong ID, or bot lacks access — invite @SalesDisplay to #orders and add channels:read / groups:read (private)."
             : undefined,
       });
       return;

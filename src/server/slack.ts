@@ -218,6 +218,30 @@ export function setBackfillCompleteHandler(cb: () => void): void {
   onBackfillComplete = cb;
 }
 
+/**
+ * Say which channel orders are read from, by name. Real Slide orders post to #orders; #dev-orders
+ * and #stage-orders carry test traffic, and pointing the Pi at one silently skews every count.
+ */
+async function logSalesChannelName(client: WebClient): Promise<void> {
+  const id = config.slack.salesChannelId;
+  if (!id) return;
+  try {
+    const r = await client.conversations.info({ channel: id });
+    const name = r.channel?.name ?? "?";
+    console.log(`[Slack] Reading orders from #${name} (${id})`);
+    if (/^(dev|stage|staging|test)[-_]/i.test(name)) {
+      console.warn(
+        `[Slack] WARNING: #${name} is a test channel — production Slide orders post to #orders. Check SLACK_SALES_CHANNEL_ID.`,
+      );
+    }
+  } catch (e) {
+    console.warn(
+      `[Slack] Could not look up channel ${id}:`,
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
+
 /** DWH-enrich parsed sales-channel sales and hand them to the sale callback (live + simulated). */
 async function ingestParsedSales(sales: Sale[]): Promise<Sale[]> {
   const out: Sale[] = [];
@@ -448,6 +472,7 @@ export async function initSlack(): Promise<void> {
 
   await slackApp.start();
   console.log("[Slack] Connected via Socket Mode");
+  await logSalesChannelName(slackApp.client as WebClient);
   console.log(
     "[Slack] Use the SAME channel ID where Slide posts AND where you test. If manual works only in another channel, .env still points at that other channel.",
   );
@@ -599,7 +624,7 @@ async function verifySalesChannel(client: WebClient): Promise<void> {
   }
   if (!/^[CG][A-Z0-9]{8,}$/i.test(id)) {
     console.warn(
-      `[Slack] SLACK_SALES_CHANNEL_ID looks wrong (${JSON.stringify(id.slice(0, 16))}…). It must be the ID from Slack (Copy link → …/archives/C01…), not #dev-orders.`,
+      `[Slack] SLACK_SALES_CHANNEL_ID looks wrong (${JSON.stringify(id.slice(0, 16))}…). It must be the ID from Slack (Copy link → …/archives/C01…), not the #name.`,
     );
     return;
   }
