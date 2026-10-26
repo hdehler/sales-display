@@ -212,10 +212,12 @@ async function tick(onChange: () => void): Promise<void> {
         `[hostit-sync] Applied rev ${m.rev} (${m.reps.length} reps${changed ? ", changed" : ""})`,
       );
       if (changed) onChange();
+      await sendDiag(true);
       // report right away so the web UI flips to "up to date"
       await fetchJson(`${baseUrl}/api/sync/manifest?applied=${m.rev}`).catch(() => {});
     }
     lastError = "";
+    void sendDiag();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg !== lastError) console.warn("[hostit-sync]", msg);
@@ -332,6 +334,40 @@ async function jobTick(): Promise<void> {
   } finally {
     jobBusy = false;
   }
+}
+
+/** Code version reported to hostit, so it can tell which Pi build is running. */
+const SYNC_VERSION = "hostit-sync/4";
+let lastDiag = 0;
+
+/** Tell hostit what the Pi actually stored, so walk-up problems can be debugged from the web side. */
+async function sendDiag(force = false): Promise<void> {
+  if (!force && Date.now() - lastDiag < 5 * 60_000) return;
+  lastDiag = Date.now();
+  const reps = getAllReps().map((r) => {
+    const w = r.walkup_song ?? "";
+    let file: string | null = null;
+    if (w.startsWith("/sounds/")) file = path.join(walkupsDir, "..", w.slice("/sounds/".length));
+    else if (w.includes(".") && !w.startsWith("http")) file = path.join(walkupsDir, w);
+    return { name: r.name, walkupSong: w || null, fileExists: file ? existsSync(file) : null };
+  });
+  let files: string[] = [];
+  try { files = readdirSync(walkupsDir).filter((f) => f.startsWith("hostit-")); } catch { /* none */ }
+  await fetch(`${baseUrl}/api/sync/diag`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      version: SYNC_VERSION,
+      applyFormat: APPLY_FORMAT,
+      appliedRev: getSetting(`hostitAppliedRev${APPLY_FORMAT}`),
+      walkupsDir,
+      hostitFiles: files,
+      reps,
+      node: process.version,
+      uptimeSec: Math.round(process.uptime()),
+    }),
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => {});
 }
 
 /** `onChange` runs after the local Team changed (broadcast so the kiosk reloads reps). */
