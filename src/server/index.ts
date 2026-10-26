@@ -45,6 +45,7 @@ import {
   type DemoBookingRow,
 } from "./db.js";
 import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
+import { startHostitSync } from "./hostitSync.js";
 // USB disco / uhubctl — disabled; re-enable import + calls below when needed.
 // import {
 //   celebrationUsbScheduleForDuration,
@@ -721,6 +722,12 @@ async function start(): Promise<void> {
       );
     }
   }
+
+  // Team / walk-up songs edited in the browser on hostit (salescelly) → mirrored here.
+  startHostitSync(() => {
+    io.emit("reps:update");
+    broadcastDashboard();
+  });
 
   console.log("[Server] All systems initialized");
 }
