@@ -7,7 +7,9 @@
  *
  * Disabled unless HOSTIT_SYNC_URL and HOSTIT_SYNC_TOKEN are set.
  */
-import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync, renameSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync, renameSync, readFileSync, rmSync, mkdtempSync } from "fs";
+import { execFile } from "child_process";
+import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
@@ -219,6 +221,84 @@ async function tick(onChange: () => void): Promise<void> {
   }
 }
 
+// ── YouTube downloads on behalf of hostit ───────────────────────────────────
+// YouTube blocks datacenter IPs ("Sign in to confirm you're not a bot"), so hostit asks the Pi —
+// which sits on a normal office connection — to fetch the audio. We download the raw audio stream
+// (no ffmpeg needed on the Pi) and upload it; hostit converts and trims.
+
+const ytdlpBin = process.env.YTDLP_BIN || "yt-dlp";
+const jobIntervalMs = 4_000;
+let jobBusy = false;
+let ytdlpMissingLogged = false;
+
+function run(cmd: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout: timeoutMs, maxBuffer: 32 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) {
+        const tail = String(stderr || err.message).trim().split("\n").pop() || err.message;
+        reject(Object.assign(new Error(tail), { code: (err as NodeJS.ErrnoException).code }));
+      } else resolve({ stdout: String(stdout), stderr: String(stderr) });
+    });
+  });
+}
+
+async function doJob(job: { id: string; url: string }): Promise<void> {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "hostit-yt-"));
+  try {
+    console.log(`[hostit-sync] Downloading for hostit: ${job.url}`);
+    const { stdout } = await run(
+      ytdlpBin,
+      ["--no-playlist", "--no-warnings", "-f", "bestaudio[ext=m4a]/bestaudio/best",
+       "-o", path.join(dir, "a.%(ext)s"), "--print", "after_move:%(title)s\t%(duration)s\t%(filepath)s", job.url],
+      10 * 60_000,
+    );
+    const [title = "", duration = "0", filepath = ""] = stdout.trim().split("\n").pop()!.split("\t");
+    if (!filepath || !existsSync(filepath)) throw new Error("yt-dlp produced no file");
+    const r = await fetch(`${baseUrl}/api/sync/jobs/${job.id}/upload`, {
+      method: "POST",
+      headers: {
+        ...authHeaders(),
+        "Content-Type": "application/octet-stream",
+        "X-Title": encodeURIComponent(title),
+        "X-Duration": duration,
+      },
+      body: readFileSync(filepath),
+      signal: AbortSignal.timeout(5 * 60_000),
+    });
+    if (!r.ok) throw new Error(`upload → HTTP ${r.status}`);
+    console.log(`[hostit-sync] Uploaded "${title}"`);
+  } catch (e) {
+    const err = e as Error & { code?: string };
+    const msg = err.code === "ENOENT" ? "yt-dlp is not installed on the display" : err.message;
+    console.warn("[hostit-sync] Job failed:", msg);
+    await fetch(`${baseUrl}/api/sync/jobs/${job.id}/fail`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ error: msg.slice(0, 240) }),
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => {});
+    if (err.code === "ENOENT" && !ytdlpMissingLogged) {
+      ytdlpMissingLogged = true;
+      console.warn("[hostit-sync] Install yt-dlp: python3 -m pip install --user -U --break-system-packages yt-dlp");
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+async function jobTick(): Promise<void> {
+  if (jobBusy) return;
+  jobBusy = true;
+  try {
+    const { jobs } = await fetchJson<{ jobs: { id: string; url: string }[] }>(`${baseUrl}/api/sync/jobs`);
+    for (const j of jobs) await doJob(j);
+  } catch {
+    /* manifest tick reports connectivity errors */
+  } finally {
+    jobBusy = false;
+  }
+}
+
 /** `onChange` runs after the local Team changed (broadcast so the kiosk reloads reps). */
 export function startHostitSync(onChange: () => void): void {
   if (!baseUrl || !token) {
@@ -228,4 +308,5 @@ export function startHostitSync(onChange: () => void): void {
   console.log(`[hostit-sync] Polling ${baseUrl} every ${intervalMs / 1000}s`);
   void tick(onChange);
   setInterval(() => void tick(onChange), intervalMs);
+  setInterval(() => void jobTick(), jobIntervalMs);
 }
