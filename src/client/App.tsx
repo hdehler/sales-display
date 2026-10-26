@@ -1,5 +1,5 @@
 import { AnimatePresence } from "framer-motion";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useSocket } from "./hooks/useSocket";
 import { useGlobalDragScroll } from "./hooks/useDragScroll";
 import { Dashboard } from "./components/Dashboard";
@@ -20,6 +20,16 @@ export default function App() {
   const [repsVersion, setRepsVersion] = useState(0);
   const [assignRepContext, setAssignRepContext] =
     useState<AssignRepContext | null>(null);
+
+  // Team edited remotely (hostit sync) → reload walk-up bar
+  useEffect(() => {
+    if (!socket) return;
+    const onReps = () => setRepsVersion((v) => v + 1);
+    socket.on("reps:update", onReps);
+    return () => {
+      socket.off("reps:update", onReps);
+    };
+  }, [socket]);
 
   if (celebration && celebration.type !== "walkup") {
     lastCelebrationRef.current = celebration;
