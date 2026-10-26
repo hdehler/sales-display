@@ -35,6 +35,12 @@ export const config = {
    */
   devEndpoints: envFlag("ENABLE_DEV_ENDPOINTS"),
 
+  /**
+   * IANA zone for "today" / "this week" / "this month" and the daily chart. Defaults to the
+   * team's zone, not the Pi's system clock zone (Raspberry Pi OS often ships as Europe/London).
+   */
+  displayTimezone: process.env.DISPLAY_TIMEZONE?.trim() || "America/New_York",
+
   slack: {
     /**
      * Skip Slack entirely. Required when running off the Pi with the Pi's .env: two Socket Mode

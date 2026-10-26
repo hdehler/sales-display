@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Desktop launcher: git pull, build, free port 3000, then npm run start:all (API + Electron).
+# Desktop launcher: git pull, then scripts/launch.sh (npm install / build when needed, free
+# port 3000, start API + Electron).
 # Usage: bash scripts/create-desktop-shortcut.sh
 set -euo pipefail
 
@@ -23,7 +24,7 @@ Version=1.0
 Type=Application
 Name=Sales Display
 Comment=Update, rebuild, restart API and Electron window
-Exec=/usr/bin/bash -lc 'cd ${ROOT} && git pull && npm run build && fuser -k 3000/tcp; sleep 1 && npm run start:all'
+Exec=/usr/bin/bash -lc 'cd ${ROOT} && git pull; exec ${ROOT}/scripts/launch.sh'
 Terminal=true
 Icon=${ICON}
 Categories=Utility;

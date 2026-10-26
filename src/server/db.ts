@@ -1,5 +1,6 @@
-import "./config.js"; // load .env before reading SALES_DB_PATH
+import { config } from "./config.js"; // also loads .env before SALES_DB_PATH is read
 import Database from "better-sqlite3";
+import { DateTime } from "luxon";
 import path from "path";
 import { mkdirSync } from "fs";
 import { fileURLToPath } from "url";
@@ -216,7 +217,7 @@ export function getDemoBdrLeaderboardTop3(): LeaderboardEntry[] {
     .prepare(
       `SELECT bdr AS name, COUNT(*) AS count
        FROM demo_bookings
-       WHERE timestamp >= ?
+       WHERE datetime(timestamp) >= datetime(?)
        GROUP BY bdr
        ORDER BY count DESC, name ASC
        LIMIT 3`,
@@ -345,7 +346,7 @@ export function getSalesThisMonth(): Sale[] {
       `SELECT id, rep, customer, product, amount, timestamp,
               slack_ts as slackTs, raw_message as rawMessage, meta_json
        FROM sales
-       WHERE timestamp >= ?
+       WHERE datetime(timestamp) >= datetime(?)
        ORDER BY timestamp DESC`,
     )
     .all(start) as Record<string, unknown>[];
@@ -358,7 +359,7 @@ export function getLeaderboard(): LeaderboardEntry[] {
   return db
     .prepare(
       `SELECT customer as name, COUNT(*) as count
-       FROM sales WHERE timestamp >= ?
+       FROM sales WHERE datetime(timestamp) >= datetime(?)
        GROUP BY customer
        ORDER BY count DESC
        LIMIT 10`,
@@ -380,7 +381,7 @@ export function getRepLeaderboard(): LeaderboardEntry[] {
              ELSE TRIM(rep)
            END AS rep_key
          FROM sales
-         WHERE timestamp >= ?
+         WHERE datetime(timestamp) >= datetime(?)
        ) x
        GROUP BY rep_key
        ORDER BY count DESC
@@ -410,7 +411,7 @@ export function getHunterLeaderboard(): HunterLeaderboardEntry[] {
            ) AS rep_name,
            json_extract(meta_json, '$.newBuyingPartner') AS nbp_flag
          FROM sales
-         WHERE timestamp >= ?
+         WHERE datetime(timestamp) >= datetime(?)
        )
        SELECT rep_name AS name,
               COUNT(*) AS sales,
@@ -445,28 +446,43 @@ export function getPeriodTotal(period: "day" | "week" | "month"): {
   return db
     .prepare(
       `SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
-       FROM sales WHERE timestamp >= ?`,
+       FROM sales WHERE datetime(timestamp) >= datetime(?)`,
     )
     .get(start) as { total: number; count: number };
 }
 
+/** Per-day totals for the last `days` days, bucketed by calendar day in the display zone. */
 export function getDailyTotals(days = 14): DailyTotal[] {
-  return db
+  const zone = config.displayTimezone;
+  const since = DateTime.now()
+    .setZone(zone)
+    .startOf("day")
+    .minus({ days: days - 1 });
+  const rows = db
     .prepare(
-      `SELECT date(timestamp) as date, SUM(amount) as total, COUNT(*) as count
-       FROM sales WHERE timestamp >= datetime('now', ?)
-       GROUP BY date(timestamp) ORDER BY date ASC`,
+      `SELECT timestamp, amount FROM sales
+       WHERE datetime(timestamp) >= datetime(?)`,
     )
-    .all(`-${days} days`) as DailyTotal[];
+    .all(since.toUTC().toISO()) as { timestamp: string; amount: number }[];
+  const byDay = new Map<string, DailyTotal>();
+  for (const r of rows) {
+    const date = parseStoredTimestamp(r.timestamp).setZone(zone).toISODate();
+    if (!date) continue;
+    const d = byDay.get(date) ?? { date, total: 0, count: 0 };
+    d.total += r.amount;
+    d.count += 1;
+    byDay.set(date, d);
+  }
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function getTodaySaleCount(): number {
   const result = db
     .prepare(
       `SELECT COUNT(*) as count FROM sales
-       WHERE date(timestamp) = date('now')`,
+       WHERE datetime(timestamp) >= datetime(?)`,
     )
-    .get() as { count: number };
+    .get(periodStart("day")) as { count: number };
   return result.count;
 }
 
@@ -709,27 +725,30 @@ export function assignRepToSaleIds(saleIds: number[], repId: number): number {
   return run(saleIds);
 }
 
+/** Rows hold ISO strings (Slack ts) or SQLite `datetime('now')` text, both UTC. */
+function parseStoredTimestamp(ts: string): DateTime {
+  const iso = DateTime.fromISO(ts, { zone: "utc" });
+  return iso.isValid ? iso : DateTime.fromSQL(ts, { zone: "utc" });
+}
+
+/** Start of the current day / week (Sunday) / month in the display zone, as a UTC ISO string. */
 function periodStart(period: "day" | "week" | "month"): string {
-  const now = new Date();
+  const now = DateTime.now().setZone(config.displayTimezone);
+  let start: DateTime;
   switch (period) {
     case "day":
-      return new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      ).toISOString();
-    case "week": {
-      const d = new Date(now);
-      d.setDate(d.getDate() - d.getDay());
-      d.setHours(0, 0, 0, 0);
-      return d.toISOString();
-    }
+      start = now.startOf("day");
+      break;
+    case "week":
+      start = now.startOf("day").minus({ days: now.weekday % 7 });
+      break;
     case "month":
-      return monthStart();
+      start = now.startOf("month");
+      break;
   }
+  return start.toUTC().toISO()!;
 }
 
 function monthStart(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  return periodStart("month");
 }

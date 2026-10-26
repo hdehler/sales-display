@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-click launcher for the Sales Display app.
-# Starts the API server + Electron window.
+# Installs/builds when the code changed, then starts the API server + Electron window.
 # Safe to double-click from a file manager or run from a terminal.
 set -e
 
@@ -13,9 +13,16 @@ if [ -z "${DISPLAY:-}" ] && [ "$(uname -s)" = "Linux" ]; then
   export XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}"
 fi
 
-# Build if first run
-if [ ! -f dist/client/index.html ]; then
-  echo "First run — building client…"
+# Install dependencies when package-lock.json changed (e.g. after git pull)
+if [ ! -f node_modules/.package-lock.json ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
+  echo "Dependencies changed — npm install…"
+  npm install --no-audit --no-fund
+fi
+
+# Build the client on first run, or when its source is newer than the last build
+if [ ! -f dist/client/index.html ] || \
+   [ -n "$(find src index.html vite.config.ts package-lock.json -newer dist/client/index.html -print -quit)" ]; then
+  echo "Client changed — building…"
   npm run build
 fi
 
