@@ -45,6 +45,7 @@ import {
   type DemoBookingRow,
 } from "./db.js";
 import { reconcileUnknownSlideRepsFromDwh } from "./reconcileUnknownSlideReps.js";
+import { registerDevRoutes } from "./devRoutes.js";
 import { startHostitSync } from "./hostitSync.js";
 // USB disco / uhubctl — disabled; re-enable import + calls below when needed.
 // import {
@@ -544,6 +545,8 @@ app.post("/api/sales/:id/claim", (req, res) => {
   res.json({ ok: true, celebration: ev });
 });
 
+if (config.devEndpoints) registerDevRoutes(app);
+
 if (process.env.NODE_ENV === "production") {
   const clientDir = path.join(__dirname, "../../dist/client");
   app.use("/sounds", express.static(soundsRoot));
@@ -694,6 +697,11 @@ async function start(): Promise<void> {
       console.log(
         `[BigQuery] Account owner lookup ready (probe ${bq.elapsedMs ?? "?"}ms)`,
       );
+      if (bq.missingColumns) {
+        console.warn(
+          `[BigQuery] Configured columns missing from the mart: ${bq.missingColumns.join(", ")}`,
+        );
+      }
     } else {
       console.warn(`[BigQuery] Probe failed — Slide rep enrichment disabled: ${bq.error}`);
     }

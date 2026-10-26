@@ -218,6 +218,45 @@ export function setBackfillCompleteHandler(cb: () => void): void {
   onBackfillComplete = cb;
 }
 
+/** DWH-enrich parsed sales-channel sales and hand them to the sale callback (live + simulated). */
+async function ingestParsedSales(sales: Sale[]): Promise<Sale[]> {
+  const out: Sale[] = [];
+  for (let i = 0; i < sales.length; i++) {
+    const enriched = await enrichSaleWithAccountOwnerFromDwh(sales[i]);
+    if (
+      i === 0 &&
+      enriched.meta?.source === "slide_cloud" &&
+      enriched.rep.trim()
+    ) {
+      console.log(`[Slack] DWH owner: ${enriched.rep} — ${enriched.customer}`);
+    }
+    onSale?.(enriched);
+    out.push(enriched);
+  }
+  return out;
+}
+
+/**
+ * Local testing: run a Slack message payload through the same parse → enrich → callback path
+ * as a live event, without a Slack connection. Returns what was parsed (null = not recognized).
+ */
+export async function simulateSlackMessage(
+  msg: Record<string, unknown>,
+  channel: "sales" | "demo",
+): Promise<{ sales: Sale[] } | { demo: ParsedDemoBooking } | null> {
+  const ts = typeof msg.ts === "string" ? msg.ts : undefined;
+  if (!ts) throw new Error("Simulated message needs a string `ts`");
+  if (channel === "demo") {
+    const demo = parseDemoBookingFromSlackMessage(msg);
+    if (!demo) return null;
+    onDemoBooking?.({ ...demo, slackTs: ts });
+    return { demo };
+  }
+  const sales = parseMessageToSales(msg);
+  if (!sales || sales.length === 0) return null;
+  return { sales: await ingestParsedSales(sales) };
+}
+
 /** Demo channel vs sales channel vs ignore (wrong channel when IDs are configured). */
 function routeIncomingSlackChannel(channelId: string): "demo" | "sales_or_legacy" | "ignore" {
   const inc = channelId.toUpperCase();
@@ -229,6 +268,10 @@ function routeIncomingSlackChannel(channelId: string): "demo" | "sales_or_legacy
 }
 
 export async function initSlack(): Promise<void> {
+  if (config.slack.disabled) {
+    console.warn("[Slack] SLACK_DISABLED is set — not connecting to Slack.");
+    return;
+  }
   const hasBot =
     config.slack.botToken && config.slack.botToken.startsWith("xoxb-");
   const hasApp =
@@ -369,17 +412,7 @@ export async function initSlack(): Promise<void> {
       );
     }
 
-    for (let i = 0; i < sales.length; i++) {
-      const enriched = await enrichSaleWithAccountOwnerFromDwh(sales[i]);
-      if (
-        i === 0 &&
-        enriched.meta?.source === "slide_cloud" &&
-        enriched.rep.trim()
-      ) {
-        console.log(`[Slack] DWH owner: ${enriched.rep} — ${enriched.customer}`);
-      }
-      onSale?.(enriched);
-    }
+    await ingestParsedSales(sales);
   }
 
   async function handleIncomingSlackMessage(

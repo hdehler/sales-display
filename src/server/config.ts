@@ -11,10 +11,36 @@ export function normalizeSlackChannelId(raw: string): string {
   return raw.trim().replace(/^#/, "").toUpperCase();
 }
 
+/**
+ * Current `rpt_console_account_hubspot_owner` column names. If an env override names a column
+ * the mart no longer has, the lookup falls back to these (see `bigqueryAccountOwner.ts`).
+ */
+export const BIGQUERY_OWNER_COLUMN_DEFAULTS = {
+  hunter: "account_executive_name",
+  farmer: "account_manager_name",
+  legacy: "hubspot_company_owner_name",
+} as const;
+
+function envFlag(name: string): boolean {
+  const v = process.env[name];
+  return v === "1" || v === "true";
+}
+
 export const config = {
   port: parseInt(process.env.PORT || "3000", 10),
 
+  /**
+   * Local testing (`make local`): enables /api/dev/* routes that push fake Slide orders and
+   * demo bookings through the real parse → DWH → celebration path. Keep off on the Pi.
+   */
+  devEndpoints: envFlag("ENABLE_DEV_ENDPOINTS"),
+
   slack: {
+    /**
+     * Skip Slack entirely. Required when running off the Pi with the Pi's .env: two Socket Mode
+     * connections on one app token split live events, so the Pi would miss orders.
+     */
+    disabled: envFlag("SLACK_DISABLED"),
     botToken: process.env.SLACK_BOT_TOKEN || "",
     appToken: process.env.SLACK_APP_TOKEN || "",
     salesChannelId: normalizeSlackChannelId(
@@ -126,20 +152,20 @@ export const config = {
      * Mart column is typically `account_executive_name`; older deployments used `account_executive`.
      */
     hunterColumn:
-      process.env.BIGQUERY_HUNTER_COLUMN || "account_executive_name",
+      process.env.BIGQUERY_HUNTER_COLUMN || BIGQUERY_OWNER_COLUMN_DEFAULTS.hunter,
     /**
      * Farmer column = AM credited on every later order.
      * Mart column is typically `account_manager_name`; older deployments used `account_manager`.
      */
     farmerColumn:
-      process.env.BIGQUERY_FARMER_COLUMN || "account_manager_name",
+      process.env.BIGQUERY_FARMER_COLUMN || BIGQUERY_OWNER_COLUMN_DEFAULTS.farmer,
     /**
      * Legacy fallback when hunter + farmer cells are empty for an account row.
      * Typical mart: `hubspot_company_owner_name`; older mart: `hubspot_owner_resolved_name`.
      * Set to empty string to disable selecting this column entirely.
      */
     repColumn:
-      process.env.BIGQUERY_OWNER_NAME_COLUMN || "hubspot_company_owner_name",
+      process.env.BIGQUERY_OWNER_NAME_COLUMN ?? BIGQUERY_OWNER_COLUMN_DEFAULTS.legacy,
     /** Tie-break when multiple rows match the same account_name */
     orderByColumn:
       process.env.BIGQUERY_ACCOUNT_OWNER_ORDER_BY || "account_id",
@@ -166,6 +192,11 @@ export const config = {
      * Re-fetch HubSpot owner for Slide rows still stored as Unknown (late DWH assignment).
      * 0 = disabled. Example: 900000 = every 15 minutes.
      */
+    /**
+     * Local testing: JSON file of account name → { hunter, farmer, legacy } used instead of
+     * BigQuery (see dev/mock-owners.json). Re-read on every lookup, so edits apply immediately.
+     */
+    mockOwnersFile: (process.env.BIGQUERY_MOCK_OWNERS_FILE ?? "").trim(),
     reconcileUnknownRepMs: parseInt(
       process.env.BIGQUERY_RECONCILE_UNKNOWN_MS || "0",
       10,
@@ -196,9 +227,10 @@ export const config = {
   ] as const,
 };
 
-/** True when project + table ref are set (BigQuery client can run lookups). */
+/** True when project + table ref are set (BigQuery client can run lookups), or a mock owners file is. */
 export function isBigQueryAccountOwnerConfigured(): boolean {
   const b = config.bigqueryAccountOwner;
+  if (b.mockOwnersFile) return true;
   return (
     b.projectId.trim().length > 0 && b.tableRef.trim().length > 0
   );

@@ -1,7 +1,7 @@
 # Sales display — shortcuts for common commands
 # Usage: make help | make start | make dev | …
 
-.PHONY: help run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
+.PHONY: help local local-reset pull-pi sim-order sim-demo test run install build setup start dev desktop desktop-pi slack-backfill clean stats pm2-restart pm2-logs pm2-stop pm2-status
 
 .DEFAULT_GOAL := help
 
@@ -19,6 +19,15 @@ help:
 	@echo "  B) Manual / dev (no PM2 on port 3000):"
 	@echo "       make pm2-stop                    # stop PM2 first if you use it!"
 	@echo "       make run                         # API + Electron together"
+	@echo ""
+	@echo "  --- Local testing (no Pi, no Slack) ---"
+	@echo "  make pull-pi          copy the Pi's Team, songs and orders here (PI=salesdisplay)"
+	@echo "  make local            hot-reload app at http://localhost:5173, Slack off, fake DWH"
+	@echo "                        (REAL_BQ=1 uses BigQuery; needs GOOGLE_APPLICATION_CREDENTIALS)"
+	@echo "  make sim-order ACCOUNT=\"Grissom Technology\" [NEW=1]   fake Slide order (NEW=1: first order -> AE)"
+	@echo "  make sim-demo BDR=\"Jane Doe\" [COMPANY=Acme]           fake HubSpot demo booking"
+	@echo "  make local-reset      reset data/local.db to the last Pi pull (or empty)"
+	@echo "  make test             attribution + walk-up song checks"
 	@echo ""
 	@echo "  make run              build if needed, then API + Electron (needs :3000 free)"
 	@echo ""
@@ -45,6 +54,36 @@ run:
 		echo ""; echo "Port 3000 is busy (usually PM2). Run:  make pm2-stop   then try again."; echo "Or keep PM2 and only run:  make desktop"; echo ""; exit 1; \
 	fi
 	npm run start:all
+
+# ── Local testing ─────────────────────────────────────────
+# Slack stays off (the Pi's app token would split live events with the Pi), hostit sync
+# stays off (it would seed hostit and report sync status as if this were the Pi), the DB is
+# data/local.db, and DWH owners come from dev/mock-owners.json unless REAL_BQ=1.
+LOCAL_DB ?= data/local.db
+SIM_URL ?= http://127.0.0.1:3000/api/dev/simulate
+LOCAL_ENV = SLACK_DISABLED=1 HOSTIT_SYNC_URL= ENABLE_DEV_ENDPOINTS=1 SALES_DB_PATH=$(LOCAL_DB) \
+	$(if $(REAL_BQ),,BIGQUERY_MOCK_OWNERS_FILE=dev/mock-owners.json)
+
+local:
+	$(LOCAL_ENV) npm run dev
+
+local-reset:
+	rm -f $(LOCAL_DB) $(LOCAL_DB)-wal $(LOCAL_DB)-shm
+	@if [ -f data/pi-snapshot.db ]; then cp data/pi-snapshot.db $(LOCAL_DB) && echo "Reset to last Pi pull"; else echo "Reset to empty"; fi
+
+pull-pi:
+	sh scripts/pull-pi.sh
+
+sim-order:
+	@test -n "$(ACCOUNT)" || (echo 'Usage: make sim-order ACCOUNT="Grissom Technology" [NEW=1]'; exit 1)
+	@node -e 'fetch(process.argv[1], {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({account: process.argv[2], newBuyingPartner: process.argv[3] === "1"})}).then(r => r.json()).then(j => console.log(JSON.stringify(j, null, 2)), e => {console.error("Is make local running?", e.message); process.exit(1)})' "$(SIM_URL)/order" "$(ACCOUNT)" "$(NEW)"
+
+sim-demo:
+	@test -n "$(BDR)" || (echo 'Usage: make sim-demo BDR="Jane Doe" [COMPANY=Acme]'; exit 1)
+	@node -e 'fetch(process.argv[1], {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({bdr: process.argv[2], company: process.argv[3]})}).then(r => r.json()).then(j => console.log(JSON.stringify(j, null, 2)), e => {console.error("Is make local running?", e.message); process.exit(1)})' "$(SIM_URL)/demo" "$(BDR)" "$(COMPANY)"
+
+test:
+	npm test
 
 install:
 	npm install
